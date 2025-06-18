@@ -47,7 +47,7 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 .footer-button span { font-size: 0.75rem; }
 
 /* --- Main Content --- */
-.main-content { position: relative; flex: 1; overflow-y: auto; padding-top: 72px; padding-bottom: 60px; }
+.main-content { position: relative; flex: 1; overflow-y: auto; padding-top: 72px; padding-bottom: 60px; transform: translateZ(0); }
 .main-content::-webkit-scrollbar { display: none; }
 .main-content { -ms-overflow-style: none; scrollbar-width: none; }
 .main-content.no-header-padding { padding-top: 0; }
@@ -339,6 +339,7 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 .banner-slides {
     display: flex;
     transition: transform 0.5s ease-in-out;
+    will-change: transform;
 }
 
 .banner-slide {

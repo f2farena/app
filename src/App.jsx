@@ -1198,6 +1198,7 @@ const ChatbotPage = () => {
 // ===================================================================================
 // COMPONENT APP CHÍNH
 // ===================================================================================
+
 const AppContent = () => {
   const [showSettingsSidebar, setShowSettingsSidebar] = useState(false);
   const [showHeader, setShowHeader] = useState(true);
