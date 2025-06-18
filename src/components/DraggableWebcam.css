@@ -1,0 +1,115 @@
+.webcam-container,
+.webcam-collapsed-button {
+    position: fixed;
+    /* THAY VÌ top/left, DÙNG bottom/right ĐỂ CỐ ĐỊNH VỊ TRÍ MẶC ĐỊNH */
+    bottom: 30px;
+    right: 30px;
+    z-index: 1000;
+    transition: all 0.2s ease;
+    cursor: move;
+}
+
+.webcam-container {
+    width: 280px;
+    background-color: #2d3748;
+    border: 1px solid #4a5568;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    color: white;
+}
+
+.webcam-header {
+    padding: 8px;
+    background-color: #4a5568;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    user-select: none;
+}
+
+.webcam-video-placeholder {
+    height: 160px;
+    background-color: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.9rem;
+    color: #a0a0a0;
+}
+
+.webcam-controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    padding: 12px;
+    background-color: #2d3748;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.webcam-button {
+    background: transparent;
+    border: 2px solid #a0a0a0;
+    color: #a0a0a0;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.webcam-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+.webcam-button.on {
+    border-color: #22c55e;
+    color: #22c55e;
+}
+
+.webcam-button.off {
+    border-color: #ef4444;
+    color: white;
+    background-color: #ef4444;
+}
+
+.webcam-button.neutral {
+    border-color: #a0a0a0;
+    color: #a0a0a0;
+}
+
+.webcam-button.neutral:hover {
+    background-color: #4a5568;
+    color: white;
+}
+
+.webcam-collapsed-button {
+    width: 50px;
+    height: 50px;
+    background-color: #2d3748;
+    color: #00cec9;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    border: 2px solid #00cec9;
+}
+
+.webcam-collapsed-button:hover {
+    transform: scale(1.1);
+    background-color: #4a5568;
+}
+
+.webcam-collapsed-button svg {
+    width: 24px;
+    height: 24px;
+}

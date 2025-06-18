@@ -1,0 +1,635 @@
+/* Thiết lập CSS Variables */
+:root {
+  --color-background: #000000;
+  --color-primary: #00cec9;
+  --color-accent: #ffd700;
+  --color-text: #ffffff;
+  --color-secondary-text: #a0a0a0;
+  --color-card-bg: #2d3748;
+  --color-hover-bg: #4a5568;
+  --color-success: #22c55e;
+  --color-info: #3b82f6;
+  --font-main: 'Inter', sans-serif;
+}
+
+/* Reset và cài đặt cơ bản */
+.match-detail-container {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-main);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  height: 100dvh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.match-detail-header,
+.match-detail-container .score-bar-container,
+.header-bottom-section {
+  background-image: linear-gradient(to right, #1d329d, #0a175d);
+  background-color: transparent; /* Đặt màu nền trong suốt để gradient hiển thị */
+}
+
+/* Header tràn viền */
+.match-detail-header {
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex: 0 0 auto;
+}
+
+/* Back button */
+.back-button {
+  font-size: 1.5rem;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.player-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.player-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  margin-bottom: 0.25rem;
+}
+
+.player-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.player-odds {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.center-details {
+  flex-shrink: 0;
+  margin: 0 1rem;
+  text-align: center;
+  padding-top: 0.5rem;
+}
+
+.time-remaining {
+  font-size: 0.875rem;
+  color: var(--color-secondary-text);
+  margin-bottom: 0.25rem;
+}
+
+.vs-text {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+/* Thanh điểm */
+.score-bar-container {
+  width: 100%;
+  padding: 0 1rem;
+  flex: 0 0 auto;
+}
+
+.score-bar {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 1rem;
+  background-color: var(--color-card-bg); 
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.score-bar > div:first-child {
+  background-color: var(--color-info);
+}
+
+.score-bar > div:last-child {
+  background-color: var(--color-success);
+}
+
+.score-text {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  color: var(--color-secondary-text);
+}
+
+/* Thông tin bổ sung */
+.header-bottom-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  flex: 0 0 auto;
+}
+
+.info-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.info-item p {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.info-item .primary-p {
+  color: var(--color-primary);
+}
+
+.info-item .accent-p {
+  color: var(--color-accent);
+}
+
+.icon-info {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.icon-info svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Tab buttons */
+.tab-buttons {
+  display: flex;
+  padding: 0.5rem 0.25rem;
+  background-color: var(--color-card-bg);
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--color-primary);
+  flex: 0 0 auto;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 0.75rem;
+  background-color: transparent;
+  border: none;
+  border-radius: 15px;
+  color: var(--color-secondary-text);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.tab-button.active {
+  background-color: var(--color-primary);
+  color: var(--color-background);
+}
+
+.tab-button:hover {
+  background-color: var(--color-hover-bg);
+}
+
+/* Biểu đồ */
+.trading-view-container {
+  padding: 0;
+  flex: 0 0 auto; /* Không mở rộng, chiều cao cố định */
+  overflow: hidden; /* Ngăn widget tràn */
+  height: 400px; 
+}
+
+#tradingview_widget {
+  width: 100%;
+  height: 400px; /* Chiều cao cố định */
+  margin: 0;
+}
+
+/* Trục thời gian (Matching) */
+.timeline-container {
+  padding: 0.5rem;
+  background-color: var(--color-card-bg);
+  flex: 1; /* Chiếm không gian còn lại đến cuối màn hình */
+  overflow-y: auto;
+}
+
+.timeline {
+  position: relative;
+  margin: 0 auto;
+  width: 2px;
+  background-color: var(--color-secondary-text);
+  height: auto; /* Kéo dài theo nội dung */
+  min-height: 100%; /* Tối thiểu bằng container */
+  padding: 0.5rem 0; /* Khoảng cách trên/dưới */
+}
+
+.trade-box {
+  position: relative;
+  margin: 0.5rem 0;
+  width: 150px;
+  padding: 0.5rem;
+  background-color: var(--color-hover-bg);
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.trade-box.left {
+  left: -160px;
+  text-align: right;
+}
+
+.trade-box.right {
+  left: 10px;
+}
+
+.trade-info {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+}
+
+.trade-type {
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.trade-amount,
+.trade-price,
+.trade-time {
+  color: var(--color-text);
+}
+
+/* Trục thời gian (Discussion) */
+.discussion-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  background-color: var(--color-card-bg);
+  flex: 1;
+  overflow: hidden;
+}
+
+.discussion-messages {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 1rem;
+  padding-bottom: 80px; /* Không gian cho input area */
+}
+
+.discussion-bubble-row {
+  display: flex;
+  margin-bottom: 0.75rem;
+}
+
+.discussion-bubble-row.user {
+  justify-content: flex-end;
+}
+
+.discussion-bubble-row.other {
+  justify-content: flex-start;
+}
+
+.discussion-bubble-container {
+  display: flex;
+  align-items: flex-end;
+  max-width: 90%;
+}
+
+.discussion-bubble-row.user .discussion-bubble-container {
+  margin-left: auto;
+  width: 70%; /* Cố định chiều ngang */
+  justify-content: flex-end; /* Căn nội dung phải */
+}
+
+.discussion-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.discussion-bubble {
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  line-height: 1.5;
+  font-size: 0.95rem;
+  text-align: right; /* Căn phải nội dung */
+}
+
+.discussion-bubble.user {
+  background-color: var(--color-primary);
+  color: var(--color-background);
+  border-bottom-right-radius: 0.25rem;
+}
+
+.discussion-bubble.other {
+  background-color: var(--color-hover-bg);
+  color: var(--color-text);
+  border-bottom-left-radius: 0.25rem;
+  text-align: left; /* Căn trái cho user khác */
+}
+
+.discussion-user {
+  display: block;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: inherit;
+  margin-bottom: 0.25rem;
+}
+
+.discussion-text {
+  display: block;
+  color: inherit;
+}
+
+.discussion-time {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--color-secondary-text);
+  margin-top: 0.25rem;
+}
+
+.discussion-input-area {
+  display: flex;
+  align-items: center;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--color-card-bg);
+  border-top: 1px solid var(--color-hover-bg);
+  padding: 0.5rem 1rem;
+  z-index: 20;
+}
+
+.discussion-input {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-secondary-text);
+  background-color: var(--color-input-bg);
+  color: var(--color-text);
+  margin-right: 0.5rem;
+}
+
+.discussion-send-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  background-color: var(--color-primary);
+  color: var(--color-background);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* Trục thời gian (Bet Outside) */
+.bet-outside-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  background-color: var(--color-card-bg);
+  flex: 1;
+  overflow-y: auto;
+}
+
+.bet-outside-buttons {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  background-color: var(--color-card-bg);
+}
+
+.bet-outside-button-green,
+.bet-outside-button-red {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-background);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bet-outside-button-green {
+  background-color: var(--color-success);
+}
+
+.bet-outside-button-red {
+  background-color: var(--color-danger);
+}
+
+.bet-outside-trend {
+  font-size: 1rem;
+  margin-left: 0.5rem;
+}
+
+.bet-outside-trend.up {
+  color: var(--color-success);
+}
+
+.bet-outside-trend.down {
+  color: var(--color-danger);
+}
+
+.bet-outside-table {
+  flex: 1;
+  padding: 0 0.5rem;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.bet-outside-total {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.bet-outside-row {
+  display: grid;
+  grid-template-columns: 50px 1fr 80px 100px 80px;
+  align-items: center;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.bet-outside-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.bet-outside-nickname {
+  font-weight: 600;
+}
+
+.bet-outside-odds {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  text-align: center;
+  color: var(--color-background);
+}
+
+.bet-outside-odds-green {
+  background-color: var(--color-success);
+}
+
+.bet-outside-odds-red {
+  background-color: var(--color-danger);
+}
+
+.bet-outside-amount {
+  text-align: right;
+}
+
+.bet-outside-time {
+  font-size: 0.75rem;
+  color: var(--color-secondary-text);
+  text-align: right;
+}
+
+.bet-outside-divider {
+  border: none;
+  border-top: 1px solid var(--color-text);
+  opacity: 0.2;
+  width: 100%;
+  margin: 1.2rem 0;
+  grid-column: 1 / -1;
+}
+
+/* Thanh cuộn */
+.timeline-container::-webkit-scrollbar,
+.discussion-container::-webkit-scrollbar,
+.bet-outside-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.timeline-container::-webkit-scrollbar-track,
+.discussion-container::-webkit-scrollbar-track,
+.bet-outside-container::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+.timeline-container::-webkit-scrollbar-thumb,
+.discussion-container::-webkit-scrollbar-thumb,
+.bet-outside-container::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 3px;
+}
+
+/* Responsive cho mobile */
+@media (max-width: 768px) {
+  .match-detail-header {
+    padding: 0.5rem;
+  }
+
+  .player-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .player-name {
+    font-size: 1rem;
+  }
+
+  .player-odds {
+    font-size: 0.75rem;
+  }
+
+  .center-details {
+    margin: 0 0.5rem;
+  }
+
+  .time-remaining {
+    font-size: 0.75rem;
+  }
+
+  .vs-text {
+    font-size: 1rem;
+  }
+
+  .score-bar-container {
+    padding: 0 0.5rem;
+  }
+
+  .header-bottom-section {
+    padding: 0.5rem;
+  }
+
+  .info-item p {
+    font-size: 1rem;
+  }
+
+  .tab-buttons {
+    padding: 0.25rem;
+  }
+
+  .tab-button {
+    font-size: 0.9rem;
+    padding: 0.5rem;
+  }
+
+  .trading-view-container {
+    padding: 0;
+  }
+
+  #tradingview_widget {
+    height: 300px;
+  }
+
+  .timeline-container,
+  .discussion-container,
+  .bet-outside-container {
+    padding: 0.5rem;
+  }
+
+  .trade-box,
+  .comment-box,
+  .bet-box {
+    width: 130px;
+  }
+
+  .trade-box.left,
+  .comment-box.left,
+  .bet-box.left {
+    left: -140px;
+  }
+
+  .trade-box.right,
+  .comment-box.right,
+  .bet-box.right {
+    left: 10px;
+  }
+
+  .trade-info,
+  .comment-info,
+  .bet-info {
+    font-size: 0.7rem;
+  }
+}

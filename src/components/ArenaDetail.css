@@ -1,0 +1,25 @@
+/* Container cho các nút hành động mới */
+.arena-action-buttons {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: var(--color-background); /* Dùng màu nền chính của app */
+}
+
+/* Style cho từng nút */
+.arena-action-buttons .btn {
+    flex: 1; /* Để 2 nút chiếm không gian bằng nhau */
+    padding: 1rem;
+    font-size: 1.25rem;
+    color: var(--color-text);
+}
+
+/* Nút BUY màu xanh */
+.arena-action-buttons .btn-buy {
+    background-color: var(--color-success);
+}
+
+/* Nút SELL màu đỏ */
+.arena-action-buttons .btn-sell {
+    background-color: var(--color-danger);
+}
