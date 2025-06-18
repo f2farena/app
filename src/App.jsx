@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import MatchDetail from './components/MatchDetail';
 import NewsDetail from './components/NewsDetail';
 import ArenaDetail from './components/ArenaDetail';
