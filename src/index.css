@@ -127,7 +127,7 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 
 /* --- Trang News --- */
 .news-card { background-color: var(--color-card-bg); border-radius: 0.75rem; margin-bottom: 1rem; border: 1px solid var(--color-primary); overflow: hidden; }
-.news-thumbnail { width: 100%; height: 220px; object-fit: cover; }
+.news-thumbnail { width: 100%; height: 220px; object-fit: cover; display: block; }
 .news-content { padding: 1rem; }
 .news-title { font-size: 1.25rem; font-weight: 600; color: var(--color-primary); margin: 0 0 0.5rem 0; }
 .news-date { font-size: 0.875rem; color: var(--color-secondary-text); margin-bottom: 0.5rem; }
@@ -183,14 +183,14 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 .chatbot-input-area {
   display: flex;
   align-items: center;
-  position: fixed; /* Thay sticky bằng fixed để cố định đáy */
-  bottom: 0;
+  position: fixed;
+  bottom: env(safe-area-inset-bottom, 0);
   left: 0;
   right: 0;
   background-color: var(--color-background);
   border-top: 1px solid var(--color-hover-bg);
   padding: 0.5rem 1rem;
-  z-index: 20; /* Đảm bảo trên các phần tử khác */
+  z-index: 20;
 }
 
 .chatbot-input {

@@ -3,6 +3,9 @@ import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'r
 import MatchDetail from './components/MatchDetail';
 import NewsDetail from './components/NewsDetail';
 import ArenaDetail from './components/ArenaDetail';
+import LazyLoad from 'react-lazyload';
+import { FixedSizeList } from 'react-window';
+
 import settingIcon from './assets/setting.png';
 import chatboxIcon from './assets/chatbox.png';
 import homeActive from './assets/home-2.png';
@@ -112,56 +115,96 @@ const Footer = ({ activePage, setActivePage, showFooter }) => (
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n=>n[0]).join('') || 'NN').toUpperCase()}`;
 
 const EventBanner = ({ items }) => {
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const timeoutRef = useRef(null);
-    const navigate = useNavigate();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const navigate = useNavigate();
+  const rafRef = useRef(null);
+  const lastTimeRef = useRef(0);
+  const isPaused = useRef(false);
 
-    const resetTimeout = () => {
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-        }
+  // Hàm chuyển slide
+  const goToNextSlide = () => {
+    setCurrentIndex((prev) => (prev === items.length - 1 ? 0 : prev + 1));
+  };
+
+  // Animation loop với requestAnimationFrame
+  const animate = (time) => {
+    if (isPaused.current) {
+      rafRef.current = requestAnimationFrame(animate);
+      return;
     }
 
-    useEffect(() => {
-        resetTimeout();
-        timeoutRef.current = setTimeout(
-            () => setCurrentIndex((prevIndex) =>
-                prevIndex === items.length - 1 ? 0 : prevIndex + 1
-            ),
-            5000 // Tự động trượt sau 3 giây
-        );
-
-        return () => {
-            resetTimeout();
-        };
-    }, [currentIndex, items.length]);
-
-    const goToSlide = (slideIndex) => {
-        setCurrentIndex(slideIndex);
+    if (time - lastTimeRef.current >= 5000) { // Chuyển slide mỗi 5 giây
+      goToNextSlide();
+      lastTimeRef.current = time;
     }
 
-    return (
-        <div className="banner-container">
-            <div className="banner-slides" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
-              {items.map((item) => (
-                  <div className="banner-slide" key={item.id} onClick={() => navigate(`/news/${item.id}`)}>
-                      <img src={item.thumbnail} alt={`Event ${item.id}`} className="banner-image" />
-                      {/* Đã xóa phần title ở đây */}
-                  </div>
-              ))}
-            </div>
-            <div className="banner-dots">
-                {items.map((_, slideIndex) => (
-                    <div
-                        key={slideIndex}
-                        className={`banner-dot ${currentIndex === slideIndex ? 'active' : ''}`}
-                        onClick={() => goToSlide(slideIndex)}
-                    ></div>
-                ))}
-            </div>
-        </div>
-    );
-}
+    rafRef.current = requestAnimationFrame(animate);
+  };
+
+  // Khởi động và dừng animation
+  useEffect(() => {
+    lastTimeRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, []);
+
+  // Tạm dừng animation khi cuộn
+  useEffect(() => {
+    let scrollTimeout;
+
+    const handleScroll = () => {
+      isPaused.current = true;
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        isPaused.current = false;
+        lastTimeRef.current = performance.now();
+      }, 150); // Tiếp tục sau 150ms
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, []);
+
+  // Chuyển slide thủ công
+  const goToSlide = (slideIndex) => {
+    setCurrentIndex(slideIndex);
+    lastTimeRef.current = performance.now(); // Reset thời gian để tránh chuyển ngay
+  };
+
+  return (
+    <div className="banner-container">
+      <div className="banner-slides" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
+        {items.map((item) => (
+          <div className="banner-slide" key={item.id} onClick={() => navigate(`/news/${item.id}`)}>
+            <img
+              src={item.thumbnail}
+              alt={`Event ${item.id}`}
+              className="banner-image"
+              loading="lazy" // Lazy-load hình ảnh
+            />
+          </div>
+        ))}
+      </div>
+      <div className="banner-dots">
+        {items.map((_, slideIndex) => (
+          <div
+            key={slideIndex}
+            className={`banner-dot ${currentIndex === slideIndex ? 'active' : ''}`}
+            onClick={() => goToSlide(slideIndex)}
+          ></div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const HomePage = () => {
     const navigate = useNavigate();
@@ -243,7 +286,9 @@ const NewsPage = () => {
     <div className="page-padding">
       {newsArticles.map((article) => (
         <div key={article.id} className="news-card" onClick={() => navigate(`/news/${article.id}`)} style={{ cursor: 'pointer' }}>
-          <img src={article.thumbnail} alt={article.title} className="news-thumbnail" />
+          <LazyLoad height={220} offset={100}>
+            <img src={article.thumbnail} alt={article.title} className="news-thumbnail" loading="lazy" />
+          </LazyLoad>
           <div className="news-content">
             <h3 className="news-title">{article.title}</h3>
             <p className="news-date">{article.date}</p>
@@ -1095,22 +1140,19 @@ const ChatbotPage = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isInputFocused, setIsInputFocused] = useState(false); // Thêm state theo dõi focus
-  const messagesEndRef = useRef(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const listRef = useRef(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const Row = ({ index, style }) => {
+    const msg = messages[index];
+    return (
+      <div style={style} className={`message-bubble-row ${msg.sender}`}>
+        <div className={`message-bubble ${msg.sender}`}>
+          {msg.text}
+        </div>
+      </div>
+    );
   };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  useEffect(() => {
-    setMessages([
-      { text: 'Xin chào! Tôi là trợ lý AI của bạn. Tôi có thể giúp gì về thông tin thị trường hoặc các mẹo giao dịch?', sender: 'bot' }
-    ]);
-  }, []);
 
   const sendMessage = async (e) => {
     e.preventDefault();
@@ -1118,50 +1160,29 @@ const ChatbotPage = () => {
     if (!trimmedInput || isLoading) return;
 
     const userMessage = { text: trimmedInput, sender: 'user' };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages(prev => [...prev, userMessage].slice(-50)); // Giới hạn 50 tin nhắn
     setInput('');
     setIsLoading(true);
 
-    const apiKey = ""; // Để test fallback, thay bằng key hợp lệ sau
-
-    if (!apiKey) {
-      setTimeout(() => {
-        setMessages(prev => [...prev, { text: "Tính năng chat đang được cấu hình. Vui lòng thử lại sau.", sender: 'bot' }]);
-        setIsLoading(false);
-      }, 1000);
-      return;
-    }
-
-    try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: trimmedInput }] }] })
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const result = await response.json();
-      const botResponse = result?.candidates?.[0]?.content?.parts?.[0]?.text || 'Không nhận được phản hồi từ bot.';
-      setMessages(prev => [...prev, { text: botResponse, sender: 'bot' }]);
-    } catch (error) {
-      console.error("Lỗi API chatbot:", error);
-      setMessages(prev => [...prev, { text: "Đã có lỗi xảy ra. Vui lòng thử lại.", sender: 'bot' }]);
-    } finally {
+    setTimeout(() => {
+      setMessages(prev => [...prev, { text: "Tính năng chat đang được cấu hình.", sender: 'bot' }].slice(-50));
       setIsLoading(false);
-    }
+      listRef.current?.scrollToItem(messages.length, 'end');
+    }, 1000);
   };
 
   return (
-    <div className="chatbot-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <div className="chatbot-messages" style={{ flex: '1 1 auto', overflowY: 'auto', paddingBottom: isInputFocused ? '100px' : '20px' }}>
-        {messages.map((msg, index) => (
-          <div key={index} className={`message-bubble-row ${msg.sender}`}>
-            <div className={`message-bubble ${msg.sender}`}>
-              {msg.text}
-            </div>
-          </div>
-        ))}
+    <div className="chatbot-container" style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
+      <div className="chatbot-messages" style={{ flex: '1 1 auto', overflow: 'hidden' }}>
+        <FixedSizeList
+          height={window.innerHeight - 72 - 60} // Trừ header và input
+          itemCount={messages.length}
+          itemSize={60} // Ước lượng chiều cao mỗi tin nhắn
+          width="100%"
+          ref={listRef}
+        >
+          {Row}
+        </FixedSizeList>
         {isLoading && (
           <div className="message-bubble-row bot">
             <div className="message-bubble bot loading-pulse">
@@ -1169,13 +1190,8 @@ const ChatbotPage = () => {
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
-      <form
-        className="chatbot-input-area"
-        style={{ display: 'flex', alignItems: 'center', position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'var(--color-background)', zIndex: 20 }}
-        onSubmit={sendMessage}
-      >
+      <form className="chatbot-input-area" style={{ display: 'flex', alignItems: 'center', position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'var(--color-background)', zIndex: 20 }} onSubmit={sendMessage}>
         <input
           type="text"
           className="chatbot-input form-input"
@@ -1216,42 +1232,27 @@ const AppContent = () => {
     const mainContent = document.getElementById('main-content');
     if (!mainContent) return;
 
-    const handleScroll = () => {
-      const currentScrollY = mainContent.scrollTop;
+    const sentinel = document.createElement('div');
+    sentinel.style.height = '1px';
+    mainContent.prepend(sentinel);
 
-      // Nếu chưa có yêu cầu nào đang chờ xử lý, thì mới tạo yêu cầu mới
-      if (!ticking.current) {
-        window.requestAnimationFrame(() => {
-          const isDetailPage = location.pathname.startsWith('/match/') || 
-                               location.pathname.startsWith('/news/') || 
-                               location.pathname.startsWith('/arena/');
-          
-          if (isDetailPage) {
-              // Trên trang chi tiết, không làm gì cả
-              setShowHeader(false);
-              setShowFooter(false);
-          } else {
-              // Chỉ xử lý ẩn/hiện trên các trang không phải chi tiết
-              if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-                  setShowHeader(false);
-                  setShowFooter(false);
-              } else if (currentScrollY < lastScrollY.current) {
-                  setShowHeader(true);
-                  setShowFooter(location.pathname !== '/chatbot');
-              }
-          }
-
-          lastScrollY.current = currentScrollY;
-          ticking.current = false; // Đánh dấu đã xử lý xong
-        });
-
-        ticking.current = true; // Đánh dấu đang chờ xử lý
+    const observer = new IntersectionObserver(([entry]) => {
+      const isDetailPage = ['/match/', '/news/', '/arena/'].some(path => location.pathname.includes(path));
+      if (isDetailPage) {
+        setShowHeader(false);
+        setShowFooter(false);
+      } else {
+        setShowHeader(entry.isIntersecting);
+        setShowFooter(entry.isIntersecting && location.pathname !== '/chatbot');
       }
-    };
+    }, { threshold: 0 });
 
-    mainContent.addEventListener('scroll', handleScroll, { passive: true });
-    return () => mainContent.removeEventListener('scroll', handleScroll);
-  }, [location.pathname]); // Bỏ lastScrollY khỏi dependency array
+    observer.observe(sentinel);
+    return () => {
+      observer.disconnect();
+      sentinel.remove();
+    };
+  }, [location.pathname]);
 
 
   // useEffect này để xử lý trạng thái ban đầu khi chuyển trang
