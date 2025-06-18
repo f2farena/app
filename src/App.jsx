@@ -1202,28 +1202,69 @@ const AppContent = () => {
   const [showSettingsSidebar, setShowSettingsSidebar] = useState(false);
   const [showHeader, setShowHeader] = useState(true);
   const [showFooter, setShowFooter] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  
+  // Dùng useRef thay vì useState để không re-render component mỗi khi scroll
+  const lastScrollY = useRef(0); 
+  const ticking = useRef(false); // Dùng để debounce sự kiện scroll
+
   const [activePage, setActivePage] = useState('home');
   const location = useLocation();
 
+  // THAY THẾ TOÀN BỘ KHỐI USEEFFECT XỬ LÝ SCROLL BẰNG KHỐI NÀY
   useEffect(() => {
     const mainContent = document.getElementById('main-content');
     if (!mainContent) return;
+
     const handleScroll = () => {
       const currentScrollY = mainContent.scrollTop;
-      if (currentScrollY > lastScrollY && currentScrollY > 50) {
-        setShowHeader(false);
-        setShowFooter(false);
-      } else {
-        setShowHeader(!(location.pathname.startsWith('/match') || location.pathname.startsWith('/news/') || location.pathname.startsWith('/arena/')));
-        // SỬA LẠI CHÍNH XÁC Ở ĐÂY
-        setShowFooter(!(location.pathname.startsWith('/match') || location.pathname.startsWith('/news/') || location.pathname.startsWith('/arena/') || location.pathname === '/chatbot'));
+
+      // Nếu chưa có yêu cầu nào đang chờ xử lý, thì mới tạo yêu cầu mới
+      if (!ticking.current) {
+        window.requestAnimationFrame(() => {
+          const isDetailPage = location.pathname.startsWith('/match/') || 
+                               location.pathname.startsWith('/news/') || 
+                               location.pathname.startsWith('/arena/');
+          
+          if (isDetailPage) {
+              // Trên trang chi tiết, không làm gì cả
+              setShowHeader(false);
+              setShowFooter(false);
+          } else {
+              // Chỉ xử lý ẩn/hiện trên các trang không phải chi tiết
+              if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+                  setShowHeader(false);
+                  setShowFooter(false);
+              } else if (currentScrollY < lastScrollY.current) {
+                  setShowHeader(true);
+                  setShowFooter(location.pathname !== '/chatbot');
+              }
+          }
+
+          lastScrollY.current = currentScrollY;
+          ticking.current = false; // Đánh dấu đã xử lý xong
+        });
+
+        ticking.current = true; // Đánh dấu đang chờ xử lý
       }
-      setLastScrollY(currentScrollY);
     };
-    mainContent.addEventListener('scroll', handleScroll);
+
+    mainContent.addEventListener('scroll', handleScroll, { passive: true });
     return () => mainContent.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY, location.pathname]);
+  }, [location.pathname]); // Bỏ lastScrollY khỏi dependency array
+
+
+  // useEffect này để xử lý trạng thái ban đầu khi chuyển trang
+  useEffect(() => {
+    const path = location.pathname.substring(1); // Bỏ dấu / ở đầu
+    const page = path.split('/')[0];
+    const isDetailPage = ['match', 'news', 'arena'].includes(page) && path.includes('/');
+
+    if (isDetailPage) {
+      setActivePage('');
+    } else {
+      setActivePage(page || 'home');
+    }
+  }, [location.pathname]);
 
 
 useEffect(() => {
