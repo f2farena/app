@@ -120,20 +120,22 @@ const EventBanner = ({ items }) => {
   const rafRef = useRef(null);
   const lastTimeRef = useRef(0);
   const isPaused = useRef(false);
+  const containerRef = useRef(null);
+  const isVisible = useRef(true);
 
   // Hàm chuyển slide
   const goToNextSlide = () => {
     setCurrentIndex((prev) => (prev === items.length - 1 ? 0 : prev + 1));
   };
 
-  // Animation loop với requestAnimationFrame
+  // Animation loop
   const animate = (time) => {
-    if (isPaused.current) {
+    if (!isVisible.current || isPaused.current) {
       rafRef.current = requestAnimationFrame(animate);
       return;
     }
 
-    if (time - lastTimeRef.current >= 5000) { // Chuyển slide mỗi 5 giây
+    if (time - lastTimeRef.current >= 5000) {
       goToNextSlide();
       lastTimeRef.current = time;
     }
@@ -153,17 +155,16 @@ const EventBanner = ({ items }) => {
     };
   }, []);
 
-  // Tạm dừng animation khi cuộn
+  // Tạm dừng khi cuộn
   useEffect(() => {
     let scrollTimeout;
-
     const handleScroll = () => {
       isPaused.current = true;
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         isPaused.current = false;
         lastTimeRef.current = performance.now();
-      }, 150); // Tiếp tục sau 150ms
+      }, 150);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -173,23 +174,41 @@ const EventBanner = ({ items }) => {
     };
   }, []);
 
-  // Chuyển slide thủ công
+  // Theo dõi visibility của banner
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isVisible.current = entry.isIntersecting;
+      },
+      { threshold: 0 }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
   const goToSlide = (slideIndex) => {
     setCurrentIndex(slideIndex);
-    lastTimeRef.current = performance.now(); // Reset thời gian để tránh chuyển ngay
+    lastTimeRef.current = performance.now();
   };
 
   return (
-    <div className="banner-container">
+    <div className="banner-container" ref={containerRef}>
       <div className="banner-slides" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
         {items.map((item) => (
           <div className="banner-slide" key={item.id} onClick={() => navigate(`/news/${item.id}`)}>
-            <img
-              src={item.thumbnail}
-              alt={`Event ${item.id}`}
-              className="banner-image"
-              loading="lazy" // Lazy-load hình ảnh
-            />
+            <LazyLoad height={220} offset={100}>
+              <img
+                src={item.thumbnail}
+                alt={`Event ${item.id}`}
+                className="banner-image"
+                loading="lazy"
+                onError={(e) => (e.target.src = 'https://placehold.co/500x220')}
+              />
+            </LazyLoad>
           </div>
         ))}
       </div>
@@ -207,73 +226,87 @@ const EventBanner = ({ items }) => {
 };
 
 const HomePage = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
-    // Dữ liệu cho banner (lấy từ newsArticles làm mẫu)
-    const bannerItems = [
-        { id: 1, title: 'Summer Challenge: Double Your Account!', thumbnail: 'https://images.media-outreach.com/559582/Gala-Dinner-news.jpg' },
-        { id: 2, title: 'New Feature Update: Live Outside Betting', thumbnail: 'https://autorebateforex.com/cashback/wp-content/uploads/2021/04/2021-04-06-2-1024x494.png' },
-        { id: 3, title: 'Top 5 Altcoins to Watch This Month', thumbnail: 'https://blog.investingnote.com/wp-content/uploads/2019/09/traders-rally-1.jpg' },
-    ];
+  const bannerItems = [
+    { id: 1, title: 'Summer Challenge: Double Your Account!', thumbnail: 'https://images.media-outreach.com/559582/Gala-Dinner-news.jpg' },
+    { id: 2, title: 'New Feature Update: Live Outside Betting', thumbnail: 'https://autorebateforex.com/cashback/wp-content/uploads/2021/04/2021-04-06-2-1024x494.png' },
+    { id: 3, title: 'Top 5 Altcoins to Watch This Month', thumbnail: 'https://blog.investingnote.com/wp-content/uploads/2019/09/traders-rally-1.jpg' },
+  ];
 
-    const ongoingMatches = [
-        { id: 1, pair: 'BTC/USDT', betAmount: 100, player1: { name: 'CryptoKing', avatar: generateAvatarUrl('CryptoKing'), score: 7, odds: '1:0.75' }, player2: { name: 'TradeMaster', avatar: generateAvatarUrl('TradeMaster'), score: 3, odds: '1:0.90' }, timeRemaining: '00:45:30', views: 1250, outsideBetsTotal: 12500 },
-        { id: 2, pair: 'ETH/USDT', betAmount: 250, player1: { name: 'BlockBoss', avatar: generateAvatarUrl('BlockBoss'), score: 5, odds: '1:0.85' }, player2: { name: 'MarketWhiz', avatar: generateAvatarUrl('MarketWhiz'), score: 5, odds: '1:0.85' }, timeRemaining: '01:10:15', views: 890, outsideBetsTotal: 8000 },
-    ];
+  const ongoingMatches = [
+    { id: 1, pair: 'BTC/USDT', betAmount: 100, player1: { name: 'CryptoKing', avatar: generateAvatarUrl('CryptoKing'), score: 7, odds: '1:0.75' }, player2: { name: 'TradeMaster', avatar: generateAvatarUrl('TradeMaster'), score: 3, odds: '1:0.90' }, timeRemaining: '00:45:30', views: 1250, outsideBetsTotal: 12500 },
+    { id: 2, pair: 'ETH/USDT', betAmount: 250, player1: { name: 'BlockBoss', avatar: generateAvatarUrl('BlockBoss'), score: 5, odds: '1:0.85' }, player2: { name: 'MarketWhiz', avatar: generateAvatarUrl('MarketWhiz'), score: 5, odds: '1:0.85' }, timeRemaining: '01:10:15', views: 890, outsideBetsTotal: 8000 },
+  ];
 
-    return (
-        // Bỏ class page-padding ở thẻ ngoài cùng để banner tràn viền
-        <div>
-            {/* === PHẦN BANNER MỚI === */}
-            <EventBanner items={bannerItems} />
-            
-            {/* === PHẦN CÁC TRẬN ĐẤU === */}
-            <div className="page-padding">
-                <h2 className="section-title">⚔️ Matching</h2>
-                {ongoingMatches.map((match) => (
-                    <div key={match.id} className="card match-card" onClick={() => navigate(`/match/${match.id}`)} style={{ cursor: 'pointer' }}>
-                        {/* Nội dung match-card giữ nguyên */}
-                        <div className="top-section">
-                            <div className="player-info">
-                                <img src={match.player1.avatar} alt={match.player1.name} className="player-avatar" />
-                                <span className="player-name">{match.player1.name}</span>
-                                <span className="player-odds">{match.player1.odds}</span>
-                            </div>
-                            <div className="center-details">
-                                <div className="time-remaining">{match.timeRemaining}</div>
-                                <div className="vs-text">VS</div>
-                            </div>
-                            <div className="player-info">
-                                <img src={match.player2.avatar} alt={match.player2.name} className="player-avatar" />
-                                <span className="player-name">{match.player2.name}</span>
-                                <span className="player-odds">{match.player2.odds}</span>
-                            </div>
-                        </div>
-                        <div className="score-bar-container">
-                            <div className="score-bar">
-                                <div style={{ width: `${(match.player1.score / (match.player1.score + match.player2.score)) * 100}%` }}></div>
-                                <div style={{ width: `${(match.player2.score / (match.player1.score + match.player2.score)) * 100}%` }}></div>
-                            </div>
-                            <div className="score-text">
-                                <span>Score: {match.player1.score}</span>
-                                <span>Score: {match.player2.score}</span>
-                            </div>
-                        </div>
-                        <div className="bottom-section">
-                            <div className="info-group">
-                                <div className="info-item"><p className="primary-p">{match.pair}</p></div>
-                                <div className="info-item"><p className="accent-p">{match.betAmount} USDT</p></div>
-                            </div>
-                            <div className="info-group">
-                                <div className="info-item icon-info"><svg fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg><span>{match.views}</span></div>
-                                <div className="info-item icon-info"><svg fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" /></svg><span>{match.outsideBetsTotal} USDT</span></div>
-                            </div>
-                        </div>
-                    </div>
-                ))}
+  return (
+    <div>
+      <EventBanner items={bannerItems} />
+      <div className="page-padding">
+        <h2 className="section-title">⚔️ Matching</h2>
+        {ongoingMatches.map((match) => {
+          const player1Width = (match.player1.score / (match.player1.score + match.player2.score)) * 100;
+          const player2Width = (match.player2.score / (match.player1.score + match.player2.score)) * 100;
+
+          return (
+            <div key={match.id} className="card match-card" onClick={() => navigate(`/match/${match.id}`)} style={{ cursor: 'pointer' }}>
+              <div className="top-section">
+                <div className="player-info">
+                  <LazyLoad height={48} offset={100}>
+                    <img src={match.player1.avatar} alt={match.player1.name} className="player-avatar" loading="lazy" />
+                  </LazyLoad>
+                  <span className="player-name">{match.player1.name}</span>
+                  <span className="player-odds">{match.player1.odds}</span>
+                </div>
+                <div className="center-details">
+                  <div className="time-remaining">{match.timeRemaining}</div>
+                  <div className="vs-text">VS</div>
+                </div>
+                <div className="player-info">
+                  <LazyLoad height={48} offset={100}>
+                    <img src={match.player2.avatar} alt={match.player2.name} className="player-avatar" loading="lazy" />
+                  </LazyLoad>
+                  <span className="player-name">{match.player2.name}</span>
+                  <span className="player-odds">{match.player2.odds}</span>
+                </div>
+              </div>
+              <div className="score-bar-container">
+                <div className="score-bar">
+                  <div className="score-bar-player1" style={{ width: `${player1Width}%` }}></div>
+                  <div className="score-bar-player2" style={{ width: `${player2Width}%` }}></div>
+                </div>
+                <div className="score-text">
+                  <span>Score: {match.player1.score}</span>
+                  <span>Score: {match.player2.score}</span>
+                </div>
+              </div>
+              <div className="bottom-section">
+                <div className="info-group">
+                  <div className="info-item"><p className="primary-p">{match.pair}</p></div>
+                  <div className="info-item"><p className="accent-p">{match.betAmount} USDT</p></div>
+                </div>
+                <div className="info-group">
+                  <div className="info-item icon-info">
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                      <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                    </svg>
+                    <span>{match.views}</span>
+                  </div>
+                  <div className="info-item icon-info">
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                    </svg>
+                    <span>{match.outsideBetsTotal} USDT</span>
+                  </div>
+                </div>
+              </div>
             </div>
-        </div>
-    );
+          );
+        })}
+      </div>
+    </div>
+  );
 };
 
 const NewsPage = () => {

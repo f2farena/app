@@ -96,6 +96,9 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 .match-card .icon-info { display: flex; align-items: center; gap: 0.25rem; }
 .match-card .icon-info svg { width: 1.25rem; height: 1.25rem; }
 
+.score-bar-player1 { background-color: var(--color-info); }
+.score-bar-player2 { background-color: var(--color-success); }
+
 /* =================================================== */
 /* PHẦN CHO TRANG ARENA (ARENA-MATCH-CARD)     */
 /* =================================================== */
