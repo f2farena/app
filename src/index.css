@@ -18,10 +18,9 @@
 body {
   margin: 0;
   font-family: var(--font-main);
-  background-color: var(--color-background);
   color: var(--color-text);
   background-color: #000;
-  overflow: hidden;
+  overflow: auto;
 }
 * { box-sizing: border-box; }
 button, input, select, textarea { font-family: inherit; font-size: 100%; }
@@ -47,9 +46,17 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 .footer-button span { font-size: 0.75rem; }
 
 /* --- Main Content --- */
-.main-content { position: relative; flex: 1; overflow-y: auto; padding-top: 72px; padding-bottom: 60px; transform: translateZ(0); }
+.main-content {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  padding-top: 72px;
+  padding-bottom: 60px;
+  -webkit-scrollbar: none;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 .main-content::-webkit-scrollbar { display: none; }
-.main-content { -ms-overflow-style: none; scrollbar-width: none; }
 .main-content.no-header-padding { padding-top: 0; }
 .main-content.no-footer-padding { padding-bottom: 0; }
 
@@ -395,4 +402,204 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 
 .banner-dot.active {
     background-color: var(--color-accent);
+}
+
+/* --- Trang Arena: Tab Đấu Giải --- */
+.tournament-thumbnail {
+  width: 100%;
+  height: 220px; /* Chiều cao cố định cho thumbnail */
+  object-fit: cover;
+  display: block;
+  z-index: 1;
+}
+
+.tournament-content {
+  padding: 1rem;
+}
+
+.tournament-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin: 0 0 1rem 0;
+}
+
+.tournament-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  text-align: center;
+  border-top: 1px solid var(--color-hover-bg);
+  padding-top: 1rem;
+}
+
+.tournament-details-grid .detail-item {
+  font-size: 0.875rem; 
+  color: var(--color-secondary-text);
+}
+
+.tournament-details-grid .detail-item p {
+  margin: 0.25rem 0 0 0;
+}
+
+.tournament-details-grid .detail-value {
+  font-weight: 700;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.tournament-details-grid .detail-value.primary {
+  color: var(--color-primary);
+}
+
+.tournament-details-grid .detail-value.accent {
+  color: var(--color-accent);
+}
+
+.tournament-thumbnail-wrapper {
+  position: relative; /* Quan trọng để định vị overlay */
+}
+
+.tournament-status-overlay {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10; /* Đảm bảo nằm trên ảnh */
+  
+  display: flex;
+  align-items: center;
+  gap: 0.35rem; /* Khoảng cách giữa icon và chữ */
+  
+  background-color: rgba(0, 0, 0, 0.65); /* Nền đen mờ */
+  color: #ffffff;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px; /* Bo tròn như viên thuốc */
+  font-size: 0.8rem;
+  font-weight: 600;
+  
+  /* Thêm hiệu ứng để nổi bật hơn */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tournament-status-overlay.finished {
+    background-color: rgba(0, 139, 76, 0.8); /* Màu đỏ cho trạng thái Finished */
+}
+
+.status-overlay-icon {
+  width: 1em;
+  height: 1em;
+  fill: currentColor;
+}
+
+/* Sửa lại .tournament-card để chắc chắn không có position: relative */
+.tournament-card {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-primary);
+  will-change: transform;
+}
+
+
+/* Điều chỉnh lại style cho tab wallet/leaderboard để phù hợp với Arena */
+.wallet-tabs {
+    margin-bottom: 1.5rem; /* Giữ khoảng cách với nội dung bên dưới */
+}
+
+/* --- Trang Chi Tiết (Detail Page - News & Arena) --- */
+.detail-page-container {
+  background-color: var(--color-card-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  padding-bottom: 90px; /* Tăng padding-bottom để tránh che khuất bởi footer (70px + 20px khoảng cách) */
+}
+
+.detail-page-banner {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  display: block;
+}
+
+.detail-back-button {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background-color: rgba(45, 55, 72, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.detail-back-button svg {
+   width: 1.5rem;
+   height: 1.5rem;
+}
+
+.detail-page-title {
+  font-size: 1.75rem;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+}
+
+.detail-page-meta {
+  font-size: 0.875rem;
+  color: var(--color-secondary-text);
+  margin-bottom: 1.5rem;
+}
+
+.detail-page-content {
+  font-size: 1rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.tournament-info-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+}
+
+.info-grid-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info-label {
+  font-size: 0.8rem;
+  color: var(--color-secondary-text);
+  text-transform: uppercase;
+}
+
+.info-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.info-value.accent {
+    color: var(--color-accent);
+}
+.info-value.primary {
+    color: var(--color-primary);
+}
+
+.detail-page-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background-color: rgba(45, 55, 72, 0.95);
+  border-top: 1px solid var(--color-hover-bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 1rem;
+  z-index: 1000;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
 }

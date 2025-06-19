@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'r
 import MatchDetail from './components/MatchDetail';
 import NewsDetail from './components/NewsDetail';
 import ArenaDetail from './components/ArenaDetail';
+import TournamentDetail from './components/TournamentDetail';
 import LazyLoad from 'react-lazyload';
 import { FixedSizeList } from 'react-window';
 
@@ -816,21 +817,118 @@ const WithdrawForm = ({ onClose, currentBalance }) => {
   );
 };
 
+// Helper component để xử lý logic đếm ngược và hiển thị trạng thái
+const TournamentStatus = ({ startTime }) => {
+  const calculateTimeLeft = () => {
+    const difference = new Date(startTime) - new Date();
+    let timeLeft = {};
+
+    if (difference > 0) {
+      timeLeft = {
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((difference / 1000 / 60) % 60),
+        seconds: Math.floor((difference / 1000) % 60),
+      };
+    }
+    return { difference, timeLeft };
+  };
+
+  const [timeInfo, setTimeInfo] = useState(calculateTimeLeft());
+
+  useEffect(() => {
+    if (timeInfo.difference <= 0) {
+      // Buộc kiểm tra lại khi trạng thái là "Finished" để kích hoạt LazyLoad
+      const forceUpdate = setTimeout(() => {
+        setTimeInfo(calculateTimeLeft()); // Cập nhật lại để kích hoạt render
+      }, 100);
+      return () => clearTimeout(forceUpdate);
+    }
+
+    const timer = setInterval(() => {
+      setTimeInfo(calculateTimeLeft());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [startTime, timeInfo.difference]);
+
+  const { difference, timeLeft } = timeInfo;
+
+  if (difference <= 0) {
+    return (
+      <div className="tournament-status-overlay finished">
+        Finished
+      </div>
+    );
+  }
+
+  const formattedTime = `${String(timeLeft.hours).padStart(2, '0')}:${String(timeLeft.minutes).padStart(2, '0')}:${String(timeLeft.seconds).padStart(2, '0')}`;
+
+  return (
+    <div className="tournament-status-overlay">
+      <svg className="status-overlay-icon" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.415L11 9.586V6z" clipRule="evenodd" />
+      </svg>
+      <span>
+        Starts in: {timeLeft.days > 0 && `${timeLeft.days}d `}{formattedTime}
+      </span>
+    </div>
+  );
+};
+
 const ArenaPage = () => {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('tournament');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filterAmount, setFilterAmount] = useState('');
   const [filterCountry, setFilterCountry] = useState('');
   const [filterSymbol, setFilterSymbol] = useState('');
-  const [filterPanelHeight, setFilterPanelHeight] = useState(0); // Thêm state cho chiều cao
+  const [filterPanelHeight, setFilterPanelHeight] = useState(0);
   const filterContentRef = useRef(null);
+
+  const tournamentItems = [
+    {
+      id: 203,
+      title: 'Weekend Hodl Masters',
+      thumbnail: 'https://public.bnbstatic.com/image/cms/blog/20200403/a867c023-c733-4ced-bbef-920960f5f866.png',
+      prizePool: '1,000,000 USDT',
+      participants: 520,
+      symbol: 'BTC/USDT',
+      startTime: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 201,
+      title: 'Summer Trading Championship',
+      thumbnail: 'https://forexdailyinfo.com/wp-content/uploads/2023/02/grand-capital-trading-tournament.webp',
+      prizePool: '100,000 USDT',
+      participants: 128,
+      symbol: 'All Pairs',
+      startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 204,
+      title: 'Futures Grand Prix (Season 1)',
+      thumbnail: 'https://static.tildacdn.com/tild3065-6232-4465-b966-646138353438/badge_iq-option-tour.jpg',
+      prizePool: '50,000 USDT',
+      participants: 256,
+      symbol: 'ETH/USDT',
+      startTime: '2025-06-18T12:00:00Z',
+    },
+    {
+      id: 202,
+      title: 'Gold Rush Challenge',
+      thumbnail: 'https://titanfx.partners/storage/uploads/News/tournament-2025-og_droln.png?w=440&h=0&fit=crop&crop=edges,focalpoint&q=75&auto=format&fm=png',
+      prizePool: '2,000,000 USDT',
+      participants: 64,
+      symbol: 'XAU/USD',
+      startTime: '2025-05-30T12:00:00Z',
+    },
+  ];
 
   const waitingMatches = [
     { id: 101, betAmount: 75, symbol: 'XRP/USDT', challenger: { name: 'GoldSeeker', avatar: generateAvatarUrl('GoldSeeker') }, country: 'Vietnam', waitingTime: '00:05:00' },
     { id: 102, betAmount: 200, symbol: 'SOL/USDC', challenger: { name: 'ForexGiant', avatar: generateAvatarUrl('ForexGiant') }, country: 'USA', waitingTime: '00:12:30' },
-    { id: 103, betAmount: 50, symbol: 'BTC/USDT', challenger: { name: 'CryptoNewbie', avatar: generateAvatarUrl('CryptoNewbie') }, country: 'Singapore', waitingTime: '00:01:45' },
-    { id: 104, betAmount: 150, symbol: 'ETH/USDT', challenger: { name: 'EthTrader', avatar: generateAvatarUrl('EthTrader') }, country: 'Vietnam', waitingTime: '00:08:10' },
   ];
 
   const filteredMatches = waitingMatches.filter(match => {
@@ -840,13 +938,8 @@ const ArenaPage = () => {
     return amountCondition && countryCondition && symbolCondition;
   });
 
-  // Cập nhật chiều cao khi showFilters thay đổi
   useEffect(() => {
-    if (showFilters && filterContentRef.current) {
-      setFilterPanelHeight(filterContentRef.current.scrollHeight);
-    } else {
-      setFilterPanelHeight(0);
-    }
+    setFilterPanelHeight(showFilters && filterContentRef.current ? filterContentRef.current.scrollHeight : 0);
   }, [showFilters]);
 
   if (showCreateForm) {
@@ -855,83 +948,132 @@ const ArenaPage = () => {
 
   return (
     <div className="page-padding">
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.5rem' }}>
-        <button className="btn btn-primary" onClick={() => setShowFilters(!showFilters)}>
-          Filters
-          <svg className={`filter-arrow ${showFilters ? 'open' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
+      <div className="wallet-tabs">
+        <button
+          className={`wallet-tab-button ${activeTab === 'tournament' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tournament')}
+        >
+          Tournament
         </button>
-        <button className="btn btn-accent" onClick={() => setShowCreateForm(true)}>+ New Match</button>
-      </div>
-      
-      <div className="filters-panel" style={{ maxHeight: `${filterPanelHeight}px` }}>
-        <div className="card" ref={filterContentRef} style={{ marginBottom: '1rem', overflow: 'hidden' }}>
-          <div className="form-group">
-            <label className="form-label">Max Bet Amount</label>
-            <input
-              type="number"
-              className="form-input"
-              value={filterAmount}
-              onChange={e => setFilterAmount(e.target.value)}
-              placeholder="e.g., 200"
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Country</label>
-            <input
-              type="text"
-              className="form-input"
-              value={filterCountry}
-              onChange={e => setFilterCountry(e.target.value)}
-              placeholder="e.g., Vietnam"
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Symbol</label>
-            <input
-              type="text"
-              className="form-input"
-              value={filterSymbol}
-              onChange={e => setFilterSymbol(e.target.value)}
-              placeholder="e.g., BTC, GOLD"
-            />
-          </div>
-        </div>
+        <button
+          className={`wallet-tab-button ${activeTab === 'personal' ? 'active' : ''}`}
+          onClick={() => setActiveTab('personal')}
+        >
+          1 vs 1 Match
+        </button>
       </div>
 
-      {filteredMatches.map(match => (
-        <div key={match.id} className="card arena-match-card">
-          <div className="challenger-info">
-            <img src={match.challenger.avatar} alt={match.challenger.name} className="challenger-avatar" />
-            <div>
-              <p className="challenger-name">{match.challenger.name}</p>
-              <p className="challenger-country">{match.country}</p>
+      {activeTab === 'tournament' && (
+        <div className="tournament-list">
+          {tournamentItems.map(item => (
+            <div key={item.id} className="card tournament-card">
+              <div className="tournament-thumbnail-wrapper">
+                {/* Thay LazyLoad bằng loading="lazy" thuần */}
+                <img
+                  src={item.thumbnail}
+                  alt={item.title}
+                  className="tournament-thumbnail"
+                  loading="lazy"
+                  onError={(e) => {
+                    console.error(`Failed to load image: ${item.thumbnail}`);
+                    e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
+                  }}
+                  onLoad={(e) => console.log(`Image loaded: ${item.thumbnail}, size: ${e.target.naturalWidth}x${e.target.naturalHeight}`)}
+                />
+                <TournamentStatus startTime={item.startTime} />
+              </div>
+              <div className="tournament-content">
+                <h3 className="tournament-title">{item.title}</h3>
+                <div className="tournament-details-grid">
+                  <div className="detail-item">
+                    <span>Prize Pool</span>
+                    <p className="detail-value accent">{item.prizePool}</p>
+                  </div>
+                  <div className="detail-item">
+                    <span>Participants</span>
+                    <p className="detail-value">{item.participants}</p>
+                  </div>
+                  <div className="detail-item">
+                    <span>Symbol</span>
+                    <p className="detail-value primary">{item.symbol}</p>
+                  </div>
+                </div>
+                <button
+                  className="btn btn-primary"
+                  style={{ width: '100%', marginTop: '1rem' }}
+                  onClick={() => navigate(`/tournament/${item.id}`)}
+                >
+                  Detail
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'personal' && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.5rem' }}>
+            <button className="btn btn-primary" onClick={() => setShowFilters(!showFilters)}>
+              Filters
+              <svg className={`filter-arrow ${showFilters ? 'open' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <button className="btn btn-accent" onClick={() => setShowCreateForm(true)}>+ New Match</button>
+          </div>
+          
+          <div className="filters-panel" style={{ maxHeight: `${filterPanelHeight}px`, marginBottom: filterPanelHeight > 0 ? '1rem' : '0' }}>
+            <div className="card" ref={filterContentRef} style={{ overflow: 'hidden' }}>
+              <div className="form-group">
+                <label className="form-label">Max Bet Amount</label>
+                <input type="number" className="form-input" value={filterAmount} onChange={e => setFilterAmount(e.target.value)} placeholder="e.g., 200" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Country</label>
+                <input type="text" className="form-input" value={filterCountry} onChange={e => setFilterCountry(e.target.value)} placeholder="e.g., Vietnam" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Symbol</label>
+                <input type="text" className="form-input" value={filterSymbol} onChange={e => setFilterSymbol(e.target.value)} placeholder="e.g., BTC, GOLD" />
+              </div>
             </div>
           </div>
-          <div className="details-section">
-            <div className="detail-item">
-              <span>Time</span>
-              <p className="detail-value">{match.waitingTime}</p>
-            </div>
-            <div className="detail-item">
-              <span>Symbol</span>
-              <p className="detail-value primary">{match.symbol}</p>
-            </div>
-            <div className="detail-item">
-              <span>Bet</span>
-              <p className="detail-value accent">{match.betAmount} USDT</p>
-            </div>
-          </div>
-          <button 
-                className="btn btn-primary" 
+
+          {filteredMatches.map(match => (
+            <div key={match.id} className="card arena-match-card">
+              <div className="challenger-info">
+                <img src={match.challenger.avatar} alt={match.challenger.name} className="challenger-avatar" />
+                <div>
+                  <p className="challenger-name">{match.challenger.name}</p>
+                  <p className="challenger-country">{match.country}</p>
+                </div>
+              </div>
+              <div className="details-section">
+                <div className="detail-item">
+                  <span>Time</span>
+                  <p className="detail-value">{match.waitingTime}</p>
+                </div>
+                <div className="detail-item">
+                  <span>Symbol</span>
+                  <p className="detail-value primary">{match.symbol}</p>
+                </div>
+                <div className="detail-item">
+                  <span>Bet</span>
+                  <p className="detail-value accent">{match.betAmount} USDT</p>
+                </div>
+              </div>
+              <button
+                className="btn btn-primary"
                 style={{ width: '100%', marginTop: '1rem' }}
                 onClick={() => navigate(`/arena/${match.id}`)}
-            >
-            Join
-          </button>
-        </div>
-      ))}
+              >
+                Detail
+              </button>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 };
@@ -1270,7 +1412,7 @@ const AppContent = () => {
     mainContent.prepend(sentinel);
 
     const observer = new IntersectionObserver(([entry]) => {
-      const isDetailPage = ['/match/', '/news/', '/arena/'].some(path => location.pathname.includes(path));
+      const isDetailPage = ['/match/', '/news/', '/arena/', '/tournament/'].some(path => location.pathname.includes(path));
       if (isDetailPage) {
         setShowHeader(false);
         setShowFooter(false);
@@ -1301,10 +1443,9 @@ const AppContent = () => {
     }
   }, [location.pathname]);
 
-
 useEffect(() => {
-  setShowHeader(!(location.pathname.startsWith('/match') || location.pathname.startsWith('/news/') || location.pathname.startsWith('/arena/')));
-  setShowFooter(!(location.pathname.startsWith('/match') || location.pathname.startsWith('/news/') || location.pathname.startsWith('/arena/') || location.pathname === '/chatbot'));
+  setShowHeader(!(location.pathname.startsWith('/match') || location.pathname.startsWith('/news/') || location.pathname.startsWith('/arena/') || location.pathname.startsWith('/tournament/')));
+  setShowFooter(!(location.pathname.startsWith('/match') || location.pathname.startsWith('/news/') || location.pathname.startsWith('/arena/') || location.pathname.startsWith('/tournament/') || location.pathname === '/chatbot'));
 }, [location.pathname]);
 
   useEffect(() => {
@@ -1332,6 +1473,7 @@ useEffect(() => {
           <Route path="/news" element={<NewsPage />} />
           <Route path="/news/:id" element={<NewsDetail />} />
           <Route path="/arena" element={<ArenaPage />} />
+          <Route path="/tournament/:id" element={<TournamentDetail />} />
           <Route path="/arena/:id" element={<ArenaDetail />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/wallet" element={<WalletPage />} />
