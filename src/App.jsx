@@ -340,11 +340,11 @@ const NewsPage = () => {
     { 
       id: 3, 
       style: 'broker-review', 
-      title: 'Broker EX-T Review: Is It Reliable?', 
+      title: 'Broker Exness Review: Is It Reliable?', 
       date: '10/06/2025', 
       author: 'TradeChallenge Team', 
       summary: 'A deep dive into EX-T broker, evaluating licenses, fees, and platform stability for traders.', 
-      thumbnail: 'https://brokervn.com/wp-content/uploads/2023/12/danh-gia-san-exness-1.jpg', 
+      thumbnail: 'https://pub-bbd7a5e39ace471789419f06775be4ec.r2.dev/files/rubricator/2aa461431e7d3fa5c5d5cf313ffc729dc51b87fd.jpeg', 
       content: 'In today\'s review, we take a comprehensive look at EX-T, a broker that has been gaining significant traction in the Asian market. We will analyze their regulatory framework, which includes licenses from top-tier authorities, providing a strong sense of security for clients. Their platform, based on MetaTrader 5, offers exceptional stability and a wide array of analytical tools suitable for both novice and experienced traders. We also examine their fee structure, which is highly competitive, featuring low spreads on major pairs and zero commission on standard accounts. However, we did find that their educational resources are somewhat limited compared to industry leaders. Our detailed breakdown provides all the information you need to decide if EX-T is the right partner for your trading journey.',
       ratings: {
         license: 5,
@@ -362,7 +362,7 @@ const NewsPage = () => {
       date: '12/06/2025', 
       author: 'TradeChallenge Team', 
       summary: 'We examine FX-Pro broker focusing on ease of account opening and local support for new traders.', 
-      thumbnail: 'https://topbrokers.com/images/svari/open-account-type/standard-account_en.png',
+      thumbnail: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRx36-olMGbgJiWiei0Qoy5bJfeDq_NuvtYqg&s',
       content: 'FX-Pro has long been a household name in the forex industry, but is it the ideal choice for those just starting out? Our review focuses specifically on the beginner experience. The account opening process is remarkably straightforward, taking less than 10 minutes to complete with clear, step-by-step instructions. Their customer support is another strong point, offering 24/5 assistance in multiple languages, including dedicated local support for many regions. While their platform offers advanced features that might overwhelm a newcomer, they also provide a simplified interface and a wealth of demo account options. The commission structure can be slightly higher than some discount brokers, but the overall package of support and reliability makes it a strong contender for anyone new to trading.',
       ratings: {
         license: 4,
