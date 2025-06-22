@@ -312,26 +312,102 @@ const HomePage = () => {
 
 const NewsPage = () => {
   const navigate = useNavigate();
-  const newsArticles = [
-    { id: 1, title: 'Summer Challenge: Double Your Account!', date: '05/06/2025', author: 'Admin', summary: 'Join our special challenge event with exciting rewards for top traders.', thumbnail: 'https://forexpropreviews.com/wp-content/uploads/2023/06/The-Trading-Pit-1-Step-CFD-New-Challenge-450x254.png', content: 'Join our special challenge event with exciting rewards for top traders. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.' },
-    { id: 2, title: 'New Feature Update: Live Outside Betting', date: '03/06/2025', author: 'Tech Team', summary: 'You can now place outside bets on ongoing matches and see instant results.', thumbnail: 'https://i.ytimg.com/vi/YnqAbGY_Atw/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLBoB7qUoYwQ78ZiZ0vQrGdgSIkiUw', content: 'You can now place outside bets on ongoing matches and see instant results. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.' },
-  ];
-  return (
-    <div className="page-padding">
-      {newsArticles.map((article) => (
-        <div key={article.id} className="news-card" onClick={() => navigate(`/news/${article.id}`)} style={{ cursor: 'pointer' }}>
-          <LazyLoad height={220} offset={100}>
-            <img src={article.thumbnail} alt={article.title} className="news-thumbnail" loading="lazy" />
-          </LazyLoad>
-          <div className="news-content">
-            <h3 className="news-title">{article.title}</h3>
-            <p className="news-date">{article.date}</p>
-            <p className="news-summary">{article.summary}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  const [activeTab, setActiveTab] = useState('news'); // 'news' hoặc 'broker-review'
+
+  const allArticles = [
+    // Dữ liệu cũ, cập nhật trường content dài hơn
+    { 
+      id: 1, 
+      style: 'news', 
+      title: 'Summer Challenge: Double Your Account!', 
+      date: '05/06/2025', 
+      author: 'Admin', 
+      summary: 'Join our special challenge event with exciting rewards for top traders.', 
+      thumbnail: 'https://forexpropreviews.com/wp-content/uploads/2023/06/The-Trading-Pit-1-Step-CFD-New-Challenge-450x254.png', 
+      content: 'The Summer Challenge is officially live! This is your opportunity to showcase your trading skills and compete for a grand prize pool. The event will run for four weeks, focusing on major currency pairs and select commodities. Participants are required to maintain a minimum equity balance and adhere to strict risk management rules. Weekly leaderboards will track the top performers, with smaller prizes awarded to the top 3 traders each week. The ultimate winner will be the one with the highest percentage gain at the end of the challenge, securing a fully funded trading account and a significant cash prize. We encourage all our users to participate and make this summer a memorable one.' 
+    },
+    { 
+      id: 2, 
+      style: 'news', 
+      title: 'New Feature Update: Live Outside Betting', 
+      date: '03/06/2025', 
+      author: 'Tech Team', 
+      summary: 'You can now place outside bets on ongoing matches and see instant results.', 
+      thumbnail: 'https://i.ytimg.com/vi/YnqAbGY_Atw/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLBoB7qUoYwQ78ZiZ0vQrGdgSIkiUw', 
+      content: 'We are thrilled to announce the rollout of our most requested feature: Live Outside Betting. This new system allows spectators to engage directly with ongoing 1v1 matches by placing bets on the potential winner. The odds are calculated in real-time based on the current score, remaining time, and the community betting pool. This creates a dynamic and engaging experience for everyone, not just the participants. All winnings from outside bets are instantly credited to your wallet upon match completion. Please note that this feature is currently in beta, and we welcome all feedback to help us refine the system.' 
+    },
+    // Dữ liệu mới cho Broker Review, cập nhật trường content dài hơn
+    { 
+      id: 3, 
+      style: 'broker-review', 
+      title: 'Broker EX-T Review: Is It Reliable?', 
+      date: '10/06/2025', 
+      author: 'TradeChallenge Team', 
+      summary: 'A deep dive into EX-T broker, evaluating licenses, fees, and platform stability for traders.', 
+      thumbnail: 'https://brokervn.com/wp-content/uploads/2023/12/danh-gia-san-exness-1.jpg', 
+      content: 'In today\'s review, we take a comprehensive look at EX-T, a broker that has been gaining significant traction in the Asian market. We will analyze their regulatory framework, which includes licenses from top-tier authorities, providing a strong sense of security for clients. Their platform, based on MetaTrader 5, offers exceptional stability and a wide array of analytical tools suitable for both novice and experienced traders. We also examine their fee structure, which is highly competitive, featuring low spreads on major pairs and zero commission on standard accounts. However, we did find that their educational resources are somewhat limited compared to industry leaders. Our detailed breakdown provides all the information you need to decide if EX-T is the right partner for your trading journey.',
+      ratings: {
+        license: 5,
+        insurance: 4,
+        localization: 5,
+        commission: 4,
+        stability: 5,
+        'on-boarding': 4
+      } 
+    },
+    { 
+      id: 4, 
+      style: 'broker-review', 
+      title: 'Is FX-Pro a Good Choice for Beginners?', 
+      date: '12/06/2025', 
+      author: 'TradeChallenge Team', 
+      summary: 'We examine FX-Pro broker focusing on ease of account opening and local support for new traders.', 
+      thumbnail: 'https://topbrokers.com/images/svari/open-account-type/standard-account_en.png',
+      content: 'FX-Pro has long been a household name in the forex industry, but is it the ideal choice for those just starting out? Our review focuses specifically on the beginner experience. The account opening process is remarkably straightforward, taking less than 10 minutes to complete with clear, step-by-step instructions. Their customer support is another strong point, offering 24/5 assistance in multiple languages, including dedicated local support for many regions. While their platform offers advanced features that might overwhelm a newcomer, they also provide a simplified interface and a wealth of demo account options. The commission structure can be slightly higher than some discount brokers, but the overall package of support and reliability makes it a strong contender for anyone new to trading.',
+      ratings: {
+        license: 4,
+        insurance: 3,
+        localization: 5,
+        commission: 3,
+        stability: 4,
+        'on-boarding': 5
+      } 
+    }
+  ];
+
+  const articlesToShow = allArticles.filter(a => a.style === activeTab);
+
+  return (
+    <div className="page-padding">
+      <div className="wallet-tabs">
+        <button
+          className={`wallet-tab-button ${activeTab === 'news' ? 'active' : ''}`}
+          onClick={() => setActiveTab('news')}
+        >
+          News
+        </button>
+        <button
+          className={`wallet-tab-button ${activeTab === 'broker-review' ? 'active' : ''}`}
+          onClick={() => setActiveTab('broker-review')}
+        >
+          Broker Review
+        </button>
+      </div>
+
+      {articlesToShow.map((article) => (
+        <div key={article.id} className="news-card" onClick={() => navigate(`/news/${article.id}`)} style={{ cursor: 'pointer' }}>
+          <LazyLoad height={220} offset={100}>
+            <img src={article.thumbnail} alt={article.title} className="news-thumbnail" loading="lazy" onError={(e) => (e.target.src = 'https://placehold.co/500x220?text=Image+Error')} />
+          </LazyLoad>
+          <div className="news-content">
+            <h3 className="news-title">{article.title}</h3>
+            <p className="news-date">{article.date}</p>
+            <p className="news-summary">{article.summary}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 };
 
 const LeaderboardPage = () => {
@@ -1394,15 +1470,24 @@ const AppContent = () => {
   const [showSettingsSidebar, setShowSettingsSidebar] = useState(false);
   const [showHeader, setShowHeader] = useState(true);
   const [showFooter, setShowFooter] = useState(true);
-  
-  // Dùng useRef thay vì useState để không re-render component mỗi khi scroll
-  const lastScrollY = useRef(0); 
-  const ticking = useRef(false); // Dùng để debounce sự kiện scroll
-
   const [activePage, setActivePage] = useState('home');
   const location = useLocation();
 
-  // THAY THẾ TOÀN BỘ KHỐI USEEFFECT XỬ LÝ SCROLL BẰNG KHỐI NÀY
+  const [user, setUser] = useState({
+    id: 'user001',
+    name: 'Nguyen Van A',
+    // Giả sử người dùng đã liên kết tài khoản với Binance và XM
+    linkedBrokers: ['Binance', 'XM'], 
+  });
+  const [walletData, setWalletData] = useState({
+    // Sửa đổi số dư ở đây để kiểm tra các trường hợp khác nhau
+    // Ví dụ: 1500.50 (đủ điều kiện) hoặc 400.00 (không đủ)
+    currentBalance: '1500.50 USDT',
+    totalDeposits: '5000.00 USDT',
+    totalWithdrawals: '3000.00 USDT',
+    // ... các dữ liệu khác
+  });
+
   useEffect(() => {
     const mainContent = document.getElementById('main-content');
     if (!mainContent) return;
@@ -1473,7 +1558,7 @@ useEffect(() => {
           <Route path="/news" element={<NewsPage />} />
           <Route path="/news/:id" element={<NewsDetail />} />
           <Route path="/arena" element={<ArenaPage />} />
-          <Route path="/tournament/:id" element={<TournamentDetail />} />
+          <Route path="/tournament/:id" element={<TournamentDetail user={user} walletData={walletData} />} />
           <Route path="/arena/:id" element={<ArenaDetail />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/wallet" element={<WalletPage />} />

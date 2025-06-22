@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 const tournamentDetailsData = [
@@ -10,10 +10,12 @@ const tournamentDetailsData = [
     author: 'Binance',
     description: 'Get ready for the ultimate weekend challenge tailored for Bitcoin enthusiasts! The Weekend Hodl Masters is a high-stakes trading competition designed to test your HODL strength and trading prowess. Compete in a 48-hour sprint against top traders worldwide, navigating the volatile BTC/USDT market to secure your spot on the leaderboard.\n\nThis event offers a massive prize pool with exclusive rewards for the top performers. Whether you’re a seasoned trader or a bold newcomer, this is your chance to shine. Participate in live trading sessions, leverage real-time market data, and strategize to outperform your rivals. Special bonuses await those who achieve key milestones during the event.\n\nDon’t miss out on this electrifying competition! Register now to join the action and claim your share of the rewards. May the best trader win!',
     prizePool: '25,000 USDT',
-    participants: 50,
+    participants: 520,
     symbol: 'BTC/USDT',
-    startTime: '2025-06-21T12:00:00Z', // Cập nhật để giải đấu diễn ra trong tương lai
-    broker: 'Binance Exchange',
+    startTime: '2026-06-21T12:00:00Z', // Cập nhật để giải đấu diễn ra trong tương lai
+    broker: 'Binance',
+    minBalanceRequired: 500,
+    brokerRegistrationUrl: 'https://www.binance.com/en/register', 
     results: [],
     images: [
         'https://images.unsplash.com/photo-1626846116770-5a5b0926ebb6?q=80&w=1920&auto=format&fit=crop',
@@ -26,13 +28,15 @@ const tournamentDetailsData = [
     title: 'Summer Trading Championship',
     thumbnail: 'https://forexdailyinfo.com/wp-content/uploads/2023/02/grand-capital-trading-tournament.webp',
     date: '2025-06-18',
-    author: 'Grand Capital',
+    author: 'Exness',
     description: 'Join the Summer Trading Championship, the biggest trading event of the year, where traders from across the globe compete for glory and substantial rewards! This championship spans all available trading pairs, offering unparalleled flexibility to showcase your trading strategies. From crypto to forex, every market is your battlefield.\n\nOver the course of a week, participants will engage in intense trading sessions, with daily leaderboards tracking progress. Special challenges, such as achieving the highest profit percentage or executing the most successful trades, come with bonus prizes. The event also features live webinars with expert traders sharing tips and insights.\n\nWhether you prefer scalping, swing trading, or long-term strategies, this championship has something for everyone. Register today to secure your spot and compete for the top prize. Don’t wait—summer is heating up, and so is the competition!',
     prizePool: '100,000 USDT',
     participants: 128,
     symbol: 'All Pairs',
-    startTime: '2025-06-18T12:00:00Z',
-    broker: 'Grand Capital',
+    startTime: '2026-06-18T12:00:00Z',
+    broker: 'Exness',
+    minBalanceRequired: 500,
+    brokerRegistrationUrl: 'https://www.exness.com/',
     results: [], // Chưa kết thúc, không có kết quả
     images: [
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1920&auto=format&fit=crop',
@@ -52,6 +56,8 @@ const tournamentDetailsData = [
     symbol: 'ETH/USDT',
     startTime: '2025-06-17T12:00:00Z',
     broker: 'IQ Option',
+    minBalanceRequired: 200,
+    brokerRegistrationUrl: 'https://iqoption.com/en/sign-up',
     results: [
       { rank: 1, name: 'CryptoWizard', score: 950, reward: '20,000 USDT' },
       { rank: 2, name: 'TradeVanguard', score: 900, reward: '10,000 USDT' },
@@ -72,6 +78,8 @@ const tournamentDetailsData = [
     symbol: 'XAU/USD',
     startTime: '2025-05-15T12:00:00Z',
     broker: 'XM',
+    minBalanceRequired: 1000,
+    brokerRegistrationUrl: 'https://www.xm.com/register',
     results: [
       { rank: 1, name: 'GoldSeeker', score: 1000, reward: '1,000,000 USDT' },
       { rank: 2, name: 'MarketMogul', score: 920, reward: '500,000 USDT' },
@@ -82,10 +90,104 @@ const tournamentDetailsData = [
   },
 ];
 
-const TournamentDetail = () => {
+const RegistrationModal = ({ tournament, user, walletData, onClose, navigate }) => {
+    // Logic kiểm tra
+    const hasBrokerAccount = user.linkedBrokers.includes(tournament.broker);
+    // Lấy số từ chuỗi ví dụ '1500.50 USDT' -> 1500.50
+    const currentBalance = parseFloat(walletData.currentBalance); 
+    const hasSufficientBalance = currentBalance >= tournament.minBalanceRequired;
+
+    const handleOpenBrokerSite = () => {
+        window.open(tournament.brokerRegistrationUrl, '_blank', 'noopener,noreferrer');
+        onClose();
+    };
+
+    const handleGoToWallet = () => {
+        navigate('/wallet');
+        onClose();
+    };
+    
+    const handleConfirmRegistration = () => {
+        // Đây là nơi sẽ gọi API để đăng ký giải đấu thật
+        console.log(`User ${user.id} confirmed registration for tournament ${tournament.id}`);
+        alert('Registration Confirmed!'); // Thông báo tạm thời
+        onClose();
+    };
+
+    const renderContent = () => {
+        // Trường hợp 2: Chưa có tài khoản sàn
+        if (!hasBrokerAccount) {
+            return (
+                <>
+                    <h4>Account Required</h4>
+                    <p>You need an account with <strong>{tournament.broker}</strong> to join this tournament.</p>
+                    <p>Please register an account on their platform first.</p>
+                    <div className="confirmation-buttons">
+                        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button className="btn btn-primary" onClick={handleOpenBrokerSite}>Register at {tournament.broker}</button>
+                    </div>
+                </>
+            );
+        }
+
+        // Trường hợp 1: Có tài khoản nhưng không đủ số dư
+        if (hasBrokerAccount && !hasSufficientBalance) {
+            return (
+                <>
+                    <h4>Insufficient Balance</h4>
+                    <p>Your current balance is <strong>{currentBalance.toFixed(2)} USDT</strong>, but this tournament requires a minimum of <strong>{tournament.minBalanceRequired} USDT</strong>.</p>
+                    <p>Please deposit more funds to your wallet.</p>
+                    <div className="confirmation-buttons">
+                        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button className="btn btn-primary" onClick={handleGoToWallet}>Go to Wallet</button>
+                    </div>
+                </>
+            );
+        }
+
+        // Trường hợp 1: Đủ điều kiện
+        if (hasBrokerAccount && hasSufficientBalance) {
+            return (
+                <>
+                    <h4>Confirm Registration</h4>
+                    <p>You are eligible to join the <strong>{tournament.title}</strong>.</p>
+                    <div className="wallet-info-row" style={{padding: '0.5rem 0'}}>
+                        <span className="label">Required Balance</span>
+                        <span className="value">{tournament.minBalanceRequired} USDT</span>
+                    </div>
+                    <div className="wallet-info-row" style={{padding: '0.5rem 0'}}>
+                        <span className="label">Your Current Balance</span>
+                        <span className="value win">{currentBalance.toFixed(2)} USDT</span>
+                    </div>
+                    <p style={{marginTop: '1rem', color: 'var(--color-secondary-text)', fontSize: '0.9rem'}}>
+                        By confirming, you agree to the tournament's terms and conditions.
+                    </p>
+                    <div className="confirmation-buttons">
+                        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button className="btn btn-accent" onClick={handleConfirmRegistration}>Confirm</button>
+                    </div>
+                </>
+            );
+        }
+
+        return null; // Trường hợp mặc định
+    };
+
+    return (
+        <>
+            <div className="confirmation-overlay" onClick={onClose}></div>
+            <div className="confirmation-modal card">
+                {renderContent()}
+            </div>
+        </>
+    );
+};
+
+const TournamentDetail = ({ user, walletData }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const tournament = tournamentDetailsData.find(item => item.id === parseInt(id));
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
 
   if (!tournament) {
     return (
@@ -100,6 +202,10 @@ const TournamentDetail = () => {
   }
 
   const isTournamentEnded = new Date(tournament.startTime) < new Date();
+
+  if (!user || !walletData) {
+    return <div className="page-padding">Loading user data...</div>;
+  }
 
   return (
     <div className="detail-page-container">
@@ -192,10 +298,24 @@ const TournamentDetail = () => {
 
       {!isTournamentEnded && (
         <footer className="detail-page-footer">
-          <button className="btn btn-accent" style={{ width: '90%', maxWidth: '400px' }}>
+          <button 
+            className="btn btn-accent" 
+            style={{ width: '90%', maxWidth: '400px' }}
+            onClick={() => setShowRegisterModal(true)}
+          >
             Register Now
           </button>
         </footer>
+      )}
+
+      {showRegisterModal && (
+        <RegistrationModal
+            tournament={tournament}
+            user={user}
+            walletData={walletData}
+            onClose={() => setShowRegisterModal(false)}
+            navigate={navigate}
+        />
       )}
     </div>
   );

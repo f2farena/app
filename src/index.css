@@ -603,3 +603,54 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
   z-index: 1000;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
 }
+
+/* --- Broker Review Detail Styles --- */
+.broker-ratings-container {
+  background-color: var(--color-background); /* Nền tối hơn một chút */
+  padding: 1.5rem;
+}
+
+.overall-rating {
+  text-align: center;
+  border-bottom: 1px solid var(--color-hover-bg);
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.overall-rating h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  color: var(--color-accent);
+}
+
+.stars-container {
+  font-size: 1.5rem;
+  color: var(--color-accent);
+}
+
+.star.empty {
+  color: var(--color-secondary-text);
+}
+
+.detailed-ratings {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.rating-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.rating-label {
+  font-size: 0.95rem;
+  color: var(--color-text);
+  max-width: 60%;
+}
+
+.rating-item .stars-container {
+  font-size: 1.2rem;
+}
