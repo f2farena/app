@@ -385,42 +385,35 @@ const NewsPage = () => {
   const [activeTab, setActiveTab] = useState('broker-review');
 
   const allArticles = [
-    // Dữ liệu cũ, cập nhật trường content dài hơn
-    { 
-      id: 3, 
-      style: 'broker-review', 
-      title: 'Broker GO MARKETS Review: Is It Reliable?', 
-      date: '10/06/2025', 
-      author: 'TradeChallenge Team', 
-      summary: 'A deep dive into EX-T broker, evaluating licenses, fees, and platform stability for traders.', 
-      thumbnail: 'https://i.ytimg.com/vi/wOsceV5XQjg/maxresdefault.jpg', 
-      content: 'In today\'s review, we take a comprehensive look at Go Markets, a broker that has been gaining significant traction in the Asian market. We will analyze their regulatory framework, which includes licenses from top-tier authorities, providing a strong sense of security for clients. Their platform, based on MetaTrader 5, offers exceptional stability and a wide array of analytical tools suitable for both novice and experienced traders. We also examine their fee structure, which is highly competitive, featuring low spreads on major pairs and zero commission on standard accounts. However, we did find that their educational resources are somewhat limited compared to industry leaders. Our detailed breakdown provides all the information you need to decide if EX-T is the right partner for your trading journey.',
-      ratings: {
-        license: 5,
-        insurance: 4,
-        localization: 5,
-        commission: 4,
-        stability: 5,
-        'on-boarding': 4
-      } 
+    { 
+      id: 3, 
+      style: 'broker-review', 
+      title: 'Broker Exness Review: Is It Reliable?',
+      brokerName: 'Go Markets',
+      country: 'Autralia',
+      countryCode: 'AU', // Mã quốc gia để lấy cờ
+      yearsActive: 20,
+      score: 4.5,
+      summary: 'A deep dive into Go Markets broker, evaluating licenses, fees, and platform stability for traders.',
+      thumbnail: 'https://media.licdn.com/dms/image/v2/D4E10AQF61eP0cpNjVg/image-shrink_800/B4EZS1PNjHGYAg-/0/1738207452069?e=2147483647&v=beta&t=xo8wmPpR45Xxtq9BbuLSO-sxNmyDTwn5SnqPqOTN8Sc', 
+      content: 'In today\'s review, we take a comprehensive look at EX-T...',
+      ratings: { license: 5, insurance: 4, localization: 5, commission: 4, stability: 5, 'on-boarding': 4 }
     },
-    { 
-      id: 4, 
-      style: 'broker-review', 
-      title: 'Is FX-Pro a Good Choice for Beginners?', 
-      date: '12/06/2025', 
-      author: 'TradeChallenge Team', 
-      summary: 'We examine FX-Pro broker focusing on ease of account opening and local support for new traders.', 
+    { 
+      id: 4, 
+      style: 'broker-review', 
+      title: 'Is FX-Pro a Good Choice for Beginners?', 
+      // Bỏ: date, author
+      // Thêm các trường mới:
+      brokerName: 'FX-Pro',
+      country: 'United Kingdom',
+      countryCode: 'GB', // Mã quốc gia để lấy cờ
+      yearsActive: 18,
+      score: 4.0,
+      summary: 'We examine FX-Pro broker focusing on ease of account opening and local support for new traders.', 
       thumbnail: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRx36-olMGbgJiWiei0Qoy5bJfeDq_NuvtYqg&s',
-      content: 'FX-Pro has long been a household name in the forex industry, but is it the ideal choice for those just starting out? Our review focuses specifically on the beginner experience. The account opening process is remarkably straightforward, taking less than 10 minutes to complete with clear, step-by-step instructions. Their customer support is another strong point, offering 24/5 assistance in multiple languages, including dedicated local support for many regions. While their platform offers advanced features that might overwhelm a newcomer, they also provide a simplified interface and a wealth of demo account options. The commission structure can be slightly higher than some discount brokers, but the overall package of support and reliability makes it a strong contender for anyone new to trading.',
-      ratings: {
-        license: 4,
-        insurance: 3,
-        localization: 5,
-        commission: 3,
-        stability: 4,
-        'on-boarding': 5
-      } 
+      content: 'FX-Pro has long been a household name...',
+      ratings: { license: 4, insurance: 3, localization: 5, commission: 3, stability: 4, 'on-boarding': 5 } 
     }
   ];
 
@@ -463,10 +456,34 @@ const NewsPage = () => {
           <LazyLoad height={220} offset={100}>
             <img src={article.thumbnail} alt={article.title} className="news-thumbnail" loading="lazy" onError={(e) => (e.target.src = 'https://placehold.co/500x220?text=Image+Error')} />
           </LazyLoad>
-          <div className="news-content">
-            <h3 className="news-title">{article.title}</h3>
-            <p className="news-date">{article.date}</p>
-            <p className="news-summary">{article.summary}</p>
+          {/* Cấu trúc nội dung mới */}
+          <div className="news-content review-card-content">
+              {/* Khối header chứa thông tin chính và điểm số */}
+              <div className="review-card-header">
+                  {/* Cột bên trái chứa tên và thông tin */}
+                  <div className="review-card-main-info">
+                      <h4 className="review-card-broker-name">{article.brokerName}</h4>
+                      <div className="review-card-info-line">
+                          <img 
+                              src={`https://flagsapi.com/${article.countryCode}/flat/64.png`} 
+                              alt={`${article.country} flag`}
+                              className="review-card-flag"
+                          />
+                          <span>{article.country}</span>
+                          <span className="info-separator">•</span>
+                          <span>{article.yearsActive} years</span>
+                      </div>
+                  </div>
+                  
+                  {/* Cột bên phải chứa điểm số */}
+                  <div className="review-card-score">
+                      <span className="score-value">{article.score.toFixed(1)}</span>
+                      <span className="score-label">Score</span>
+                  </div>
+              </div>
+
+              {/* Phần mô tả tóm tắt nằm bên dưới */}
+              <p className="review-card-summary">{article.summary}</p>
           </div>
         </div>
       ))}

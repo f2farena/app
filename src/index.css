@@ -888,3 +888,93 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 .btn-action .filter-arrow.open {
     transform: rotate(180deg);
 }
+
+/* ================================================================= */
+/* === THÊM KHỐI CSS NÀY VÀO CUỐI TỆP index.css ==================== */
+/* === Style cho cấu trúc mới của Broker Review Card ================ */
+/* ================================================================= */
+
+.review-card-content {
+  display: flex;
+  flex-direction: column;
+}
+
+/* KHỐI MỚI: Dùng Flexbox để tạo layout 2 cột */
+.review-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start; /* Căn lề trên cùng */
+  gap: 1rem;
+  margin-bottom: 1rem; /* Tạo khoảng cách với phần summary bên dưới */
+}
+
+/* KHỐI MỚI: Cột bên trái chứa title và info */
+.review-card-main-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-grow: 1; /* Cho phép khối này dãn ra */
+}
+
+.review-card-broker-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.review-card-info-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--color-secondary-text);
+}
+
+.review-card-flag {
+  width: 24px;
+  height: auto;
+  border-radius: 3px;
+  box-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
+.info-separator {
+  color: var(--color-hover-bg);
+}
+
+/* Cập nhật style cho summary */
+.review-card-summary {
+  margin: 0;
+  line-height: 1.5;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+/* Giữ nguyên style cho score, chỉ thay đổi vị trí của nó trong JSX */
+.review-card-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-background);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  min-width: 70px;
+  border: 1px solid var(--color-accent);
+  flex-shrink: 0; /* Ngăn không cho khối score bị co lại */
+}
+
+.score-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-accent);
+  line-height: 1;
+}
+
+.score-label {
+  font-size: 0.55rem;
+  color: var(--color-secondary-text);
+  text-transform: uppercase;
+  margin-top: 0.1rem;
+}
