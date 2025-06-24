@@ -310,42 +310,91 @@ const HomePage = () => {
   );
 };
 
+const ComplaintThread = ({ complaint, onUpdateStatus, onToggleExpand, isExpanded }) => {
+    const detailRef = useRef(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedContent, setEditedContent] = useState(complaint.details);
+
+    const handleSave = () => {
+        // Trong ứng dụng thực tế, bạn sẽ gọi API ở đây để lưu nội dung đã sửa
+        console.log(`Saving complaint ${complaint.id} with new content: ${editedContent}`);
+        
+        // Cập nhật lại state (giả lập)
+        // Lưu ý: Trong thực tế, bạn sẽ muốn cập nhật state ở component cha
+        complaint.details = editedContent; 
+        setIsEditing(false);
+    };
+    
+    return (
+        <div className="card complaint-thread">
+            <div className="complaint-thread__header">
+                <div className="complaint-thread__user-info">
+                    <img src={generateAvatarUrl(complaint.user)} alt={complaint.user} className="challenger-avatar" />
+                    <div>
+                        <p className="challenger-name">{complaint.user}</p>
+                        <p className="challenger-country">{new Date(complaint.timestamp).toLocaleString()}</p>
+                    </div>
+                </div>
+                {complaint.status === 'resolved' && <span className="complaint-thread__status resolved">Resolved</span>}
+            </div>
+            <p className="complaint-thread__summary">{complaint.summary}</p>
+            <div 
+                ref={detailRef}
+                className="complaint-thread__details"
+                style={{ maxHeight: isExpanded ? `${detailRef.current?.scrollHeight}px` : '0px' }}
+            >
+                <div className="complaint-thread__details-content">
+                    {isEditing ? (
+                        <textarea 
+                            className="form-input" 
+                            value={editedContent}
+                            onChange={(e) => setEditedContent(e.target.value)}
+                            rows={4}
+                        />
+                    ) : (
+                        <p>{complaint.details}</p>
+                    )}
+                </div>
+            </div>
+            <div className="complaint-thread__actions">
+                <div className="action-buttons-left">
+                     {isEditing ? (
+                        <button className="btn-action" onClick={handleSave}>Save</button>
+                    ) : (
+                        <button className="btn-action" onClick={() => setIsEditing(true)}>Edit</button>
+                    )}
+                    {complaint.status !== 'resolved' && (
+                         <button className="btn-action resolve" onClick={() => onUpdateStatus(complaint.id, 'resolved')}>
+                            Mark as Resolved
+                        </button>
+                    )}
+                </div>
+                 <button className="btn-action" onClick={() => onToggleExpand(complaint.id)}>
+                    {isExpanded ? 'Collapse' : 'View Detail'}
+                    <svg className={`filter-arrow ${isExpanded ? 'open' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    );
+};
+
 const NewsPage = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('news'); // 'news' hoặc 'broker-review'
+  const [activeTab, setActiveTab] = useState('broker-review');
 
   const allArticles = [
     // Dữ liệu cũ, cập nhật trường content dài hơn
     { 
-      id: 1, 
-      style: 'news', 
-      title: 'Summer Challenge: Double Your Account!', 
-      date: '05/06/2025', 
-      author: 'Admin', 
-      summary: 'Join our special challenge event with exciting rewards for top traders.', 
-      thumbnail: 'https://forexpropreviews.com/wp-content/uploads/2023/06/The-Trading-Pit-1-Step-CFD-New-Challenge-450x254.png', 
-      content: 'The Summer Challenge is officially live! This is your opportunity to showcase your trading skills and compete for a grand prize pool. The event will run for four weeks, focusing on major currency pairs and select commodities. Participants are required to maintain a minimum equity balance and adhere to strict risk management rules. Weekly leaderboards will track the top performers, with smaller prizes awarded to the top 3 traders each week. The ultimate winner will be the one with the highest percentage gain at the end of the challenge, securing a fully funded trading account and a significant cash prize. We encourage all our users to participate and make this summer a memorable one.' 
-    },
-    { 
-      id: 2, 
-      style: 'news', 
-      title: 'New Feature Update: Live Outside Betting', 
-      date: '03/06/2025', 
-      author: 'Tech Team', 
-      summary: 'You can now place outside bets on ongoing matches and see instant results.', 
-      thumbnail: 'https://i.ytimg.com/vi/YnqAbGY_Atw/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLBoB7qUoYwQ78ZiZ0vQrGdgSIkiUw', 
-      content: 'We are thrilled to announce the rollout of our most requested feature: Live Outside Betting. This new system allows spectators to engage directly with ongoing 1v1 matches by placing bets on the potential winner. The odds are calculated in real-time based on the current score, remaining time, and the community betting pool. This creates a dynamic and engaging experience for everyone, not just the participants. All winnings from outside bets are instantly credited to your wallet upon match completion. Please note that this feature is currently in beta, and we welcome all feedback to help us refine the system.' 
-    },
-    // Dữ liệu mới cho Broker Review, cập nhật trường content dài hơn
-    { 
       id: 3, 
       style: 'broker-review', 
-      title: 'Broker Exness Review: Is It Reliable?', 
+      title: 'Broker GO MARKETS Review: Is It Reliable?', 
       date: '10/06/2025', 
       author: 'TradeChallenge Team', 
       summary: 'A deep dive into EX-T broker, evaluating licenses, fees, and platform stability for traders.', 
-      thumbnail: 'https://pub-bbd7a5e39ace471789419f06775be4ec.r2.dev/files/rubricator/2aa461431e7d3fa5c5d5cf313ffc729dc51b87fd.jpeg', 
-      content: 'In today\'s review, we take a comprehensive look at EX-T, a broker that has been gaining significant traction in the Asian market. We will analyze their regulatory framework, which includes licenses from top-tier authorities, providing a strong sense of security for clients. Their platform, based on MetaTrader 5, offers exceptional stability and a wide array of analytical tools suitable for both novice and experienced traders. We also examine their fee structure, which is highly competitive, featuring low spreads on major pairs and zero commission on standard accounts. However, we did find that their educational resources are somewhat limited compared to industry leaders. Our detailed breakdown provides all the information you need to decide if EX-T is the right partner for your trading journey.',
+      thumbnail: 'https://i.ytimg.com/vi/wOsceV5XQjg/maxresdefault.jpg', 
+      content: 'In today\'s review, we take a comprehensive look at Go Markets, a broker that has been gaining significant traction in the Asian market. We will analyze their regulatory framework, which includes licenses from top-tier authorities, providing a strong sense of security for clients. Their platform, based on MetaTrader 5, offers exceptional stability and a wide array of analytical tools suitable for both novice and experienced traders. We also examine their fee structure, which is highly competitive, featuring low spreads on major pairs and zero commission on standard accounts. However, we did find that their educational resources are somewhat limited compared to industry leaders. Our detailed breakdown provides all the information you need to decide if EX-T is the right partner for your trading journey.',
       ratings: {
         license: 5,
         insurance: 4,
@@ -375,26 +424,41 @@ const NewsPage = () => {
     }
   ];
 
+  const [complaintsData, setComplaintsData] = useState([
+      { id: 'c1', user: 'TraderPro', timestamp: '2025-06-24T10:00:00Z', summary: 'Broker Exness - Chậm trễ rút tiền quá 24 giờ.', details: 'Tôi đã yêu cầu rút 500 USDT vào sáng hôm qua, nhưng đến giờ trạng thái vẫn là "đang xử lý". Bộ phận hỗ trợ chưa trả lời ticket #12345 của tôi.', status: 'open' },
+      { id: 'c2', user: 'MarketWatcher', timestamp: '2025-06-23T15:30:00Z', summary: 'Broker FX-Pro - Vấn đề trượt giá (slippage) trên cặp GOLD.', details: 'Trong thời điểm tin Non-farm, lệnh stop-loss của tôi cho cặp XAU/USD đã bị thực thi với mức trượt giá 15 pip, điều này không thể chấp nhận được. Việc này dẫn đến một khoản lỗ lớn hơn dự kiến.', status: 'open' },
+      { id: 'c3', user: 'ScalperKing', timestamp: '2025-06-22T09:00:00Z', summary: 'Broker IC Markets - Nền tảng bị treo khi thị trường biến động mạnh.', details: 'Nền tảng MT5 do IC Markets cung cấp đã bị treo khoảng 30 giây trong phiên mở cửa London, khiến tôi bỏ lỡ một điểm vào lệnh quan trọng. Vấn đề này đã được giải quyết sau khi tôi liên hệ với bộ phận hỗ trợ và họ hướng dẫn tôi chuyển sang một máy chủ khác.', status: 'resolved' },
+  ]);
+
+  // State để quản lý việc mở/đóng chi tiết của từng mục
+  const [expandedComplaints, setExpandedComplaints] = useState({});
+
+  // Hàm để cập nhật trạng thái "resolved"
+  const handleUpdateComplaintStatus = (id, newStatus) => {
+      // Logic này sẽ được thay bằng API call trong thực tế
+      setComplaintsData(prevData =>
+          prevData.map(c => (c.id === id ? { ...c, status: newStatus } : c))
+      );
+  };
+  
+  // Hàm để bật/tắt hiển thị chi tiết
+  const handleToggleExpand = (id) => {
+      setExpandedComplaints(prev => ({
+          ...prev,
+          [id]: !prev[id]
+      }));
+  };
+
   const articlesToShow = allArticles.filter(a => a.style === activeTab);
 
   return (
     <div className="page-padding">
       <div className="wallet-tabs">
-        <button
-          className={`wallet-tab-button ${activeTab === 'news' ? 'active' : ''}`}
-          onClick={() => setActiveTab('news')}
-        >
-          News
-        </button>
-        <button
-          className={`wallet-tab-button ${activeTab === 'broker-review' ? 'active' : ''}`}
-          onClick={() => setActiveTab('broker-review')}
-        >
-          Broker Review
-        </button>
+        <button className={`wallet-tab-button ${activeTab === 'broker-review' ? 'active' : ''}`} onClick={() => setActiveTab('broker-review')}>Broker Review</button>
+        <button className={`wallet-tab-button ${activeTab === 'complaint' ? 'active' : ''}`} onClick={() => setActiveTab('complaint')}>Complaint</button>
       </div>
 
-      {articlesToShow.map((article) => (
+      {activeTab !== 'complaint' && articlesToShow.map((article) => (
         <div key={article.id} className="news-card" onClick={() => navigate(`/news/${article.id}`)} style={{ cursor: 'pointer' }}>
           <LazyLoad height={220} offset={100}>
             <img src={article.thumbnail} alt={article.title} className="news-thumbnail" loading="lazy" onError={(e) => (e.target.src = 'https://placehold.co/500x220?text=Image+Error')} />
@@ -406,6 +470,22 @@ const NewsPage = () => {
           </div>
         </div>
       ))}
+      {activeTab === 'complaint' && (
+        <div className="complaint-section">
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                <button className="btn btn-primary" onClick={() => alert('Chức năng tạo thread mới!')} style={{fontSize: '1rem', padding: '0.5rem 1rem'}}>+ New Thread</button>
+            </div>
+            {complaintsData.map(complaint => (
+                <ComplaintThread 
+                    key={complaint.id}
+                    complaint={complaint}
+                    onUpdateStatus={handleUpdateComplaintStatus}
+                    onToggleExpand={handleToggleExpand}
+                    isExpanded={!!expandedComplaints[complaint.id]}
+                />
+            ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -955,6 +1035,7 @@ const TournamentStatus = ({ startTime }) => {
 const ArenaPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('tournament');
+  const [tournamentFilter, setTournamentFilter] = useState('all');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filterAmount, setFilterAmount] = useState('');
@@ -964,43 +1045,57 @@ const ArenaPage = () => {
   const filterContentRef = useRef(null);
 
   const tournamentItems = [
+    {
+      id: 203,
+      title: 'Weekend Hodl Masters',
+      thumbnail: 'https://img.chelseafc.com/image/upload/f_auto,c_fill,ar_16:9,q_90/video/2022/09/20/Thumbnail_16x9_01785.png',
+      prizePool: '1,000,000 USDT',
+      participants: 520,
+      symbol: 'BTC/USDT',
+      startTime: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+      type: 'live', // Thêm trường type
+    },
+    {
+      id: 201,
+      title: 'Summer Trading Championship',
+      thumbnail: 'https://forexdailyinfo.com/wp-content/uploads/2023/02/grand-capital-trading-tournament.webp',
+      prizePool: '100,000 USDT',
+      participants: 128,
+      symbol: 'All Pairs',
+      startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+      type: 'live', // Thêm trường type
+    },
     {
-      id: 203,
-      title: 'Weekend Hodl Masters',
-      thumbnail: 'https://public.bnbstatic.com/image/cms/blog/20200403/a867c023-c733-4ced-bbef-920960f5f866.png',
-      prizePool: '1,000,000 USDT',
-      participants: 520,
-      symbol: 'BTC/USDT',
-      startTime: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 201,
-      title: 'Summer Trading Championship',
-      thumbnail: 'https://forexdailyinfo.com/wp-content/uploads/2023/02/grand-capital-trading-tournament.webp',
-      prizePool: '100,000 USDT',
-      participants: 128,
+      id: 205,
+      title: 'Demo Weekly Cup',
+      thumbnail: 'https://public.bnbstatic.com/image/cms/blog/20200907/0d73768c-80fa-44e5-bc08-fe0dba9604ae.png',
+      prizePool: '1,600,000 USDT',
+      participants: 850,
       symbol: 'All Pairs',
-      startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+      startTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
+      type: 'demo', // Thêm trường type
     },
-    {
-      id: 204,
-      title: 'Futures Grand Prix (Season 1)',
-      thumbnail: 'https://static.tildacdn.com/tild3065-6232-4465-b966-646138353438/badge_iq-option-tour.jpg',
-      prizePool: '50,000 USDT',
-      participants: 256,
-      symbol: 'ETH/USDT',
-      startTime: '2025-06-18T12:00:00Z',
-    },
-    {
-      id: 202,
-      title: 'Gold Rush Challenge',
-      thumbnail: 'https://titanfx.partners/storage/uploads/News/tournament-2025-og_droln.png?w=440&h=0&fit=crop&crop=edges,focalpoint&q=75&auto=format&fm=png',
-      prizePool: '2,000,000 USDT',
-      participants: 64,
-      symbol: 'XAU/USD',
-      startTime: '2025-05-30T12:00:00Z',
-    },
-  ];
+    {
+      id: 204,
+      title: 'Futures Grand Prix (Season 1)',
+      thumbnail: 'https://static.tildacdn.com/tild3065-6232-4465-b966-646138353438/badge_iq-option-tour.jpg',
+      prizePool: '50,000 USDT',
+      participants: 256,
+      symbol: 'ETH/USDT',
+      startTime: '2025-06-18T12:00:00Z',
+      type: 'live', // Thêm trường type
+    },
+    {
+      id: 202,
+      title: 'Gold Rush Challenge (Demo)',
+      thumbnail: 'https://titanfx.partners/storage/uploads/News/tournament-2025-og_droln.png?w=440&h=0&fit=crop&crop=edges,focalpoint&q=75&auto=format&fm=png',
+      prizePool: '2,000,000 USDT (Virtual)',
+      participants: 64,
+      symbol: 'XAU/USD',
+      startTime: '2025-05-30T12:00:00Z',
+      type: 'demo', // Thêm trường type
+    },
+  ];
 
   const waitingMatches = [
     { id: 101, betAmount: 75, symbol: 'XRP/USDT', challenger: { name: 'GoldSeeker', avatar: generateAvatarUrl('GoldSeeker') }, country: 'Vietnam', waitingTime: '00:05:00' },
@@ -1039,53 +1134,90 @@ const ArenaPage = () => {
         </button>
       </div>
 
-      {activeTab === 'tournament' && (
-        <div className="tournament-list">
-          {tournamentItems.map(item => (
-            <div key={item.id} className="card tournament-card">
-              <div className="tournament-thumbnail-wrapper">
-                {/* Thay LazyLoad bằng loading="lazy" thuần */}
-                <img
-                  src={item.thumbnail}
-                  alt={item.title}
-                  className="tournament-thumbnail"
-                  loading="lazy"
-                  onError={(e) => {
-                    console.error(`Failed to load image: ${item.thumbnail}`);
-                    e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
-                  }}
-                  onLoad={(e) => console.log(`Image loaded: ${item.thumbnail}, size: ${e.target.naturalWidth}x${e.target.naturalHeight}`)}
-                />
-                <TournamentStatus startTime={item.startTime} />
-              </div>
-              <div className="tournament-content">
-                <h3 className="tournament-title">{item.title}</h3>
-                <div className="tournament-details-grid">
-                  <div className="detail-item">
-                    <span>Prize Pool</span>
-                    <p className="detail-value accent">{item.prizePool}</p>
-                  </div>
-                  <div className="detail-item">
-                    <span>Participants</span>
-                    <p className="detail-value">{item.participants}</p>
-                  </div>
-                  <div className="detail-item">
-                    <span>Symbol</span>
-                    <p className="detail-value primary">{item.symbol}</p>
-                  </div>
+      {activeTab === 'tournament' && (() => {
+        // === BƯỚC 3.1: THÊM LOGIC LỌC DỮ LIỆU VÀO ĐÂY ===
+        const filteredTournaments = tournamentItems.filter(item => {
+            if (tournamentFilter === 'all') return true;
+            return item.type === tournamentFilter;
+        });
+        // ===============================================
+
+        return (
+            <>
+                {/* === BƯỚC 3.2: THÊM CÁC NÚT LỌC VÀO ĐÂY === */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.5rem' }}>
+                    <button 
+                        className={`btn ${tournamentFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`} 
+                        onClick={() => setTournamentFilter('all')}
+                        style={{fontSize: '0.9rem', padding: '0.4rem 0.8rem'}}
+                    >
+                        All
+                    </button>
+                    <button 
+                        className={`btn ${tournamentFilter === 'live' ? 'btn-primary' : 'btn-secondary'}`} 
+                        onClick={() => setTournamentFilter('live')}
+                        style={{fontSize: '0.9rem', padding: '0.4rem 0.8rem'}}
+                    >
+                        Live
+                    </button>
+                    <button 
+                        className={`btn ${tournamentFilter === 'demo' ? 'btn-primary' : 'btn-secondary'}`} 
+                        onClick={() => setTournamentFilter('demo')}
+                        style={{fontSize: '0.9rem', padding: '0.4rem 0.8rem'}}
+                    >
+                        Demo
+                    </button>
                 </div>
-                <button
-                  className="btn btn-primary"
-                  style={{ width: '100%', marginTop: '1rem' }}
-                  onClick={() => navigate(`/tournament/${item.id}`)}
-                >
-                  Detail
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+                {/* =========================================== */}
+                
+                <div className="tournament-list">
+                    {/* === BƯỚC 3.3: SỬ DỤNG DỮ LIỆU ĐÃ LỌC === */}
+                    {filteredTournaments.map(item => (
+                        <div key={item.id} className="card tournament-card">
+                            <div className="tournament-thumbnail-wrapper">
+                                <img
+                                    src={item.thumbnail}
+                                    alt={item.title}
+                                    className="tournament-thumbnail"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                        console.error(`Failed to load image: ${item.thumbnail}`);
+                                        e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
+                                    }}
+                                    onLoad={(e) => console.log(`Image loaded: ${item.thumbnail}, size: ${e.target.naturalWidth}x${e.target.naturalHeight}`)}
+                                />
+                                <TournamentStatus startTime={item.startTime} />
+                            </div>
+                            <div className="tournament-content">
+                                <h3 className="tournament-title">{item.title}</h3>
+                                <div className="tournament-details-grid">
+                                    <div className="detail-item">
+                                        <span>Prize Pool</span>
+                                        <p className="detail-value accent">{item.prizePool}</p>
+                                    </div>
+                                    <div className="detail-item">
+                                        <span>Participants</span>
+                                        <p className="detail-value">{item.participants}</p>
+                                    </div>
+                                    <div className="detail-item">
+                                        <span>Symbol</span>
+                                        <p className="detail-value primary">{item.symbol}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ width: '100%', marginTop: '1rem' }}
+                                    onClick={() => navigate(`/tournament/${item.id}`)}
+                                >
+                                    Detail
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </>
+        );
+      })()}
 
       {activeTab === 'personal' && (
         <>

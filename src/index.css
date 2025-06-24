@@ -529,14 +529,20 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
   -webkit-backdrop-filter: blur(4px);
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 0.5rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   color: var(--color-text);
+  overflow: visible;
 }
 
 .detail-back-button svg {
-   width: 1.5rem;
-   height: 1.5rem;
+  width: 20px;
+  height: 20px;
+  stroke: var(--color-text); /* Hỗ trợ stroke cho SVG mới */
 }
 
 .detail-page-title {
@@ -653,4 +659,232 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 
 .rating-item .stars-container {
   font-size: 1.2rem;
+}
+
+/* --- Comments Section --- */
+.comments-section {
+  margin-top: 2rem;
+}
+
+.comments-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: 1rem;
+}
+
+.no-comments {
+  font-size: 1rem;
+  color: var(--color-secondary-text);
+  margin-bottom: 1rem;
+}
+
+.comment-card {
+  background-image: linear-gradient(to bottom, #071a4b, #060d27);
+  border: 1px solid var(--color-secondary-text);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.comment-username {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.comment-timestamp {
+  font-size: 0.875rem;
+  color: var(--color-secondary-text);
+}
+
+.comment-content {
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.comment-form {
+  background-image: linear-gradient(to bottom, #071a4b, #060d27);
+  border: 1px solid var(--color-primary);
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.comment-form .form-input {
+  resize: vertical;
+  min-height: 80px;
+  max-height: 200px;
+}
+
+/* --- Confirmation Modal (đã có trong index.css nhưng đảm bảo nhất quán) --- */
+.confirmation-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 90;
+}
+
+.confirmation-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  width: 90%;
+  max-width: 400px;
+  background-image: linear-gradient(to bottom, #071a4b, #060d27);
+  border: 1px solid var(--color-primary);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+.confirmation-modal h4 {
+  margin-top: 0;
+  font-size: 1.25rem;
+  color: var(--color-primary);
+}
+
+.confirmation-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+/* ======================================================= */
+/* === THÊM KHỐI CSS NÀY VÀO CUỐI TỆP index.css ========== */
+/* ======================================================= */
+
+.complaint-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    border: 1px solid var(--color-hover-bg);
+    padding: 1rem; /* Thêm lại padding cho card */
+}
+
+.complaint-thread__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start; /* Align-items to top */
+}
+
+.complaint-thread__user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+/* Tái sử dụng style avatar đã có */
+.complaint-thread__user-info .challenger-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+/* Tái sử dụng style tên user đã có */
+.complaint-thread__user-info .challenger-name {
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-accent);
+}
+/* Tái sử dụng style phụ đã có */
+.complaint-thread__user-info .challenger-country {
+    font-size: 0.8rem;
+    color: var(--color-secondary-text);
+    margin: 0;
+}
+
+.complaint-thread__status {
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    color: var(--color-background);
+    flex-shrink: 0; /* Ngăn co lại */
+}
+
+.complaint-thread__status.resolved {
+    background-color: var(--color-success);
+}
+
+.complaint-thread__summary {
+    margin: 0.5rem 0 0 0;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--color-text);
+}
+
+.complaint-thread__details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease-in-out;
+}
+
+.complaint-thread__details-content {
+    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--color-hover-bg);
+    color: var(--color-secondary-text);
+    line-height: 1.6;
+}
+
+.complaint-thread__details-content p {
+    margin: 0;
+}
+
+.complaint-thread__actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--color-hover-bg);
+}
+
+.action-buttons-left {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-action {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0;
+    transition: opacity 0.2s;
+}
+.btn-action:hover {
+    opacity: 0.8;
+}
+
+.btn-action.resolve {
+    color: var(--color-success);
+}
+
+/* Tái sử dụng style mũi tên đã có */
+.btn-action .filter-arrow {
+    width: 1rem;
+    height: 1rem;
+    display: inline-block;
+    margin-left: 0.25rem;
+    transition: transform 0.3s;
+}
+
+.btn-action .filter-arrow.open {
+    transform: rotate(180deg);
 }

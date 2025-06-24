@@ -5,15 +5,15 @@ const tournamentDetailsData = [
   {
     id: 203,
     title: 'Weekend Hodl Masters',
-    thumbnail: 'https://public.bnbstatic.com/image/cms/blog/20200403/a867c023-c733-4ced-bbef-920960f5f866.png',
+    thumbnail: 'https://img.chelseafc.com/image/upload/f_auto,c_fill,ar_16:9,q_90/video/2022/09/20/Thumbnail_16x9_01785.png',
     date: '2025-06-21', // Cập nhật ngày để rõ ràng
-    author: 'Binance',
+    author: 'PK Team',
     description: 'Get ready for the ultimate weekend challenge tailored for Bitcoin enthusiasts! The Weekend Hodl Masters is a high-stakes trading competition designed to test your HODL strength and trading prowess. Compete in a 48-hour sprint against top traders worldwide, navigating the volatile BTC/USDT market to secure your spot on the leaderboard.\n\nThis event offers a massive prize pool with exclusive rewards for the top performers. Whether you’re a seasoned trader or a bold newcomer, this is your chance to shine. Participate in live trading sessions, leverage real-time market data, and strategize to outperform your rivals. Special bonuses await those who achieve key milestones during the event.\n\nDon’t miss out on this electrifying competition! Register now to join the action and claim your share of the rewards. May the best trader win!',
-    prizePool: '25,000 USDT',
+    prizePool: '1,000,000 USDT',
     participants: 520,
     symbol: 'BTC/USDT',
     startTime: '2026-06-21T12:00:00Z', // Cập nhật để giải đấu diễn ra trong tương lai
-    broker: 'Binance',
+    broker: 'Go Markets',
     minBalanceRequired: 500,
     brokerRegistrationUrl: 'https://www.binance.com/en/register', 
     results: [],
