@@ -230,9 +230,9 @@ const HomePage = () => {
   const navigate = useNavigate();
 
   const bannerItems = [
-    { id: 1, title: 'Summer Challenge: Double Your Account!', thumbnail: 'https://images.media-outreach.com/559582/Gala-Dinner-news.jpg' },
+    { id: 1, title: 'Summer Challenge: Double Your Account!', thumbnail: 'https://media.licdn.com/dms/image/v2/C5622AQG4dtVEHZh3sw/feedshare-shrink_800/feedshare-shrink_800/0/1650761348490?e=2147483647&v=beta&t=iqrjr1h3mmnpvoF2_K7qmdmRXH3iemvOJoRxMq5uq5I' },
     { id: 2, title: 'New Feature Update: Live Outside Betting', thumbnail: 'https://autorebateforex.com/cashback/wp-content/uploads/2021/04/2021-04-06-2-1024x494.png' },
-    { id: 3, title: 'Top 5 Altcoins to Watch This Month', thumbnail: 'https://blog.investingnote.com/wp-content/uploads/2019/09/traders-rally-1.jpg' },
+    { id: 3, title: 'Top 5 Altcoins to Watch This Month', thumbnail: 'https://images.media-outreach.com/559582/Gala-Dinner-news.jpg' },
   ];
 
   const ongoingMatches = [
