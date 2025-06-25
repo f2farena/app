@@ -102,7 +102,7 @@ const FooterButton = ({ icon, label, page, activePage, setActivePage }) => {
 const Footer = ({ activePage, setActivePage, showFooter }) => (
     <footer className={`footer ${!showFooter ? 'footer-hidden' : ''}`}>
         <FooterButton icon="home" label="Home" page="home" activePage={activePage} setActivePage={setActivePage} />
-        <FooterButton icon="news" label="Preview" page="news" activePage={activePage} setActivePage={setActivePage} />
+        <FooterButton icon="news" label="Review" page="news" activePage={activePage} setActivePage={setActivePage} />
         <FooterButton icon="arena" label="Arena" page="arena" activePage={activePage} setActivePage={setActivePage} />
         <FooterButton icon="leaderboard" label="Leaderboard" page="leaderboard" activePage={activePage} setActivePage={setActivePage} />
         <FooterButton icon="wallet" label="Wallet" page="wallet" activePage={activePage} setActivePage={setActivePage} />
