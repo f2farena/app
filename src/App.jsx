@@ -11,8 +11,8 @@ import settingIcon from './assets/setting.png';
 import chatboxIcon from './assets/chatbox.png';
 import homeActive from './assets/home-2.png';
 import homeInactive from './assets/home-1.png';
-import newsActive from './assets/news-2.png';
-import newsInactive from './assets/news-1.png';
+import newsActive from './assets/review-2.png';
+import newsInactive from './assets/review-1.png';
 import arenaActive from './assets/arena-2.png';
 import arenaInactive from './assets/arena-1.png';
 import leaderboardActive from './assets/leaderboard-2.png';
@@ -102,7 +102,7 @@ const FooterButton = ({ icon, label, page, activePage, setActivePage }) => {
 const Footer = ({ activePage, setActivePage, showFooter }) => (
     <footer className={`footer ${!showFooter ? 'footer-hidden' : ''}`}>
         <FooterButton icon="home" label="Home" page="home" activePage={activePage} setActivePage={setActivePage} />
-        <FooterButton icon="news" label="News" page="news" activePage={activePage} setActivePage={setActivePage} />
+        <FooterButton icon="news" label="Preview" page="news" activePage={activePage} setActivePage={setActivePage} />
         <FooterButton icon="arena" label="Arena" page="arena" activePage={activePage} setActivePage={setActivePage} />
         <FooterButton icon="leaderboard" label="Leaderboard" page="leaderboard" activePage={activePage} setActivePage={setActivePage} />
         <FooterButton icon="wallet" label="Wallet" page="wallet" activePage={activePage} setActivePage={setActivePage} />
@@ -663,7 +663,6 @@ const WalletPage = () => {
             <span className="value accent">{walletData.affiliateCommission}</span>
           </div>
           <div className="wallet-buttons">
-            <button className="btn btn-primary" onClick={() => setShowDepositForm(true)}>Deposit</button>
             <button className="btn btn-accent" onClick={() => setShowWithdrawForm(true)}>Withdraw</button>
           </div>
         </div>
