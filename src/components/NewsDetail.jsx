@@ -1,251 +1,273 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';  // Thêm useEffect
 import { useParams, useNavigate } from 'react-router-dom';
 
-// Dữ liệu giả lập không thay đổi
-const newsArticles = [
-    { 
-      id: 3, 
-      style: 'broker-review', 
-      title: 'Broker GO MARKETS Review: Is It Reliable?', 
-      date: '10/06/2025', 
-      author: 'TradeChallenge Team', 
-      summary: 'A deep dive into EX-T broker, evaluating licenses, fees, and platform stability for traders.', 
-      thumbnail: 'https://i.ytimg.com/vi/wOsceV5XQjg/maxresdefault.jpg', 
-      content: 'GO Markets has been a fantastic choice for my trading journey! Established in 2006, this broker long track record and regulation by top-tier authorities like ASIC and CySEC give me confidence in its reliability. The tight spreads, starting from 0.0 pips on the GO Plus+ account, and fast execution speeds make trading cost-effective and seamless, especially for forex and CFDs. I love the variety of platforms—MT4, MT5, and cTrader—offering flexibility for both beginners and pros. Their educational resources, like webinars and trading guides, are a standout, helping me sharpen my strategies. Deposits and withdrawals are hassle-free with no fees, and the 24/5 customer support is always responsive and knowledgeable. The demo account is a great touch for practicing without risk. GO Markets truly combines trustworthiness with convenience, making it a top pick for traders',
-      ratings: {
-        license: 5,
-        insurance: 4,
-        localization: 5,
-        commission: 4,
-        stability: 5,
-        onboarding: 4
-      },
-      comments: [
-        { id: 1, username: 'ProTrader', content: 'Great review! Ive been using Go Markets and agree with the stability point.', timestamp: '10/06/2025 08:50 AM' },
-        { id: 2, username: 'BeginnerFX', content: 'Wish they had more tutorials for newbies.', timestamp: '10/06/2025 09:30 AM' },
-        { id: 3, username: 'MarketMogul', content: 'Low spreads are a big plus. Thanks for the detailed analysis!', timestamp: '10/06/2025 10:10 AM' },
-      ]
-    },
-    { 
-      id: 4, 
-      style: 'broker-review', 
-      title: 'Is FX-Pro a Good Choice for Beginners?', 
-      date: '12/06/2025', 
-      author: 'TradeChallenge Team', 
-      summary: 'We examine FX-Pro broker focusing on ease of account opening and local support for new traders.', 
-      thumbnail: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRx36-olMGbgJiWiei0Qoy5bJfeDq_NuvtYqg&s',
-      content: 'FX-Pro has long been a household name in the forex industry, but is it the ideal choice for those just starting out? Our review focuses specifically on the beginner experience. The account opening process is remarkably straightforward, taking less than 10 minutes to complete with clear, step-by-step instructions. Their customer support is another strong point, offering 24/5 assistance in multiple languages, including dedicated local support for many regions. While their platform offers advanced features that might overwhelm a newcomer, they also provide a simplified interface and a wealth of demo account options. The commission structure can be slightly higher than some discount brokers, but the overall package of support and reliability makes it a strong contender for anyone new to trading.',
-      ratings: {
-        license: 4,
-        insurance: 3,
-        localization: 5,
-        commission: 3,
-        stability: 4,
-        onboarding: 5
-      },
-      comments: [
-        { id: 1, username: 'NewbieTrader', content: 'Thanks for this! Just opened an account with FX-Pro.', timestamp: '12/06/2025 07:40 AM' },
-        { id: 2, username: 'SupportSeeker', content: 'Their support team is really helpful, confirmed!', timestamp: '12/06/2025 08:15 AM' },
-      ]
-    }
-];
-
 const StarRating = ({ rating }) => {
-  const fullStars = Math.floor(rating);
-  const halfStar = rating % 1 !== 0;
-  const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+  const fullStars = Math.floor(rating);
+  const halfStar = rating % 1 !== 0;
+  const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
 
-  return (
-    <div className="stars-container">
-      {[...Array(fullStars)].map((_, i) => <span key={`full-${i}`} className="star full">★</span>)}
-      {halfStar && <span key="half" className="star half">★</span>}
-      {[...Array(emptyStars)].map((_, i) => <span key={`empty-${i}`} className="star empty">☆</span>)}
-    </div>
-  );
+  return (
+    <div className="stars-container">
+      {[...Array(fullStars)].map((_, i) => <span key={`full-${i}`} className="star full">★</span>)}
+      {halfStar && <span key="half" className="star half">★</span>}
+      {[...Array(emptyStars)].map((_, i) => <span key={`empty-${i}`} className="star empty">☆</span>)}
+    </div>
+  );
 };
 
 const NewsDetail = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const article = newsArticles.find(article => article.id === parseInt(id));
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-  // === THAY ĐỔI 1: Thêm state để quản lý tab đang active ===
-  const [activeTab, setActiveTab] = useState('pk-review'); // 'pk-review' hoặc 'trader-reviews'
+  const [article, setArticle] = useState(null); // Thay hardcode
+  const [comments, setComments] = useState([]); // Thay hardcode comments
+  const [activeTab, setActiveTab] = useState('pk-review'); // Giữ
+  const [newComment, setNewComment] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const [comments, setComments] = useState(article?.comments || []);
-  const [newComment, setNewComment] = useState('');
-  const [showConfirmation, setShowConfirmation] = useState(false);
+  useEffect(() => {
+    console.log('NewsDetail mounted, fetching id:', id);  // Log để check component load OK
+    const fetchBrokerDetail = async () => {
+        const cacheKey = `broker_detail_${id}`;  // Key động theo id
+        console.log(`Checking sessionStorage for ${cacheKey}`);  // Log: Kiểm tra trước khi fetch
+        const cachedDetail = sessionStorage.getItem(cacheKey);
+        if (cachedDetail) {
+          console.log(`Using cached broker detail for id ${id} from sessionStorage`);
+          const parsedData = JSON.parse(cachedDetail);
+          setArticle(parsedData);
+          return;
+        }
+        try {
+            const response = await fetch(`http://localhost:8000/api/brokers/${id}`);
+            console.log('Fetch broker detail response status:', response.status);  // Log mới: Check status
+            if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            console.log('Fetched broker detail:', data); // Log
+            const articleData = {
+            id: data.id,
+            style: 'broker-review',
+            title: `Broker ${data.broker_name} Review: Is It Reliable?`,
+            date: '10/06/2025', // Giữ hardcode hoặc thêm field ở backend
+            author: 'TradeChallenge Team',
+            summary: data.description,
+            thumbnail: `http://localhost:8000/${data.thumbnail}`,  // Prepend URL
+            content: data.pk_review,
+            ratings: { license: data.star_1, insurance: data.star_2, localization: data.star_3, commission: data.star_4, stability: data.star_5, onboarding: data.star_6 }
+            };
+            setArticle(articleData);
+            sessionStorage.setItem(cacheKey, JSON.stringify(articleData));  // Lưu cache với key động
+            console.log(`Stored broker detail for id ${id} to sessionStorage`);
+        } catch (error) {
+            console.error('Error fetching broker detail:', error);
+        }
+    };
 
-  if (!article) {
-    return (
-      <div className="page-padding" style={{ backgroundColor: 'var(--color-card-bg)', color: 'var(--color-text)', minHeight: '100vh' }}>
-        <h2>Article Not Found</h2>
-        <p>No article found with ID {id}.</p>
-        <button className="btn btn-primary" onClick={() => navigate('/news')}>
-          Back to News
-        </button>
-      </div>
-    );
-  }
+    const fetchComments = async () => {
+      const cacheKey = `comments_${id}`;  // Key động theo id
+      console.log(`Checking sessionStorage for ${cacheKey}`);  // Log: Kiểm tra trước khi fetch
+      const cachedComments = sessionStorage.getItem(cacheKey);
+      if (cachedComments) {
+        console.log(`Using cached comments for id ${id} from sessionStorage`);
+        const parsedData = JSON.parse(cachedComments);
+        setComments(parsedData);
+        return;
+      }
+      try {
+        const response = await fetch(`http://localhost:8000/api/trader_reviews/${id}`);
+        const data = await response.json();
+        console.log('Fetched comments:', data); // Log
+        const commentsData = data.list_comments.map(c => ({
+          id: c.id,
+          username: c.username,
+          content: c.comment,
+          timestamp: c.created_at
+        }));
+        setComments(commentsData);
+        sessionStorage.setItem(cacheKey, JSON.stringify(commentsData));  // Lưu cache với key động
+        console.log(`Stored comments for id ${id} to sessionStorage`);
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+      }
+    };
 
-  const averageRating = article.style === 'broker-review' 
-    ? (Object.values(article.ratings).reduce((sum, val) => sum + val, 0) / Object.keys(article.ratings).length).toFixed(1)
-    : 0;
+    fetchBrokerDetail();
+    fetchComments();
+  }, [id]); // Fetch khi id thay đổi
 
-  const ratingCriteria = {
-    license: "License & Regulation",
-    insurance: "Fund Security",
-    localization: "Localization & Support",
-    commission: "Commissions & Fees",
-    stability: "Platform Stability & Tools",
-    onboarding: "Onboarding & Ease of Use"
-  };
+  if (!article) {
+    return (
+      <div className="page-padding" style={{ backgroundColor: 'var(--color-card-bg)', color: 'var(--color-text)', minHeight: '100vh' }}>
+        <h2>Loading Article...</h2>  // Thêm loading để tránh null error
+      </div>
+    );
+  }
 
-  const handleCommentSubmit = (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-    setShowConfirmation(true);
-  };
+  const averageRating = article.style === 'broker-review' 
+    ? (Object.values(article.ratings).reduce((sum, val) => sum + val, 0) / Object.keys(article.ratings).length).toFixed(1)
+    : 0;
 
-  const confirmComment = () => {
-    const newCommentObj = {
-      id: comments.length + 1,
-      username: 'Guest', 
-      content: newComment.trim(),
-      timestamp: new Date().toLocaleString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-    };
-    setComments([...comments, newCommentObj]);
-    setNewComment('');
-    setShowConfirmation(false);
-  };
+  const ratingCriteria = {
+    license: "License & Regulation",
+    insurance: "Fund Security",
+    localization: "Localization & Support",
+    commission: "Commissions & Fees",
+    stability: "Platform Stability & Tools",
+    onboarding: "Onboarding & Ease of Use"
+  };
 
-  return (
-    <div className="news-detail-container" style={{ backgroundColor: 'var(--color-card-bg)', color: 'var(--color-text)', minHeight: '100vh' }}>
-      <div style={{ position: 'relative' }}>
-        <img
-          src={article.thumbnail}
-          alt={article.title}
-          className="news-detail-banner"
-          style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }}
-          onError={(e) => (e.target.src = 'https://placehold.co/500x220?text=Image+Error')}
-        />
-        <button onClick={() => navigate('/news')} className="detail-back-button" aria-label="Back to News">
-          <svg fill="var(--color-text)" viewBox="0 0 24 24" width="20" height="20">
-            <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      </div>
+  const handleCommentSubmit = (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+    setShowConfirmation(true);
+  };
 
-      {/* === THAY ĐỔI 2: Toàn bộ cấu trúc bên dưới được làm lại === */}
-      <div className="page-padding">
-        {/* === THAY ĐỔI 3: Thêm 2 nút tab === */}
+  const confirmComment = () => {
+    const newCommentObj = {
+      id: comments.length + 1,
+      username: 'Guest', 
+      content: newComment.trim(),
+      timestamp: new Date().toLocaleString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    };
+    setComments([...comments, newCommentObj]);
+    setNewComment('');
+    setShowConfirmation(false);
+  };
+
+  return (
+    <div className="news-detail-container" style={{ backgroundColor: 'var(--color-card-bg)', color: 'var(--color-text)', minHeight: '100vh' }}>
+        <div style={{ position: 'relative' }}>
+            <img
+                src={article.thumbnail}
+                alt={article.title}
+                className="news-detail-banner"
+                style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }}
+                onError={(e) => {
+                console.error(`Thumbnail error in detail: ${article.thumbnail}`);  // Log fail
+                e.target.src = 'https://placehold.co/500x220?text=Image+Error';
+                }}
+                onLoad={() => console.log(`Thumbnail loaded in detail: ${article.thumbnail}`)}  // Log ok
+            />
+            {article.logo && (  // Nếu backend return logo field, add img (giả sử)
+                <img
+                src={`http://localhost:8000/${article.logo}`}  // Prepend
+                alt="Broker Logo"
+                style={{ position: 'absolute', top: '10px', left: '10px', width: '50px', height: '50px' }}  // Style tùy ý
+                onError={(e) => console.error(`Logo error: ${article.logo}`)}
+                onLoad={() => console.log(`Logo loaded: ${article.logo}`)}
+                />
+            )}
+            <button onClick={() => navigate('/news')} className="detail-back-button" aria-label="Back to News">
+                <svg fill="var(--color-text)" viewBox="0 0 24 24" width="20" height="20">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            </button>
+        </div>
+
+      <div className="page-padding">
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem', marginBottom: '1.5rem' }}>
-            <button 
-                className={`btn ${activeTab === 'pk-review' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setActiveTab('pk-review')}
-            >
-                PK Team Review
-            </button>
-            <button 
-                className={`btn ${activeTab === 'trader-reviews' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setActiveTab('trader-reviews')}
-            >
-                Trader Reviews
-            </button>
-        </div>
-        {/* === THAY ĐỔI 4: Hiển thị nội dung dựa trên tab đang active === */}
+          <button 
+            className={`btn ${activeTab === 'pk-review' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('pk-review')}
+          >
+            PK Team Review
+          </button>
+          <button 
+            className={`btn ${activeTab === 'trader-reviews' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('trader-reviews')}
+          >
+            Trader Reviews
+          </button>
+        </div>
         
-        {/* --- Nội dung cho tab PK Team Review --- */}
         {activeTab === 'pk-review' && (
-            <>
-                {article.style === 'broker-review' && (
-                    <div className="broker-ratings-container card">
-                        <div className="overall-rating">
-                            <h4>Total rank: {averageRating} / 5.0</h4>
-                            <StarRating rating={parseFloat(averageRating)} />
-                        </div>
-                        <div className="detailed-ratings">
-                            {Object.entries(article.ratings).map(([key, value]) => (
-                                <div key={key} className="rating-item">
-                                    <span className="rating-label">{ratingCriteria[key]}</span>
-                                    <StarRating rating={value} />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-                <div className="detail-page-content" style={{ marginTop: '1.5rem' }}>
-                    <p style={{ fontSize: '1rem', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-                        {article.content}
-                    </p>
+          <>
+            {article.style === 'broker-review' && (
+              <div className="broker-ratings-container card">
+                <div className="overall-rating">
+                  <h4>Total rank: {averageRating} / 5.0</h4>
+                  <StarRating rating={parseFloat(averageRating)} />
                 </div>
-            </>
-        )}
-
-        {/* --- Nội dung cho tab Trader Reviews (phần comment cũ) --- */}
-        {activeTab === 'trader-reviews' && (
-            <div className="comments-section">
-                <h4 className="comments-title">Comments ({comments.length})</h4>
-                {comments.length === 0 ? (
-                    <p className="no-comments" style={{ color: 'var(--color-secondary-text)' }}>
-                        No comments yet. Be the first to comment!
-                    </p>
-                ) : (
-                    comments.map(comment => (
-                        <div key={comment.id} className="comment-card card">
-                            <div className="comment-header">
-                                <span className="comment-username">{comment.username}</span>
-                                <span className="comment-timestamp">{comment.timestamp}</span>
-                            </div>
-                            <p className="comment-content">{comment.content}</p>
-                        </div>
-                    ))
-                )}
-                <form className="comment-form card" onSubmit={handleCommentSubmit} style={{ marginTop: '1.5rem' }}>
-                    <div className="form-group">
-                        <label className="form-label" htmlFor="comment-input">Add a Comment</label>
-                        <textarea
-                            id="comment-input"
-                            className="form-input"
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            placeholder="Write your comment here..."
-                            rows="4"
-                            required
-                        />
+                <div className="detailed-ratings">
+                  {Object.entries(article.ratings).map(([key, value]) => (
+                    <div key={key} className="rating-item">
+                      <span className="rating-label">{ratingCriteria[key]}</span>
+                      <StarRating rating={value} />
                     </div>
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-                        Post Comment
-                    </button>
-                </form>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="detail-page-content" style={{ marginTop: '1.5rem' }}>
+              <p style={{ fontSize: '1rem', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                {article.content}
+              </p>
             </div>
+          </>
         )}
 
-      </div>
+        {activeTab === 'trader-reviews' && (
+          <div className="comments-section">
+            <h4 className="comments-title">Comments ({comments.length})</h4>
+            {comments.length === 0 ? (
+              <p className="no-comments" style={{ color: 'var(--color-secondary-text)' }}>
+                No comments yet. Be the first to comment!
+              </p>
+            ) : (
+              comments.map(comment => (
+                <div key={comment.id} className="comment-card card">
+                  <div className="comment-header">
+                    <span className="comment-username">{comment.username}</span>
+                    <span className="comment-timestamp">{comment.timestamp}</span>
+                  </div>
+                  <p className="comment-content">{comment.content}</p>
+                </div>
+              ))
+            )}
+            <form className="comment-form card" onSubmit={handleCommentSubmit} style={{ marginTop: '1.5rem' }}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="comment-input">Add a Comment</label>
+                <textarea
+                  id="comment-input"
+                  className="form-input"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Write your comment here..."
+                  rows="4"
+                  required
+                />
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
+                Post Comment
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
 
-      {/* Modal xác nhận không thay đổi */}
-      {showConfirmation && (
-        <>
-          <div className="confirmation-overlay" onClick={() => setShowConfirmation(false)}></div>
-          <div className="confirmation-modal card">
-            <h4>Confirm Comment</h4>
-            <p>Are you sure you want to post this comment?</p>
-            <p style={{ fontStyle: 'italic', color: 'var(--color-secondary-text)', margin: '1rem 0' }}>
-              "{newComment}"
-            </p>
-            <div className="confirmation-buttons">
-              <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={confirmComment}>
-                Confirm
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
+      {showConfirmation && (
+        <>
+          <div className="confirmation-overlay" onClick={() => setShowConfirmation(false)}></div>
+          <div className="confirmation-modal card">
+            <h4>Confirm Comment</h4>
+            <p>Are you sure you want to post this comment?</p>
+            <p style={{ fontStyle: 'italic', color: 'var(--color-secondary-text)', margin: '1rem 0' }}>
+              "{newComment}"
+            </p>
+            <div className="confirmation-buttons">
+              <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={confirmComment}>
+                Confirm
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
 };
 
 export default NewsDetail;

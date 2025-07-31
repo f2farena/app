@@ -978,3 +978,88 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
   text-transform: uppercase;
   margin-top: 0.1rem;
 }
+
+.thumbnail-skeleton { background: #ccc; height: 220px; width: 100%; }
+.thumbnail-skeleton.loaded { background: none; }
+.thumbnail-skeleton img { opacity: 0; transition: opacity 0.3s; }
+.thumbnail-skeleton.loaded img { opacity: 1; }
+
+.deposit-modal-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 1rem 0; /* Để scroll nếu form dài */
+}
+
+.deposit-modal-content {
+  background: var(--color-card-bg);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  width: 90%;
+  max-width: 400px;
+  position: relative;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.deposit-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  cursor: pointer; /* Click overlay to close */
+}
+
+.deposit-modal {
+  background-image: linear-gradient(to bottom, #071a4b, #060d27);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  cursor: default; /* Không close khi click content */
+}
+
+.confirmation-modal-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1010;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirmation-modal-wrapper .confirmation-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0,0,0,0.6);
+  z-index: 1010;
+}
+
+.confirmation-modal-wrapper .confirmation-modal {
+  position: relative;
+  z-index: 1011;
+  background-image: linear-gradient(to bottom, #071a4b, #060d27);
+  border: 1px solid var(--color-primary);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 400px;
+}

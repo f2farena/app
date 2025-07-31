@@ -6,6 +6,7 @@ import ArenaDetail from './components/ArenaDetail';
 import TournamentDetail from './components/TournamentDetail';
 import LazyLoad from 'react-lazyload';
 import { FixedSizeList } from 'react-window';
+import { notifyAdminOfDeposit } from './services/telegramService';
 
 import settingIcon from './assets/setting.png';
 import chatboxIcon from './assets/chatbox.png';
@@ -146,15 +147,22 @@ const EventBanner = ({ items }) => {
 
   // Khởi động và dừng animation
   useEffect(() => {
-    lastTimeRef.current = performance.now();
-    rafRef.current = requestAnimationFrame(animate);
+    if (items.length <= 1) {
+        if (rafRef.current) {
+            cancelAnimationFrame(rafRef.current);
+        }
+        return;
+    }
 
-    return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-    };
-  }, []);
+    lastTimeRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [items]);
 
   // Tạm dừng khi cuộn
   useEffect(() => {
@@ -207,7 +215,11 @@ const EventBanner = ({ items }) => {
                 alt={`Event ${item.id}`}
                 className="banner-image"
                 loading="lazy"
-                onError={(e) => (e.target.src = 'https://placehold.co/500x220')}
+                onError={(e) => {
+                  console.error(`Img load error for src: ${item.thumbnail}`);  // Log error src
+                  e.target.src = 'https://placehold.co/500x220';
+                }}
+                onLoad={() => console.log(`Img loaded successfully for src: ${item.thumbnail}`)}  // Log nếu load ok
               />
             </LazyLoad>
           </div>
@@ -229,16 +241,94 @@ const EventBanner = ({ items }) => {
 const HomePage = () => {
   const navigate = useNavigate();
 
-  const bannerItems = [
-    { id: 1, title: 'Summer Challenge: Double Your Account!', thumbnail: 'https://media.licdn.com/dms/image/v2/C5622AQG4dtVEHZh3sw/feedshare-shrink_800/feedshare-shrink_800/0/1650761348490?e=2147483647&v=beta&t=iqrjr1h3mmnpvoF2_K7qmdmRXH3iemvOJoRxMq5uq5I' },
-    { id: 2, title: 'New Feature Update: Live Outside Betting', thumbnail: 'https://autorebateforex.com/cashback/wp-content/uploads/2021/04/2021-04-06-2-1024x494.png' },
-    { id: 3, title: 'Top 5 Altcoins to Watch This Month', thumbnail: 'https://images.media-outreach.com/559582/Gala-Dinner-news.jpg' },
-  ];
+  const [bannerItems, setBannerItems] = useState([]);
+  const [ongoingMatches, setOngoingMatches] = useState([]);
+  const [tournaments, setTournaments] = useState([]);
 
-  const ongoingMatches = [
-    { id: 1, pair: 'BTC/USDT', betAmount: 100, player1: { name: 'CryptoKing', avatar: generateAvatarUrl('CryptoKing'), score: 7, odds: '1:0.75' }, player2: { name: 'TradeMaster', avatar: generateAvatarUrl('TradeMaster'), score: 3, odds: '1:0.90' }, timeRemaining: '00:45:30', views: 1250, outsideBetsTotal: 12500 },
-    { id: 2, pair: 'ETH/USDT', betAmount: 250, player1: { name: 'BlockBoss', avatar: generateAvatarUrl('BlockBoss'), score: 5, odds: '1:0.85' }, player2: { name: 'MarketWhiz', avatar: generateAvatarUrl('MarketWhiz'), score: 5, odds: '1:0.85' }, timeRemaining: '01:10:15', views: 890, outsideBetsTotal: 8000 },
-  ];
+  useEffect(() => {
+    const fetchBanner = async () => {
+      console.log('Checking sessionStorage for banner_data');  // Log: Kiểm tra trước khi fetch
+      const cachedBanner = sessionStorage.getItem('banner_data');
+      if (cachedBanner) {
+        console.log('Using cached banner data from sessionStorage');
+        const parsedData = JSON.parse(cachedBanner);
+        setBannerItems(parsedData);
+        return;
+      }
+      try {
+        const response = await fetch('http://localhost:8000/api/events/banner');
+        const data = await response.json();
+        console.log('Fetched banner data:', data);
+        if (data && data.length > 0) {
+          console.log('Thumbnail URL to load:', data[0].thumbnail);
+        }
+        // Thêm map để prepend full URL cho thumbnail
+        const updatedData = data.map(item => ({
+          ...item,
+          thumbnail: `http://localhost:8000/${item.thumbnail}`  // Prepend backend base URL
+        }));
+        setBannerItems(updatedData);
+        sessionStorage.setItem('banner_data', JSON.stringify(updatedData));  // Lưu cache
+        console.log('Stored banner data to sessionStorage');
+      } catch (error) {
+        console.error('Error fetching banner:', error);
+      }
+    };
+    const fetchOngoing = async () => {
+      console.log('Checking sessionStorage for ongoing_matches');  // Log: Kiểm tra trước khi fetch
+      const cachedOngoing = sessionStorage.getItem('ongoing_matches');
+      if (cachedOngoing) {
+        console.log('Using cached ongoing matches from sessionStorage');
+        const parsedData = JSON.parse(cachedOngoing);
+        setOngoingMatches(parsedData);
+        return;
+      }
+      try {
+        const response = await fetch('http://localhost:8000/api/matches/ongoing');
+        const data = await response.json();
+        console.log('Fetched ongoing matches for home:', data);
+        const updatedData = data.map(item => ({
+          ...item,
+          thumbnail: `http://localhost:8000/${item.thumbnail}`  // Prepend đồng bộ banner
+        }));
+        const limitedData = updatedData.slice(0, 5);
+        setOngoingMatches(limitedData);  // Sửa: setOngoingMatches thay vì setTournaments
+        sessionStorage.setItem('ongoing_matches', JSON.stringify(limitedData));  // Sửa: 'ongoing_matches' thay 'tournaments_home'
+        console.log('Stored ongoing matches to sessionStorage');
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+    const fetchTournaments = async () => {
+      console.log('Checking sessionStorage for tournaments_home');  // Log: Kiểm tra trước khi fetch
+      const cachedTournaments = sessionStorage.getItem('tournaments_home');
+      if (cachedTournaments) {
+        console.log('Using cached tournaments for home from sessionStorage');
+        const parsedData = JSON.parse(cachedTournaments);
+        setTournaments(parsedData);
+        return;
+      }
+      try {
+        const response = await fetch('http://localhost:8000/api/tournaments/?offset=0');
+        const data = await response.json();
+        console.log('Fetched tournaments for home:', data);
+        const updatedData = data.map(item => ({
+          ...item,
+          thumbnail: `http://localhost:8000/${item.thumbnail}`  // Thêm prepend full URL cho thumbnail, đồng bộ với banner
+        }));
+        const limitedData = updatedData.slice(0, 5);
+        setTournaments(limitedData);
+        console.log('Set tournaments state:', limitedData.length, limitedData);
+        sessionStorage.setItem('tournaments_home', JSON.stringify(limitedData));
+        console.log('Stored tournaments for home to sessionStorage');
+      } catch (error) {
+        console.error('Error fetching tournaments for home:', error);
+      }
+    };
+    fetchBanner();
+    fetchOngoing();
+    fetchTournaments();
+  }, []);
 
   return (
     <div>
@@ -305,6 +395,49 @@ const HomePage = () => {
             </div>
           );
         })}
+        <h2 className="section-title">🏆 Tournaments</h2>
+        {tournaments.map(item => (
+          <div key={item.id} className="card tournament-card">
+            <div className="tournament-thumbnail-wrapper thumbnail-skeleton">
+              <img
+                src={item.thumbnail}
+                alt={item.title}
+                className="tournament-thumbnail"
+                loading="lazy"
+                onError={(e) => {
+                  console.error(`Failed to load image: ${item.thumbnail}`);
+                  e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
+                }}
+                onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }}
+              />
+              <TournamentStatus startTime={item.event_time} />
+            </div>
+            <div className="tournament-content">
+              <h3 className="tournament-title">{item.title}</h3>
+              <div className="tournament-details-grid">
+                <div className="detail-item">
+                  <span>Prize Pool</span>
+                  <p className="detail-value accent">{item.prize_pool} USDT</p>
+                </div>
+                <div className="detail-item">
+                  <span>Participants</span>
+                  <p className="detail-value">{item.participants}</p>
+                </div>
+                <div className="detail-item">
+                  <span>Symbol</span>
+                  <p className="detail-value primary">{item.symbol}</p>
+                </div>
+              </div>
+              <button
+                className="btn btn-primary"
+                style={{ width: '100%', marginTop: '1rem' }}
+                onClick={() => navigate(`/tournament/${item.id}`)}
+              >
+                Detail
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -380,48 +513,215 @@ const ComplaintThread = ({ complaint, onUpdateStatus, onToggleExpand, isExpanded
     );
 };
 
-const NewsPage = () => {
+const ComplaintModal = ({ onClose, onSubmit, user }) => {
+    const [brokerName, setBrokerName] = useState('');
+    const [title, setTitle] = useState('');
+    const [comment, setComment] = useState('');
+    const [showConfirmation, setShowConfirmation] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!brokerName.trim() || !title.trim() || !comment.trim()) {
+            alert('Please fill in all fields.');
+            return;
+        }
+        setShowConfirmation(true);
+    };
+
+    const confirmSubmit = async () => {
+        if (!user || !user.telegram_id) {
+            alert("User information is missing. Cannot submit.");
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await onSubmit({
+                broker_name: brokerName,
+                title,
+                comment,
+                user_id: user.telegram_id
+            });
+            // Nếu onSubmit thành công, nó sẽ tự đóng modal
+        } catch (error) {
+            // Lỗi đã được alert() ở component cha, chỉ cần dừng loading
+            console.error('Submission failed and caught in modal:', error);
+        } finally {
+            setIsSubmitting(false);
+            // Không đóng confirmation ở đây, để user thấy thông báo lỗi và quyết định
+        }
+    };
+
+    // Sử dụng styling từ DepositForm để đảm bảo tính nhất quán
+    return (
+        <div className="deposit-modal-wrapper" onClick={onClose}>
+            <div className="deposit-modal-content" onClick={(e) => e.stopPropagation()}>
+                {!showConfirmation ? (
+                     <>
+                        <div className="form-header">
+                            <h2>Create New Complaint</h2>
+                            <button onClick={onClose} className="icon-button close-button">&times;</button>
+                        </div>
+                        <form className="card" onSubmit={handleSubmit} style={{border: 'none', background: 'transparent', padding: 0}}>
+                            <div className="form-group">
+                                <label className="form-label">Broker Name</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={brokerName}
+                                    onChange={(e) => setBrokerName(e.target.value)}
+                                    placeholder="e.g., Exness"
+                                    required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Title</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="Enter a brief title"
+                                    required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Comment</label>
+                                <textarea
+                                    className="form-input"
+                                    value={comment}
+                                    onChange={(e) => setComment(e.target.value)}
+                                    placeholder="Describe your issue in detail"
+                                    rows={5}
+                                    required
+                                />
+                            </div>
+                            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={isSubmitting}>
+                                {isSubmitting ? 'Submitting...' : 'Submit Complaint'}
+                            </button>
+                        </form>
+                    </>
+                ) : (
+                    <div className="confirmation-modal card" style={{position: 'static', transform: 'none', background: 'transparent', boxShadow: 'none'}}>
+                        <h4>Confirm Complaint</h4>
+                        <p>Are you sure you want to submit this complaint?</p>
+                        <div className="confirmation-buttons">
+                            <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)} disabled={isSubmitting}>Cancel</button>
+                            <button className="btn btn-primary" onClick={confirmSubmit} disabled={isSubmitting}>
+                                {isSubmitting ? 'Confirming...' : 'Confirm'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const NewsPage = ({ user }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('broker-review');
+  const [allArticles, setAllArticles] = useState([]); // Thay hardcode bằng state
+  const [complaintsData, setComplaintsData] = useState([]); // Giữ state nhưng fetch
+  const [offset, setOffset] = useState(0);  // New: Offset for next load
+  const [hasMore, setHasMore] = useState(true);  // New: Has more data
+  const [isLoading, setIsLoading] = useState(false);  // New: Loading state
+  const lastItemRef = useRef(null);  // New: Ref for last item
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
 
-  const allArticles = [
-    { 
-      id: 3, 
-      style: 'broker-review', 
-      title: 'Broker Exness Review: Is It Reliable?',
-      brokerName: 'Go Markets',
-      country: 'Autralia',
-      countryCode: 'AU', // Mã quốc gia để lấy cờ
-      yearsActive: 20,
-      score: 4.5,
-      summary: 'A deep dive into Go Markets broker, evaluating licenses, fees, and platform stability for traders.',
-      thumbnail: 'https://media.licdn.com/dms/image/v2/D4E10AQF61eP0cpNjVg/image-shrink_800/B4EZS1PNjHGYAg-/0/1738207452069?e=2147483647&v=beta&t=xo8wmPpR45Xxtq9BbuLSO-sxNmyDTwn5SnqPqOTN8Sc', 
-      content: 'In today\'s review, we take a comprehensive look at EX-T...',
-      ratings: { license: 5, insurance: 4, localization: 5, commission: 4, stability: 5, 'on-boarding': 4 }
-    },
-    { 
-      id: 4, 
-      style: 'broker-review', 
-      title: 'Is FX-Pro a Good Choice for Beginners?', 
-      // Bỏ: date, author
-      // Thêm các trường mới:
-      brokerName: 'FX-Pro',
-      country: 'United Kingdom',
-      countryCode: 'GB', // Mã quốc gia để lấy cờ
-      yearsActive: 18,
-      score: 4.0,
-      summary: 'We examine FX-Pro broker focusing on ease of account opening and local support for new traders.', 
-      thumbnail: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRx36-olMGbgJiWiei0Qoy5bJfeDq_NuvtYqg&s',
-      content: 'FX-Pro has long been a household name...',
-      ratings: { license: 4, insurance: 3, localization: 5, commission: 3, stability: 4, 'on-boarding': 5 } 
-    }
-  ];
+  useEffect(() => {
+    const fetchBrokers = async () => {
+      console.log('fetchBrokers called - checking sessionStorage');
+      let brokers = [];
+      const cached = sessionStorage.getItem('brokers_data');
+      if (cached) {
+        brokers = JSON.parse(cached).brokers || [];
+        console.log('Loaded', brokers.length, 'brokers from cache');
+      }
+      if (brokers.length === 0) {
+        try {
+          const response = await fetch('http://localhost:8000/api/brokers/list');
+          if (!response.ok) throw new Error('Fetch failed');
+          const data = await response.json();
+          brokers = data.brokers;
+          sessionStorage.setItem('brokers_data', JSON.stringify({ brokers }));
+          console.log('Fetched and stored full brokers:', brokers.length);
+        } catch (error) {
+          console.error('Error fetching brokers:', error);
+        }
+      } else {
+        try {
+          const response = await fetch('http://localhost:8000/api/brokers/list');
+          if (!response.ok) throw new Error('Fetch failed');
+          const data = await response.json();
+          const allBrokers = data.brokers;
+          const existingIds = brokers.map(b => b.id);
+          const missingBrokers = allBrokers.filter(b => !existingIds.includes(b.id));
+          if (missingBrokers.length > 0) {
+            brokers = [...brokers, ...missingBrokers];
+            sessionStorage.setItem('brokers_data', JSON.stringify({ brokers }));
+            console.log('Fetched and merged missing brokers:', missingBrokers.length);
+          } else {
+            console.log('No missing brokers, using cache');
+          }
+        } catch (error) {
+          console.error('Error checking missing brokers:', error);
+        }
+      }
+      setAllArticles(brokers.map(broker => ({
+        id: broker.id,
+        style: 'broker-review',
+        title: `Broker ${broker.broker_name} Review: Is It Reliable?`,
+        brokerName: broker.broker_name,
+        country: broker.nation_code,
+        countryCode: broker.nation_code === '86' ? 'CN' : broker.nation_code.toUpperCase(),
+        yearsActive: broker.years,
+        score: broker.average_star,
+        summary: broker.description,
+        thumbnail: `http://localhost:8000/${broker.thumbnail}`,
+        content: broker.description,
+        ratings: { license: broker.star_1, insurance: broker.star_2, localization: broker.star_3, commission: broker.star_4, stability: broker.star_5, 'on-boarding': broker.star_6 }
+      })));
+    };
 
-  const [complaintsData, setComplaintsData] = useState([
-      { id: 'c1', user: 'TraderPro', timestamp: '2025-06-24T10:00:00Z', summary: 'Broker Exness - Chậm trễ rút tiền quá 24 giờ.', details: 'Tôi đã yêu cầu rút 500 USDT vào sáng hôm qua, nhưng đến giờ trạng thái vẫn là "đang xử lý". Bộ phận hỗ trợ chưa trả lời ticket #12345 của tôi.', status: 'open' },
-      { id: 'c2', user: 'MarketWatcher', timestamp: '2025-06-23T15:30:00Z', summary: 'Broker FX-Pro - Vấn đề trượt giá (slippage) trên cặp GOLD.', details: 'Trong thời điểm tin Non-farm, lệnh stop-loss của tôi cho cặp XAU/USD đã bị thực thi với mức trượt giá 15 pip, điều này không thể chấp nhận được. Việc này dẫn đến một khoản lỗ lớn hơn dự kiến.', status: 'open' },
-      { id: 'c3', user: 'ScalperKing', timestamp: '2025-06-22T09:00:00Z', summary: 'Broker IC Markets - Nền tảng bị treo khi thị trường biến động mạnh.', details: 'Nền tảng MT5 do IC Markets cung cấp đã bị treo khoảng 30 giây trong phiên mở cửa London, khiến tôi bỏ lỡ một điểm vào lệnh quan trọng. Vấn đề này đã được giải quyết sau khi tôi liên hệ với bộ phận hỗ trợ và họ hướng dẫn tôi chuyển sang một máy chủ khác.', status: 'resolved' },
-  ]);
+    const fetchComplaints = async () => {
+      console.log('Checking sessionStorage for complaints_data');  // Log: Kiểm tra trước khi fetch
+      const cachedComplaints = sessionStorage.getItem('complaints_data');
+      if (cachedComplaints) {
+        console.log('Using cached complaints from sessionStorage');
+        const parsedData = JSON.parse(cachedComplaints);
+        setComplaintsData(parsedData.complaints.map(complaint => ({
+          id: complaint.id, // Giả sử id từ backend
+          user: complaint.username,
+          timestamp: complaint.created_at,
+          summary: complaint.title,
+          details: complaint.comment,
+          status: complaint.resolved ? 'resolved' : 'open'
+        })));
+        return;
+      }
+      try {
+        const response = await fetch('http://localhost:8000/api/complaints/');
+        const data = await response.json();
+        console.log('Fetched complaints:', data); // Log để check
+        setComplaintsData(data.complaints.map(complaint => ({
+          id: complaint.id, // Giả sử id từ backend
+          user: complaint.username,
+          timestamp: complaint.created_at,
+          summary: complaint.title,
+          details: complaint.comment,
+          status: complaint.resolved ? 'resolved' : 'open'
+        })));
+        sessionStorage.setItem('complaints_data', JSON.stringify(data));  // Lưu cache
+        console.log('Stored complaints to sessionStorage');
+      } catch (error) {
+        console.error('Error fetching complaints:', error);
+      }
+    };
+
+    fetchBrokers();
+    fetchComplaints();
+  }, []); // Fetch khi mount
 
   // State để quản lý việc mở/đóng chi tiết của từng mục
   const [expandedComplaints, setExpandedComplaints] = useState({});
@@ -454,7 +754,17 @@ const NewsPage = () => {
       {activeTab !== 'complaint' && articlesToShow.map((article) => (
         <div key={article.id} className="news-card" onClick={() => navigate(`/news/${article.id}`)} style={{ cursor: 'pointer' }}>
           <LazyLoad height={220} offset={100}>
-            <img src={article.thumbnail} alt={article.title} className="news-thumbnail" loading="lazy" onError={(e) => (e.target.src = 'https://placehold.co/500x220?text=Image+Error')} />
+            <img 
+              src={article.thumbnail} 
+              alt={article.title} 
+              className="news-thumbnail" 
+              loading="lazy" 
+              onError={(e) => {
+                console.error(`Broker thumbnail error: ${article.thumbnail}`);  // Log src fail
+                e.target.src = 'https://placehold.co/500x220?text=Image+Error';
+              }} 
+              onLoad={() => console.log(`Broker thumbnail loaded: ${article.thumbnail}`)}  // Log success
+            />
           </LazyLoad>
           {/* Cấu trúc nội dung mới */}
           <div className="news-content review-card-content">
@@ -509,52 +819,49 @@ const NewsPage = () => {
 
 const LeaderboardPage = () => {
   const [activeTab, setActiveTab] = useState('traders');
+  const [tradersData, setTradersData] = useState([]);  // State cho personal
+  const [teamsData, setTeamsData] = useState([]);  // State cho tournament
 
-  const leaderboardData = [
-    { id: 1, rank: 1, name: 'ProTraderX', avatar: generateAvatarUrl('ProTraderX'), wins: 120, profit: 50000 },
-    { id: 2, rank: 2, name: 'MarketMaestro', avatar: generateAvatarUrl('MarketMaestro'), wins: 110, profit: 45000 },
-    { id: 3, rank: 3, name: 'AlphaScalper', avatar: generateAvatarUrl('AlphaScalper'), wins: 105, profit: 40000 },
-    { id: 4, rank: 4, name: 'CryptoWizard', avatar: generateAvatarUrl('CryptoWizard'), wins: 100, profit: 38000 },
-    { id: 5, rank: 5, name: 'TradeVanguard', avatar: generateAvatarUrl('TradeVanguard'), wins: 95, profit: 36000 },
-    { id: 6, rank: 6, name: 'ProfitSeeker', avatar: generateAvatarUrl('ProfitSeeker'), wins: 90, profit: 34000 },
-    { id: 7, rank: 7, name: 'BullishBoss', avatar: generateAvatarUrl('BullishBoss'), wins: 85, profit: 32000 },
-    { id: 8, rank: 8, name: 'BearBlaster', avatar: generateAvatarUrl('BearBlaster'), wins: 80, profit: 30000 },
-    { id: 9, rank: 9, name: 'TrendRider', avatar: generateAvatarUrl('TrendRider'), wins: 75, profit: 28000 },
-    { id: 10, rank: 10, name: 'ChartMaster', avatar: generateAvatarUrl('ChartMaster'), wins: 70, profit: 26000 },
-    { id: 11, rank: 11, name: 'PipHunter', avatar: generateAvatarUrl('PipHunter'), wins: 65, profit: 24000 },
-    { id: 12, rank: 12, name: 'CandleKing', avatar: generateAvatarUrl('CandleKing'), wins: 60, profit: 22000 },
-    { id: 13, rank: 13, name: 'SwingTrader', avatar: generateAvatarUrl('SwingTrader'), wins: 55, profit: 20000 },
-    { id: 14, rank: 14, name: 'RiskTamer', avatar: generateAvatarUrl('RiskTamer'), wins: 50, profit: 18000 },
-    { id: 15, rank: 15, name: 'MarketMogul', avatar: generateAvatarUrl('MarketMogul'), wins: 45, profit: 16000 },
-    { id: 16, rank: 16, name: 'TradeTitan', avatar: generateAvatarUrl('TradeTitan'), wins: 40, profit: 14000 },
-    { id: 17, rank: 17, name: 'CoinCrusader', avatar: generateAvatarUrl('CoinCrusader'), wins: 35, profit: 12000 },
-    { id: 18, rank: 18, name: 'FiatFighter', avatar: generateAvatarUrl('FiatFighter'), wins: 30, profit: 10000 },
-    { id: 19, rank: 19, name: 'LeverageLord', avatar: generateAvatarUrl('LeverageLord'), wins: 25, profit: 8000 },
-    { id: 20, rank: 20, name: 'HodlHero', avatar: generateAvatarUrl('HodlHero'), wins: 20, profit: 6000 },
-  ];
+  useEffect(() => {
+    const fetchLeaderboard = async (type) => {
+      const cacheKey = `${type}_leaderboard`;
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        console.log(`Using cached ${type} leaderboard`);
+        return JSON.parse(cached);
+      }
+      try {
+        const response = await fetch(`http://localhost:8000/api/leaderboard/${type}`);
+        const data = await response.json();
+        console.log(`Fetched ${type} leaderboard:`, data);
+        // Map data to format (add rank, name/avatar from generate or future join)
+        const mapped = data.map((item, index) => ({
+          id: item.user_id,
+          rank: index + 1,
+          name: item.user_name || item.user_id,  // Ưu tiên user_name từ users.name, fallback user_id (telegram_id)
+          avatar: generateAvatarUrl(item.user_name || item.user_id),  // Avatar based on name or id
+          wins: item.wins,
+          profit: item.profit,
+          totalWinnings: item.profit  
+        }));
+        sessionStorage.setItem(cacheKey, JSON.stringify(mapped));
+        return mapped;
+      } catch (error) {
+        console.error(`Error fetching ${type} leaderboard:`, error);
+        return [];
+      }
+    };
 
-  const betOutsideWinnersData = [
-    { id: 1, rank: 1, name: 'BetKing', avatar: generateAvatarUrl('BetKing'), totalWinnings: 25000 },
-    { id: 2, rank: 2, name: 'RiskTaker', avatar: generateAvatarUrl('RiskTaker'), totalWinnings: 22000 },
-    { id: 3, rank: 3, name: 'WagerMaster', avatar: generateAvatarUrl('WagerMaster'), totalWinnings: 20000 },
-    { id: 4, rank: 4, name: 'OddsSavant', avatar: generateAvatarUrl('OddsSavant'), totalWinnings: 18000 },
-    { id: 5, rank: 5, name: 'StakeGuru', avatar: generateAvatarUrl('StakeGuru'), totalWinnings: 16000 },
-    { id: 6, rank: 6, name: 'BetBlitz', avatar: generateAvatarUrl('BetBlitz'), totalWinnings: 14000 },
-    { id: 7, rank: 7, name: 'WinWizard', avatar: generateAvatarUrl('WinWizard'), totalWinnings: 12000 },
-    { id: 8, rank: 8, name: 'PuntPro', avatar: generateAvatarUrl('PuntPro'), totalWinnings: 10000 },
-    { id: 9, rank: 9, name: 'CashCaller', avatar: generateAvatarUrl('CashCaller'), totalWinnings: 9000 },
-    { id: 10, rank: 10, name: 'GambleGenix', avatar: generateAvatarUrl('GambleGenix'), totalWinnings: 8000 },
-    { id: 11, rank: 11, name: 'BetBuster', avatar: generateAvatarUrl('BetBuster'), totalWinnings: 7000 },
-    { id: 12, rank: 12, name: 'WagerWhiz', avatar: generateAvatarUrl('WagerWhiz'), totalWinnings: 6000 },
-    { id: 13, rank: 13, name: 'StakeStar', avatar: generateAvatarUrl('StakeStar'), totalWinnings: 5000 },
-    { id: 14, rank: 14, name: 'OddsOracle', avatar: generateAvatarUrl('OddsOracle'), totalWinnings: 4000 },
-    { id: 15, rank: 15, name: 'BetBaron', avatar: generateAvatarUrl('BetBaron'), totalWinnings: 3500 },
-    { id: 16, rank: 16, name: 'WinWarden', avatar: generateAvatarUrl('WinWarden'), totalWinnings: 3000 },
-    { id: 17, rank: 17, name: 'PuntPrince', avatar: generateAvatarUrl('PuntPrince'), totalWinnings: 2500 },
-    { id: 18, rank: 18, name: 'CashCrusader', avatar: generateAvatarUrl('CashCrusader'), totalWinnings: 2000 },
-    { id: 19, rank: 19, name: 'GambleGlider', avatar: generateAvatarUrl('GambleGlider'), totalWinnings: 1500 },
-    { id: 20, rank: 20, name: 'BetBanzai', avatar: generateAvatarUrl('BetBanzai'), totalWinnings: 1000 },
-  ];
+    const loadData = async () => {
+      const personal = await fetchLeaderboard('personal');
+      setTradersData(personal);
+      const tournament = await fetchLeaderboard('tournament');
+      setTeamsData(tournament);
+    };
+    loadData();
+  }, []);  // Fetch once on mount
+
+  const currentData = activeTab === 'traders' ? tradersData : teamsData;
 
   return (
     <div className="page-padding">
@@ -563,13 +870,13 @@ const LeaderboardPage = () => {
           className={`wallet-tab-button ${activeTab === 'traders' ? 'active' : ''}`}
           onClick={() => setActiveTab('traders')}
         >
-          Top Traders
+          Top Tournament Winners
         </button>
         <button
           className={`wallet-tab-button ${activeTab === 'betOutside' ? 'active' : ''}`}
           onClick={() => setActiveTab('betOutside')}
         >
-          Top Winning Teams
+          Top Personal Winners
         </button>
       </div>
       <div className="card">
@@ -580,7 +887,7 @@ const LeaderboardPage = () => {
             <div className="text-center">{activeTab === 'traders' ? 'Wins' : 'Total Winnings'}</div>
             <div className="text-right">{activeTab === 'traders' ? 'Profit (USDT)' : 'Winnings (USDT)'}</div>
           </div>
-          {(activeTab === 'traders' ? leaderboardData : betOutsideWinnersData).map(item => (
+          {currentData.map(item => (
             <div key={item.id} className="leaderboard-row">
               <div className={`leaderboard-rank ${item.rank <= 3 ? 'top-rank' : ''}`}>{item.rank}</div>
               <div className="trader-info">
@@ -599,7 +906,6 @@ const LeaderboardPage = () => {
 
 const WalletPage = () => {
   const [activeTab, setActiveTab] = useState('assetInfo');
-  const [showDepositForm, setShowDepositForm] = useState(false);
   const [showWithdrawForm, setShowWithdrawForm] = useState(false);
 
   const walletData = {
@@ -616,10 +922,6 @@ const WalletPage = () => {
       { id: 4, type: 'Loss', amount: '10 USDT', date: '2025-06-04', matchId: 'M-124', status: 'Completed' },
     ],
   };
-
-  if (showDepositForm) {
-    return <DepositForm onClose={() => setShowDepositForm(false)} />;
-  }
 
   if (showWithdrawForm) {
     return <WithdrawForm onClose={() => setShowWithdrawForm(false)} currentBalance={walletData.currentBalance} />;
@@ -687,11 +989,13 @@ const WalletPage = () => {
   );
 };
 
-const CreateNewMatchForm = ({ onClose }) => {
+const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess }) => {
     const [betAmount, setBetAmount] = useState('');
     const [tradingSymbol, setTradingSymbol] = useState('');
     const [challengeMode, setChallengeMode] = useState('waiting');
-    const [opponentName, setOpponentName] = useState('');
+    const [opponentId, setOpponentId] = useState('');
+    const [durationTime, setDurationTime] = useState(1);
+    const [selectedBroker, setSelectedBroker] = useState('');
     const [showConfirmation, setShowConfirmation] = useState(false);
 
     const handleConfirm = (e) => {
@@ -700,12 +1004,37 @@ const CreateNewMatchForm = ({ onClose }) => {
         setShowConfirmation(true);
     };
 
-    const confirmMatchSetup = () => {
-        // Xử lý logic tạo trận đấu ở đây
-        console.log("Creating match:", { betAmount, tradingSymbol, challengeMode, opponentName });
-        setShowConfirmation(false);
-        onClose(); // Đóng form sau khi xác nhận
-    };
+    const confirmMatchSetup = async () => {  // Add async for await fetch
+      console.log("Creating match:", { betAmount, tradingSymbol, challengeMode, opponentId, durationTime, selectedBroker });
+      try {
+          const response = await fetch('http://localhost:8000/api/matches/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              bet: parseFloat(betAmount),
+              pair: tradingSymbol,
+              player1_id: user?.telegram_id,
+              player2_id: challengeMode === 'waiting' ? null : Number(opponentId),
+              duration_time: durationTime,
+              broker_id: parseInt(selectedBroker)
+            })
+          });
+          if (!response.ok) {
+              const errorData = await response.json();
+              console.error('Create match failed:', response.status, errorData.detail);  // Log error detail (e.g invalid broker_id)
+              alert('Create failed: ' + errorData.detail);  // Show user
+              return;
+          }
+          const data = await response.json();
+          console.log('Create match success, id:', data.id);  // Log success
+          setShowConfirmation(false);
+          onClose();
+          onCreateSuccess?.();
+      } catch (error) {
+          console.error('Error POST create match:', error);
+          alert('Error creating match');
+      }
+  };
 
     return (
         <>
@@ -750,18 +1079,45 @@ const CreateNewMatchForm = ({ onClose }) => {
                             </label>
                         </div>
                     </div>
-                    {challengeMode === 'specific' && (
-                        <div className="form-group">
-                            <label className="form-label">Opponent's Name</label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                value={opponentName}
-                                onChange={(e) => setOpponentName(e.target.value)}
-                                placeholder="Enter Telegram ID or Nickname"
-                                required
-                            />
-                        </div>
+                    <div className="form-group">
+                      <label className="form-label">Duration Time (hours)</label>
+                      <select
+                        className="form-input"
+                        value={durationTime}
+                        onChange={(e) => setDurationTime(Number(e.target.value))}
+                        required
+                      >
+                        <option value={1}>1 hour</option>
+                        <option value={4}>4 hours</option>
+                        <option value={8}>8 hours</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Broker</label>
+                      <select
+                        className="form-input"
+                        value={selectedBroker}
+                        onChange={(e) => setSelectedBroker(e.target.value)}
+                        required
+                      >
+                        <option value="">Select Broker</option>
+                        {brokersList.map(broker => (
+                          <option key={broker.id} value={broker.id}>{broker.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {challengeMode === 'specific' && (                       
+                      <div className="form-group">
+                          <label className="form-label">Opponent's ID</label>
+                          <input
+                              type="number"
+                              className="form-input"
+                              value={opponentId}
+                              onChange={(e) => setOpponentId(e.target.value)}
+                              placeholder="Enter Telegram ID"
+                              required
+                          />
+                      </div>
                     )}
                     <button type="submit" className="btn btn-accent" style={{width: '100%', marginTop: '1rem'}}>
                         Confirm Setup
@@ -786,26 +1142,30 @@ const CreateNewMatchForm = ({ onClose }) => {
     );
 };
 
-const DepositForm = ({ onClose }) => {
+const DepositForm = ({ onClose, user }) => {
   const [depositAmount, setDepositAmount] = useState('');
   const [memoContent, setMemoContent] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [timer, setTimer] = useState(600); // 10 phút = 600 giây
+  const [timer, setTimer] = useState(600);
   const [copied, setCopied] = useState(false);
   const walletAddress = 'TUYDJGWvzE54Wpq1AqFXWCUkjbyozrK1L2';
 
   const handleConfirm = (e) => {
     e.preventDefault();
     if (!depositAmount || !memoContent) return;
+    if (user && user.telegram_id) {
+      console.log(`Requesting deposit notification for User ID: ${user.telegram_id}`);
+      notifyAdminOfDeposit(user.telegram_id, depositAmount, memoContent);
+    } else {
+      console.error("User data is not available. Cannot send notification.");
+    }
     setShowConfirmation(true);
   };
 
   const confirmDeposit = () => {
     console.log("Depositing:", { depositAmount, memoContent });
-    // Placeholder để gọi endpoint kiểm tra ví
     const checkWalletStatus = async () => {
       try {
-        // Ví dụ: const response = await fetch('/api/check-wallet', { ... });
         console.log('Checking wallet status for deposit:', { depositAmount, memoContent });
       } catch (error) {
         console.error('Error checking wallet:', error);
@@ -816,15 +1176,6 @@ const DepositForm = ({ onClose }) => {
     onClose();
   };
 
-  // Bộ đếm giờ
-  useEffect(() => {
-    if (!showConfirmation || timer <= 0) return;
-    const interval = setInterval(() => {
-      setTimer((prev) => prev - 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [showConfirmation, timer]);
-
   const formatTimer = () => {
     const minutes = Math.floor(timer / 60).toString().padStart(2, '0');
     const seconds = (timer % 60).toString().padStart(2, '0');
@@ -834,83 +1185,98 @@ const DepositForm = ({ onClose }) => {
   const handleCopy = () => {
     navigator.clipboard.writeText(walletAddress).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // Reset copied sau 2 giây
+      setTimeout(() => setCopied(false), 2000);
     });
   };
 
-  return (
-    <>
-      <div className="page-padding">
-        <div className="form-header">
-          <h2>Deposit Funds</h2>
-          <button onClick={onClose} className="icon-button close-button">×</button>
-        </div>
-        <form className="card" onSubmit={handleConfirm}>
-          <div className="form-group">
-            <label className="form-label">Deposit Amount (USDT)</label>
-            <input
-              type="number"
-              className="form-input"
-              value={depositAmount}
-              onChange={(e) => setDepositAmount(e.target.value)}
-              placeholder="e.g., 100"
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Memo Content</label>
-            <input
-              type="text"
-              className="form-input"
-              value={memoContent}
-              onChange={(e) => setMemoContent(e.target.value)}
-              placeholder="Enter memo content"
-              required
-            />
-          </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
-            Confirm Deposit
-          </button>
-        </form>
-      </div>
+  useEffect(() => {
+    if (!showConfirmation || timer <= 0) return;
+    const interval = setInterval(() => {
+      setTimer((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [showConfirmation, timer]);
 
-      {showConfirmation && (
-        <>
-          <div className="confirmation-overlay" onClick={() => setShowConfirmation(false)}></div>
-          <div className="confirmation-modal card">
-            <p style={{ textAlign: 'center' }}>Deposit {depositAmount} USDT with memo: {memoContent}</p>
-            <p style={{ textAlign: 'center', marginBottom: '1rem' }}>
-              Please transfer to the address below with the exact amount and Memo requested
-            </p>
-            <img
-              src={qrCode}
-              alt="QR Code"
-              style={{ width: '150px', height: '150px', margin: '1rem auto', display: 'block' }}
-              onError={() => console.error('Failed to load QR code')}
-            />
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <p style={{ margin: 0, wordBreak: 'break-all', fontSize: '0.875rem' }}>{walletAddress}</p>
-                <button
-                  className="icon-button"
-                  onClick={handleCopy}
-                  style={{ padding: '0.25rem', background: 'transparent', border: 'none' }}
-                >
-                  <img
-                    src={copied ? copyIcon2 : copyIcon1}
-                    alt={copied ? 'Copied!' : 'Copy'}
-                    style={{ width: '16px', height: '16px' }}
-                    onError={() => console.error('Failed to load copy icon')}
-                  />
-                </button>
-              </div>
-              <p style={{ margin: '0.5rem 0 0 0' }}>Time Remaining</p>
-              <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>{formatTimer()}</p>
+  return (
+    <div className="deposit-modal-wrapper" onClick={onClose}>
+      <div className="deposit-modal-content" onClick={(e) => e.stopPropagation()}>
+        {showConfirmation ? (
+          // Giao diện QR Code và đếm giờ
+          <>
+            <div className="form-header">
+              <h2>Scan QR to Deposit</h2>
+              <button onClick={onClose} className="icon-button close-button">×</button>
             </div>
-          </div>
-        </>
-      )}
-    </>
+            <div className="card" style={{padding: '1rem', border: 'none', background: 'transparent'}}>
+              <p style={{ textAlign: 'center' }}>Deposit {depositAmount} USDT with memo: {memoContent}</p>
+              <p style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                Please transfer to the address below with the exact amount and Memo requested
+              </p>
+              <img
+                src={qrCode}
+                alt="QR Code"
+                style={{ width: '150px', height: '150px', margin: '0 auto', display: 'block' }}
+                onError={() => console.error('Failed to load QR code')}
+              />
+              <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <p style={{ margin: 0, wordBreak: 'break-all', fontSize: '0.875rem' }}>{walletAddress}</p>
+                  <button
+                    className="icon-button"
+                    onClick={handleCopy}
+                    style={{ padding: '0.25rem', background: 'transparent', border: 'none' }}
+                  >
+                    <img
+                      src={copied ? copyIcon2 : copyIcon1}
+                      alt={copied ? 'Copied!' : 'Copy'}
+                      style={{ width: '16px', height: '16px' }}
+                      onError={() => console.error('Failed to load copy icon')}
+                    />
+                  </button>
+                </div>
+                <p style={{ margin: '0.5rem 0 0 0' }}>Time Remaining</p>
+                <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>{formatTimer()}</p>
+              </div>
+            </div>
+          </>
+        ) : (
+          // Giao diện Form nhập liệu
+          <>
+            <div className="form-header">
+              <h2>Deposit Funds</h2>
+              <button onClick={onClose} className="icon-button close-button">×</button>
+            </div>
+            <form className="card" onSubmit={handleConfirm} style={{border: 'none', background: 'transparent', padding: 0}}>
+              <div className="form-group">
+                <label className="form-label">Deposit Amount (USDT)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                  placeholder="e.g., 100"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Memo Content</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={memoContent}
+                  onChange={(e) => setMemoContent(e.target.value)}
+                  placeholder="Enter memo content"
+                  required
+                />
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
+                Confirm Deposit
+              </button>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -973,6 +1339,7 @@ const WithdrawForm = ({ onClose, currentBalance }) => {
 
       {showConfirmation && (
         <>
+        <div className="confirmation-modal-wrapper">
           <div className="confirmation-overlay" onClick={() => setShowConfirmation(false)}></div>
           <div className="confirmation-modal card">
             <h4>Confirm Withdrawal</h4>
@@ -983,6 +1350,7 @@ const WithdrawForm = ({ onClose, currentBalance }) => {
               <button className="btn btn-primary" onClick={confirmWithdrawal}>Confirm</button>
             </div>
           </div>
+        </div>         
         </>
       )}
     </>
@@ -1048,258 +1416,445 @@ const TournamentStatus = ({ startTime }) => {
   );
 };
 
-const ArenaPage = () => {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('tournament');
-  const [tournamentFilter, setTournamentFilter] = useState('all');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [filterAmount, setFilterAmount] = useState('');
-  const [filterCountry, setFilterCountry] = useState('');
-  const [filterSymbol, setFilterSymbol] = useState('');
-  const [filterPanelHeight, setFilterPanelHeight] = useState(0);
-  const filterContentRef = useRef(null);
+const ArenaPage = ({ user }) => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('tournament');
+  const [tournamentFilter, setTournamentFilter] = useState('all');
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterAmount, setFilterAmount] = useState('');
+  const [filterCountry, setFilterCountry] = useState('');
+  const [filterSymbol, setFilterSymbol] = useState('');
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [showJoinConfirm, setShowJoinConfirm] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState(null);
+  const [brokersList, setBrokersList] = useState([]);
+  const [filterPanelHeight, setFilterPanelHeight] = useState(0);
+  const filterContentRef = useRef(null);
+  const [tournamentItems, setTournamentItems] = useState([]);
+  const [waitingMatches, setWaitingMatches] = useState([]);
 
-  const tournamentItems = [
-    {
-      id: 203,
-      title: 'Weekend Hodl Masters',
-      thumbnail: 'https://img.chelseafc.com/image/upload/f_auto,c_fill,ar_16:9,q_90/video/2022/09/20/Thumbnail_16x9_01785.png',
-      prizePool: '1,000,000 USDT',
-      participants: 520,
-      symbol: 'BTC/USDT',
-      startTime: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
-      type: 'live', // Thêm trường type
-    },
-    {
-      id: 201,
-      title: 'Summer Trading Championship',
-      thumbnail: 'https://forexdailyinfo.com/wp-content/uploads/2023/02/grand-capital-trading-tournament.webp',
-      prizePool: '100,000 USDT',
-      participants: 128,
-      symbol: 'All Pairs',
-      startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-      type: 'live', // Thêm trường type
-    },
-    {
-      id: 205,
-      title: 'Demo Weekly Cup',
-      thumbnail: 'https://public.bnbstatic.com/image/cms/blog/20200907/0d73768c-80fa-44e5-bc08-fe0dba9604ae.png',
-      prizePool: '1,600,000 USDT',
-      participants: 850,
-      symbol: 'All Pairs',
-      startTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
-      type: 'demo', // Thêm trường type
-    },
-    {
-      id: 204,
-      title: 'Futures Grand Prix (Season 1)',
-      thumbnail: 'https://static.tildacdn.com/tild3065-6232-4465-b966-646138353438/badge_iq-option-tour.jpg',
-      prizePool: '50,000 USDT',
-      participants: 256,
-      symbol: 'ETH/USDT',
-      startTime: '2025-06-18T12:00:00Z',
-      type: 'live', // Thêm trường type
-    },
-    {
-      id: 202,
-      title: 'Gold Rush Challenge (Demo)',
-      thumbnail: 'https://titanfx.partners/storage/uploads/News/tournament-2025-og_droln.png?w=440&h=0&fit=crop&crop=edges,focalpoint&q=75&auto=format&fm=png',
-      prizePool: '2,000,000 USDT (Virtual)',
-      participants: 64,
-      symbol: 'XAU/USD',
-      startTime: '2025-05-30T12:00:00Z',
-      type: 'demo', // Thêm trường type
-    },
-  ];
-
-  const waitingMatches = [
-    { id: 101, betAmount: 75, symbol: 'XRP/USDT', challenger: { name: 'GoldSeeker', avatar: generateAvatarUrl('GoldSeeker') }, country: 'Vietnam', waitingTime: '00:05:00' },
-    { id: 102, betAmount: 200, symbol: 'SOL/USDC', challenger: { name: 'ForexGiant', avatar: generateAvatarUrl('ForexGiant') }, country: 'USA', waitingTime: '00:12:30' },
-  ];
-
-  const filteredMatches = waitingMatches.filter(match => {
-    const amountCondition = !filterAmount || match.betAmount <= parseInt(filterAmount);
-    const countryCondition = !filterCountry || match.country.toLowerCase().includes(filterCountry.toLowerCase());
-    const symbolCondition = !filterSymbol || match.symbol.toLowerCase().includes(filterSymbol.toLowerCase());
-    return amountCondition && countryCondition && symbolCondition;
-  });
-
-  useEffect(() => {
-    setFilterPanelHeight(showFilters && filterContentRef.current ? filterContentRef.current.scrollHeight : 0);
-  }, [showFilters]);
-
-  if (showCreateForm) {
-    return <CreateNewMatchForm onClose={() => setShowCreateForm(false)} />;
-  }
-
-  return (
-    <div className="page-padding">
-      <div className="wallet-tabs">
-        <button
-          className={`wallet-tab-button ${activeTab === 'tournament' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tournament')}
-        >
-          Tournament
-        </button>
-        <button
-          className={`wallet-tab-button ${activeTab === 'personal' ? 'active' : ''}`}
-          onClick={() => setActiveTab('personal')}
-        >
-          1 vs 1 Match
-        </button>
-      </div>
-
-      {activeTab === 'tournament' && (() => {
-        // === BƯỚC 3.1: THÊM LOGIC LỌC DỮ LIỆU VÀO ĐÂY ===
-        const filteredTournaments = tournamentItems.filter(item => {
-            if (tournamentFilter === 'all') return true;
-            return item.type === tournamentFilter;
-        });
-        // ===============================================
-
-        return (
-            <>
-                {/* === BƯỚC 3.2: THÊM CÁC NÚT LỌC VÀO ĐÂY === */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.5rem' }}>
-                    <button 
-                        className={`btn ${tournamentFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`} 
-                        onClick={() => setTournamentFilter('all')}
-                        style={{fontSize: '0.9rem', padding: '0.4rem 0.8rem'}}
-                    >
-                        All
-                    </button>
-                    <button 
-                        className={`btn ${tournamentFilter === 'live' ? 'btn-primary' : 'btn-secondary'}`} 
-                        onClick={() => setTournamentFilter('live')}
-                        style={{fontSize: '0.9rem', padding: '0.4rem 0.8rem'}}
-                    >
-                        Live
-                    </button>
-                    <button 
-                        className={`btn ${tournamentFilter === 'demo' ? 'btn-primary' : 'btn-secondary'}`} 
-                        onClick={() => setTournamentFilter('demo')}
-                        style={{fontSize: '0.9rem', padding: '0.4rem 0.8rem'}}
-                    >
-                        Demo
-                    </button>
-                </div>
-                {/* =========================================== */}
-                
-                <div className="tournament-list">
-                    {/* === BƯỚC 3.3: SỬ DỤNG DỮ LIỆU ĐÃ LỌC === */}
-                    {filteredTournaments.map(item => (
-                        <div key={item.id} className="card tournament-card">
-                            <div className="tournament-thumbnail-wrapper">
-                                <img
-                                    src={item.thumbnail}
-                                    alt={item.title}
-                                    className="tournament-thumbnail"
-                                    loading="lazy"
-                                    onError={(e) => {
-                                        console.error(`Failed to load image: ${item.thumbnail}`);
-                                        e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
-                                    }}
-                                    onLoad={(e) => console.log(`Image loaded: ${item.thumbnail}, size: ${e.target.naturalWidth}x${e.target.naturalHeight}`)}
-                                />
-                                <TournamentStatus startTime={item.startTime} />
-                            </div>
-                            <div className="tournament-content">
-                                <h3 className="tournament-title">{item.title}</h3>
-                                <div className="tournament-details-grid">
-                                    <div className="detail-item">
-                                        <span>Prize Pool</span>
-                                        <p className="detail-value accent">{item.prizePool}</p>
-                                    </div>
-                                    <div className="detail-item">
-                                        <span>Participants</span>
-                                        <p className="detail-value">{item.participants}</p>
-                                    </div>
-                                    <div className="detail-item">
-                                        <span>Symbol</span>
-                                        <p className="detail-value primary">{item.symbol}</p>
-                                    </div>
-                                </div>
-                                <button
-                                    className="btn btn-primary"
-                                    style={{ width: '100%', marginTop: '1rem' }}
-                                    onClick={() => navigate(`/tournament/${item.id}`)}
-                                >
-                                    Detail
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </>
-        );
-      })()}
-
-      {activeTab === 'personal' && (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.5rem' }}>
-            <button className="btn btn-primary" onClick={() => setShowFilters(!showFilters)}>
-              Filters
-              <svg className={`filter-arrow ${showFilters ? 'open' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-            <button className="btn btn-accent" onClick={() => setShowCreateForm(true)}>+ New Match</button>
+  // [SỬA] ĐỊNH NGHĨA COMPONENT CON Ở ĐÂY, BÊN NGOÀI RETURN
+  const JoinConfirmModal = ({ onClose, onConfirm, match }) => {
+    return (
+      <>
+        <div className="confirmation-overlay" onClick={onClose}></div>
+        <div className="confirmation-modal card">
+          <h4>Xác nhận tham gia Challenge</h4>
+          <p>Bạn có chắc muốn tham gia trận {match.id} với bet {match.betAmount} USDT?</p>
+          <div className="confirmation-buttons">
+            <button className="btn btn-secondary" onClick={onClose}>Hủy</button>
+            <button className="btn btn-primary" onClick={onConfirm}>Xác nhận</button>
           </div>
-          
-          <div className="filters-panel" style={{ maxHeight: `${filterPanelHeight}px`, marginBottom: filterPanelHeight > 0 ? '1rem' : '0' }}>
-            <div className="card" ref={filterContentRef} style={{ overflow: 'hidden' }}>
-              <div className="form-group">
-                <label className="form-label">Max Bet Amount</label>
-                <input type="number" className="form-input" value={filterAmount} onChange={e => setFilterAmount(e.target.value)} placeholder="e.g., 200" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Country</label>
-                <input type="text" className="form-input" value={filterCountry} onChange={e => setFilterCountry(e.target.value)} placeholder="e.g., Vietnam" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Symbol</label>
-                <input type="text" className="form-input" value={filterSymbol} onChange={e => setFilterSymbol(e.target.value)} placeholder="e.g., BTC, GOLD" />
-              </div>
-            </div>
-          </div>
+        </div>
+      </>
+    );
+  };
 
-          {filteredMatches.map(match => (
-            <div key={match.id} className="card arena-match-card">
-              <div className="challenger-info">
-                <img src={match.challenger.avatar} alt={match.challenger.name} className="challenger-avatar" />
-                <div>
-                  <p className="challenger-name">{match.challenger.name}</p>
-                  <p className="challenger-country">{match.country}</p>
-                </div>
-              </div>
-              <div className="details-section">
-                <div className="detail-item">
-                  <span>Time</span>
-                  <p className="detail-value">{match.waitingTime}</p>
-                </div>
-                <div className="detail-item">
-                  <span>Symbol</span>
-                  <p className="detail-value primary">{match.symbol}</p>
-                </div>
-                <div className="detail-item">
-                  <span>Bet</span>
-                  <p className="detail-value accent">{match.betAmount} USDT</p>
-                </div>
-              </div>
-              <button
-                className="btn btn-primary"
-                style={{ width: '100%', marginTop: '1rem' }}
-                onClick={() => navigate(`/arena/${match.id}`)}
-              >
-                Detail
-              </button>
-            </div>
-          ))}
-        </>
-      )}
-    </div>
-  );
+  const handleJoinChallenge = (match) => {
+    console.log('User data for check:', user);
+    const betWallet = user?.bet_wallet || 0;
+    console.log('Bet wallet:', betWallet, 'Match bet:', match.bet);
+    if (betWallet < match.bet) {
+      console.log('Bet wallet < bet, show modal - current showDepositModal:', showDepositModal);
+      setSelectedMatch(match);
+      setShowDepositModal(true);
+      console.log('After set showDepositModal to true');
+      return;
+    }
+    const userFromSession = JSON.parse(sessionStorage.getItem('user_data')) || {};
+    const linkedBrokers = userFromSession.linkedBrokers || [];
+    console.log('Linked brokers:', linkedBrokers, 'Match broker_id:', match.broker_id);
+    if (!linkedBrokers.includes(match.broker_id)) {
+      console.log('No broker id, show modal');
+      setSelectedMatch(match);
+      setShowDepositModal(true);
+      return;
+    }
+    console.log('Checks ok, show join confirm');
+    setSelectedMatch(match);
+    setShowJoinConfirm(true);
+    console.log('Join ok, navigate to match detail');
+    navigate(`/match/${match.id}`);
+  };
+
+  const handleConfirmJoin = async () => {
+    if (!selectedMatch || !user) return;
+    console.log('Confirm join, update player2_id with user id:', user.telegram_id);
+    try {
+      const response = await fetch(`http://localhost:8000/api/matches/${selectedMatch.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player2_id: user.telegram_id, status: "live" })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Update failed:', response.status, errorData.detail);
+        alert('Tham gia thất bại: ' + errorData.detail);
+        return;
+      }
+      const data = await response.json();
+      console.log('Update success:', data);
+      fetchWaitingMatches(true);
+      navigate(`/match/${selectedMatch.id}`);
+    } catch (error) {
+      console.error('Error update match:', error);
+      alert('Lỗi khi tham gia trận đấu');
+    } finally {
+      setShowJoinConfirm(false);
+      setSelectedMatch(null);
+    }
+  };
+
+  const fetchTournaments = async () => {
+    console.log('Checking sessionStorage for tournaments_data');
+    const cachedTournaments = sessionStorage.getItem('tournaments_data');
+    if (cachedTournaments) {
+      console.log('Using cached tournaments from sessionStorage');
+      const parsedData = JSON.parse(cachedTournaments);
+      setTournamentItems(parsedData.map(t => ({
+        id: t.id,
+        title: t.title,
+        thumbnail: t.thumbnail.startsWith('http') ? t.thumbnail : `http://localhost:8000/${t.thumbnail}`,
+        prizePool: t.prize_pool + ' USDT',
+        participants: t.participants,
+        symbol: t.symbol,
+        startTime: t.event_time,
+        type: t.type || 'live'
+      })));
+      return;
+    }
+    try {
+      const homeCached = sessionStorage.getItem('tournaments_home');
+      let homeTournaments = [];
+      if (homeCached) {
+        homeTournaments = JSON.parse(homeCached);
+        console.log('Loaded home tournaments (5) from session:', homeTournaments.length);
+      } else {
+        console.log('No home tournaments in session, fetching full from offset=0');
+      }
+      const offset = homeTournaments.length > 0 ? 5 : 0;
+      const limit = homeTournaments.length > 0 ? 5 : 10;
+      const response = await fetch(`http://localhost:8000/api/tournaments/?offset=${offset}&limit=${limit}`);
+      console.log('Fetch tournaments response status:', response.status);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('Fetched tournaments (raw):', data);
+      const mappedData = data.map(t => ({
+        id: t.id,
+        title: t.title,
+        thumbnail: `http://localhost:8000/${t.thumbnail}`,
+        prizePool: t.prize_pool + ' USDT',
+        participants: t.participants,
+        symbol: t.symbol,
+        startTime: t.event_time,
+        type: t.type || 'live'
+      }));
+      const fullData = homeTournaments.length > 0 ? [...homeTournaments, ...mappedData] : mappedData;
+      const normalizedData = fullData.map(t => {
+          if (t.prizePool) return t;
+          return {
+              ...t,
+              prizePool: t.prize_pool ? `${t.prize_pool} USDT` : '0 USDT'
+          };
+      });
+      setTournamentItems(normalizedData);
+      sessionStorage.setItem('tournaments_data', JSON.stringify(normalizedData));
+      console.log('Stored full tournaments to sessionStorage, count:', fullData.length);
+    } catch (error) {
+      console.error('Error fetching tournaments:', error.message);
+    }
+  };
+
+  const fetchWaitingMatches = async (clearCache = false) => {
+    if (clearCache) sessionStorage.removeItem('waiting_matches');
+    console.log('Checking sessionStorage for waiting_matches');
+    const cachedWaiting = sessionStorage.getItem('waiting_matches');
+    if (cachedWaiting) {
+      console.log('Using cached waiting matches from sessionStorage');
+      const parsedData = JSON.parse(cachedWaiting);
+      setWaitingMatches(parsedData);
+      return;
+    }
+    try {
+      const waitingUrl = 'http://localhost:8000/api/matches/waiting';
+      console.log('Full URL before fetch waiting matches:', waitingUrl);
+      const response = await fetch(waitingUrl);
+      console.log('Fetch waiting matches status:', response.status);
+      let data = [];
+      if (response.ok) {
+        data = await response.json();
+        console.log('Fetched waiting matches:', data);
+      } else {
+        let errorDetail = 'No detail available';
+        try {
+          const errorData = await response.json();
+          errorDetail = errorData.detail || errorData;
+        } catch (jsonErr) {
+          errorDetail = await response.text();
+        }
+        console.error('Fetch waiting matches failed, status:', response.status, 'detail:', errorDetail);
+      }
+      setWaitingMatches(data);
+      sessionStorage.setItem('waiting_matches', JSON.stringify(data));
+    } catch (error) {
+      console.error('Error fetching waiting matches:', error);
+    }
+  };
+
+  const fetchBrokersForArena = async () => {
+    console.log('fetchBrokersForArena called - checking sessionStorage');
+    let brokers = [];
+    const cached = sessionStorage.getItem('brokers_data');
+    if (cached) {
+      brokers = JSON.parse(cached).brokers || [];
+      console.log('Loaded', brokers.length, 'brokers from cache');
+    }
+    if (brokers.length === 0) {
+      try {
+        const response = await fetch('http://localhost:8000/api/brokers/list');
+        if (!response.ok) throw new Error('Fetch failed');
+        const data = await response.json();
+        brokers = data.brokers.map(b => ({ id: b.id, name: b.broker_name }));
+        sessionStorage.setItem('brokers_data', JSON.stringify({ brokers }));
+        console.log('Fetched and stored full brokers:', brokers.length);
+      } catch (error) {
+        console.error('Error fetching brokers for Arena:', error);
+      }
+    } else {
+      try {
+        const response = await fetch('http://localhost:8000/api/brokers/list');
+        if (!response.ok) throw new Error('Fetch failed');
+        const data = await response.json();
+        const allBrokers = data.brokers;
+        const existingIds = brokers.map(b => b.id);
+        const missingBrokers = allBrokers.filter(b => !existingIds.includes(b.id));
+        if (missingBrokers.length > 0) {
+          brokers = [...brokers, ...missingBrokers.map(b => ({ id: b.id, name: b.broker_name }))];
+          sessionStorage.setItem('brokers_data', JSON.stringify({ brokers }));
+          console.log('Fetched and merged missing brokers:', missingBrokers.length);
+        } else {
+          console.log('No missing brokers, using cache');
+        }
+      } catch (error) {
+        console.error('Error checking missing brokers:', error);
+      }
+    }
+    setBrokersList(brokers);
+  };
+
+  useEffect(() => {
+    fetchTournaments();
+    fetchWaitingMatches();
+    fetchBrokersForArena();
+  }, []);
+
+  const filteredMatches = waitingMatches.map(match => ({
+    ...match,
+    betAmount: match.bet,
+    symbol: match.pair,
+    waitingTime: 'It is the waiting time',
+    country: 'Vietnam',
+    challenger: {
+      name: match.player1_name || 'Anonymous',
+      avatar: match.player1_avatar || generateAvatarUrl(match.player1_name || 'Anonymous')
+    }
+  })).filter(match => {
+    const amountCondition = !filterAmount || match.betAmount <= parseInt(filterAmount);
+    const countryCondition = !filterCountry || match.country.toLowerCase().includes(filterCountry.toLowerCase());
+    const symbolCondition = !filterSymbol || match.symbol.toLowerCase().includes(filterSymbol.toLowerCase());
+    return amountCondition && countryCondition && symbolCondition;
+  });
+
+  useEffect(() => {
+    setFilterPanelHeight(showFilters && filterContentRef.current ? filterContentRef.current.scrollHeight : 0);
+  }, [showFilters]);
+
+  if (showCreateForm) {
+    return <CreateNewMatchForm onClose={() => setShowCreateForm(false)} brokersList={brokersList} onCreateSuccess={() => fetchWaitingMatches(true)} user={user} />;
+  }
+
+  return (
+    <div className="page-padding">
+      <div className="wallet-tabs">
+        <button
+          className={`wallet-tab-button ${activeTab === 'tournament' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tournament')}
+        >
+          Tournament
+        </button>
+        <button
+          className={`wallet-tab-button ${activeTab === 'personal' ? 'active' : ''}`}
+          onClick={() => setActiveTab('personal')}
+        >
+          1 vs 1 Match
+        </button>
+      </div>
+
+      {activeTab === 'tournament' && (() => {
+        const filteredTournaments = tournamentItems.filter(item => {
+          if (tournamentFilter === 'all') return true;
+          return item.type === tournamentFilter;
+        });
+        
+        // [SỬA] Bỏ hoàn toàn việc định nghĩa component con ở đây
+        return (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.5rem' }}>
+              <button
+                className={`btn ${tournamentFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setTournamentFilter('all')}
+                style={{fontSize: '0.9rem', padding: '0.4rem 0.8rem'}}
+              >
+                All
+              </button>
+              <button
+                className={`btn ${tournamentFilter === 'live' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setTournamentFilter('live')}
+                style={{fontSize: '0.9rem', padding: '0.4rem 0.8rem'}}
+              >
+                Live
+              </button>
+              <button
+                className={`btn ${tournamentFilter === 'demo' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setTournamentFilter('demo')}
+                style={{fontSize: '0.9rem', padding: '0.4rem 0.8rem'}}
+              >
+                Demo
+              </button>
+            </div>
+            
+            <div className="tournament-list">
+              {filteredTournaments.map(item => (
+                <div key={item.id} className="card tournament-card">
+                  <div className="tournament-thumbnail-wrapper">
+                    <img
+                      src={item.thumbnail}
+                      alt={item.title}
+                      className="tournament-thumbnail"
+                      loading="lazy"
+                      onError={(e) => {
+                        console.error(`Failed to load image: ${item.thumbnail}`);
+                        e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
+                      }}
+                      onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }}
+                    />
+                    <TournamentStatus startTime={item.startTime} />
+                  </div>
+                  <div className="tournament-content">
+                    <h3 className="tournament-title">{item.title}</h3>
+                    <div className="tournament-details-grid">
+                      <div className="detail-item">
+                        <span>Prize Pool</span>
+                        <p className="detail-value accent">{item.prizePool}</p>
+                      </div>
+                      <div className="detail-item">
+                        <span>Participants</span>
+                        <p className="detail-value">{item.participants}</p>
+                      </div>
+                      <div className="detail-item">
+                        <span>Symbol</span>
+                        <p className="detail-value primary">{item.symbol}</p>
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-primary"
+                      style={{ width: '100%', marginTop: '1rem' }}
+                      onClick={() => navigate(`/tournament/${item.id}`)}
+                    >
+                      Detail
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        );
+      })()}
+
+      {activeTab === 'personal' && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.5rem' }}>
+            <button className="btn btn-primary" onClick={() => setShowFilters(!showFilters)}>
+              Filters
+              <svg className={`filter-arrow ${showFilters ? 'open' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <button className="btn btn-accent" onClick={() => setShowCreateForm(true)}>+ New Match</button>
+          </div>
+          
+          <div className="filters-panel" style={{ maxHeight: `${filterPanelHeight}px`, marginBottom: filterPanelHeight > 0 ? '1rem' : '0' }}>
+            <div className="card" ref={filterContentRef} style={{ overflow: 'hidden' }}>
+              <div className="form-group">
+                <label className="form-label">Max Bet Amount</label>
+                <input type="number" className="form-input" value={filterAmount} onChange={e => setFilterAmount(e.target.value)} placeholder="e.g., 200" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Country</label>
+                <input type="text" className="form-input" value={filterCountry} onChange={e => setFilterCountry(e.target.value)} placeholder="e.g., Vietnam" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Symbol</label>
+                <input type="text" className="form-input" value={filterSymbol} onChange={e => setFilterSymbol(e.target.value)} placeholder="e.g., BTC, GOLD" />
+              </div>
+            </div>
+          </div>
+
+          {filteredMatches.map(match => (
+            <div key={match.id} className="card arena-match-card">
+              <div className="challenger-info">
+                <img src={match.challenger.avatar} alt={match.challenger.name} className="challenger-avatar" />
+                <div>
+                  <p className="challenger-name">{match.challenger.name}</p>
+                  <p className="challenger-country">{match.country}</p>
+                </div>
+              </div>
+              <div className="details-section">
+                <div className="detail-item">
+                  <span>Time</span>
+                  <p className="detail-value">{match.duration_time} hours</p>
+                </div>
+                <div className="detail-item">
+                  <span>Symbol</span>
+                  <p className="detail-value primary">{match.symbol}</p>
+                </div>
+                <div className="detail-item">
+                  <span>Bet</span>
+                  <p className="detail-value accent">{match.betAmount} USDT</p>
+                </div>
+              </div>
+              <button
+                className="btn btn-primary"
+                style={{ width: '100%', marginTop: '1rem' }}
+                onClick={() => {
+                  if (match.status === "waiting") {
+                    handleJoinChallenge(match);
+                  } else {
+                    navigate(`/match/${match.id}`);
+                  }
+                }}
+              >
+                {match.status === "waiting" ? "Join Challenge" : "Detail"}
+              </button>
+            </div>
+          ))}
+        </>
+      )}
+      {showDepositModal && (
+        <DepositForm onClose={() => setShowDepositModal(false)} user={user} />
+      )}
+      {showJoinConfirm && (
+        <JoinConfirmModal
+          onClose={() => setShowJoinConfirm(false)}
+          onConfirm={handleConfirmJoin}
+          match={selectedMatch}
+        />
+      )}
+    </div>
+  );
 };
 
 const SettingsSidebar = ({ show, onClose }) => {
@@ -1615,18 +2170,16 @@ const ChatbotPage = () => {
 // ===================================================================================
 
 const AppContent = () => {
+  console.log('AppContent component loaded');  // Log 1: Check App load
+  console.log('React version in App:', React.version);  // Log 2: So sánh version với TournamentDetail
+
   const [showSettingsSidebar, setShowSettingsSidebar] = useState(false);
   const [showHeader, setShowHeader] = useState(true);
   const [showFooter, setShowFooter] = useState(true);
   const [activePage, setActivePage] = useState('home');
   const location = useLocation();
+  const [user, setUser] = useState(null);
 
-  const [user, setUser] = useState({
-    id: 'user001',
-    name: 'Nguyen Van A',
-    // Giả sử người dùng đã liên kết tài khoản với Binance và XM
-    linkedBrokers: ['Binance', 'XM'], 
-  });
   const [walletData, setWalletData] = useState({
     // Sửa đổi số dư ở đây để kiểm tra các trường hợp khác nhau
     // Ví dụ: 1500.50 (đủ điều kiện) hoặc 400.00 (không đủ)
@@ -1635,6 +2188,46 @@ const AppContent = () => {
     totalWithdrawals: '3000.00 USDT',
     // ... các dữ liệu khác
   });
+
+  useEffect(() => {
+    const loadUser = async () => {
+      // Lấy từ session trước
+      const cachedUser = sessionStorage.getItem('user_data');
+      if (cachedUser) {
+        console.log('Loaded user from sessionStorage:', cachedUser);  // Log để nhìn rõ data từ session
+        setUser(JSON.parse(cachedUser));
+        return;
+      }
+
+      // Lấy param userid từ URL
+      const params = new URLSearchParams(location.search);
+      let userid = params.get('userid');
+      console.log('URL param userid:', userid);  // Log để nhìn rõ param từ domain
+
+      if (!userid) {
+        userid = 6461541179;  // Default nếu không có
+        console.log('No userid param, using default:', userid);  // Log để nhìn rõ fallback
+      }
+
+      try {
+        const response = await fetch(`http://localhost:8000/api/users/${userid}`);
+        console.log('Fetch user response status:', response.status);
+        if (!response.ok) {
+          const errorText = await response.text();  // Thêm: Nhìn detail backend ("User not found")
+          console.error('Fetch user failed, status:', response.status, 'detail:', errorText);
+          return;
+        }
+        const data = await response.json();
+        console.log('Fetched user data:', data);
+        setUser(data);
+        sessionStorage.setItem('user_data', JSON.stringify(data));
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      }
+    };
+
+    loadUser();
+  }, [location.search]);
 
   useEffect(() => {
     const mainContent = document.getElementById('main-content');
@@ -1703,9 +2296,9 @@ useEffect(() => {
       >
         <Routes>
           <Route path="/home" element={<HomePage />} />
-          <Route path="/news" element={<NewsPage />} />
+          <Route path="/news" element={<NewsPage user={user} />} />
           <Route path="/news/:id" element={<NewsDetail />} />
-          <Route path="/arena" element={<ArenaPage />} />
+          <Route path="/arena" element={<ArenaPage user={user} />} />
           <Route path="/tournament/:id" element={<TournamentDetail user={user} walletData={walletData} />} />
           <Route path="/arena/:id" element={<ArenaDetail />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />

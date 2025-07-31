@@ -20,18 +20,47 @@ const ArenaDetail = () => {
     const navigate = useNavigate();
     const widgetRef = useRef(null);
 
-    const rawMatchData = arenaMatchesData.find(match => match.id === parseInt(id));
+    const [matchData, setMatchData] = useState(null);  // State thay vì hardcode
 
-    // TỰ ĐỘNG TẠO RA PLAYER 1 VÀ PLAYER 2 TỪ DỮ LIỆU ĐẦU VÀO
-    const matchData = rawMatchData ? {
-        id: rawMatchData.id,
-        pair: rawMatchData.symbol,
-        betAmount: rawMatchData.betAmount,
-        player1: { name: rawMatchData.challenger.name, avatar: generateAvatarUrl(rawMatchData.challenger.name), score: 5, odds: '1:1.0' },
-        player2: { name: 'Myself', avatar: generateAvatarUrl('Bot'), score: 5, odds: '1:1.0' },
-        timeRemaining: rawMatchData.waitingTime,
-        views: Math.floor(Math.random() * 100),
-    } : null;
+    // useEffect mới: Fetch detail từ endpoint với sessionStorage
+    useEffect(() => {
+        const fetchArenaDetail = async () => {
+            const cacheKey = `arena_detail_${id}`;
+            console.log(`Checking sessionStorage for ${cacheKey}`);  // Log kiểm tra cache
+            const cachedData = sessionStorage.getItem(cacheKey);
+            if (cachedData) {
+                console.log(`Using cached arena detail for id ${id}`);
+                setMatchData(JSON.parse(cachedData));
+                return;
+            }
+            try {
+                const response = await fetch(`http://localhost:8000/api/matches/waiting/${id}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log('Fetched arena detail:', data);  // Log data fetched
+
+                // TỰ ĐỘNG TẠO RA PLAYER 1 VÀ PLAYER 2 TỪ DỮ LIỆU FETCHED (giữ nguyên logic)
+                const processedData = {
+                    id: data.id,
+                    pair: data.pair,
+                    betAmount: data.bet,
+                    player1: { name: data.owner || 'Challenger', avatar: generateAvatarUrl(data.owner || 'Challenger'), score: data.player1_score || 5, odds: data.player1_odds || '1:1.0' },  // Adjust field từ backend
+                    player2: { name: 'Myself', avatar: generateAvatarUrl('Bot'), score: data.player2_score || 5, odds: data.player2_odds || '1:1.0' },
+                    timeRemaining: data.timeRemaining,
+                    views: data.views || Math.floor(Math.random() * 100),
+                };
+                setMatchData(processedData);
+                sessionStorage.setItem(cacheKey, JSON.stringify(processedData));  // Lưu processed data
+                console.log(`Stored arena detail for id ${id} to sessionStorage`);
+            } catch (error) {
+                console.error('Error fetching arena detail:', error);
+                setMatchData(null);  // Để show Not Found
+            }
+        };
+        fetchArenaDetail();
+    }, [id]);
 
     if (!matchData) {
         return (
@@ -69,6 +98,7 @@ const ArenaDetail = () => {
         script.onload = () => {
             const container = document.getElementById('tradingview_widget_container');
             if (container && !container.hasChildNodes()) {
+                console.log("Pair for TradingView:", matchData.pair);  // Log để check trước khi init widget
                 new window.TradingView.widget({
                     width: '100%', height: 400,
                     symbol: `BINANCE:${matchData.pair.split(' ')[0].replace('/', '')}`,

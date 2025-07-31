@@ -27,8 +27,61 @@ const initialBets = [
 const MatchDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const matchData = matchesData.find(match => match.id === parseInt(id));
   const widgetRef = useRef(null); // Ref để theo dõi widget
+
+  const [matchData, setMatchData] = useState(null);  // State thay vì hardcode
+
+  // useEffect mới: Fetch detail từ endpoint với sessionStorage
+  useEffect(() => {
+    const fetchMatchDetail = async () => {
+      const cacheKey = `match_detail_${id}`;
+      console.log(`Checking sessionStorage for ${cacheKey}`);  // Log kiểm tra cache
+      const cachedData = sessionStorage.getItem(cacheKey);
+      if (cachedData) {
+        console.log(`Using cached match detail for id ${id}`);
+        setMatchData(JSON.parse(cachedData));
+        return;
+      }
+      try {
+        const response = await fetch(`http://localhost:8000/api/matches/${id}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Fetched pair:', data.pair);
+        console.log('Fetched match detail:', data);
+        // Get player2 info nếu player2_id exist
+        let player2 = { name: 'Waiting', avatar: generateAvatarUrl('Waiting'), score: 0, odds: '1:1.0' };
+        if (data.player2_id) {
+          try {
+            const userRes = await fetch(`http://localhost:8000/api/users/${data.player2_id}`);
+            if (userRes.ok) {
+              const userData = await userRes.json();
+              player2 = {
+                name: userData.username || 'Anonymous',
+                avatar: userData.avatar || generateAvatarUrl(userData.username || 'Anonymous'),
+                score: data.player2_score || 0,
+                odds: data.player2_odds || '1:1.0'
+              };
+              console.log('Fetched player2 info:', player2); // Log để xem avatar/username
+            } else {
+              console.error('Failed to fetch player2 user, status:', userRes.status);
+            }
+          } catch (error) {
+            console.error('Error fetch player2:', error);
+          }
+        }
+        data.player2 = player2;
+        setMatchData(data);
+        sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        console.log(`Stored match detail for id ${id} to sessionStorage`);
+      } catch (error) {
+        console.error('Error fetching match detail:', error);
+        setMatchData(null);  // Để show Not Found
+      }
+    };
+    fetchMatchDetail();
+  }, [id]);
 
   if (!matchData) {
     return (
