@@ -1857,20 +1857,8 @@ const ArenaPage = ({ user }) => {
   );
 };
 
-const SettingsSidebar = ({ show, onClose }) => {
+const SettingsSidebar = ({ show, onClose, user }) => {
     const [currentView, setCurrentView] = useState('main');
-
-    // Di chuyển userData vào trong để quản lý tập trung
-    const userData = {
-        name: 'Nguyen Van A',
-        email: 'nguyenvana@example.com',
-        telegramId: '@nguyenvana_trader',
-        walletAddress: '0x123...abcd',
-        vipLevel: 'Gold',
-        affiliateCode: 'REF123XYZ',
-        isVerified: true,
-        joinDate: '2024-01-15',
-    };
 
     const handleBack = () => setCurrentView('main');
     
@@ -1881,10 +1869,9 @@ const SettingsSidebar = ({ show, onClose }) => {
     };
 
     const renderView = () => {
-      console.log('Rendering view:', currentView); // Debug view hiện tại
       switch(currentView) {
         case 'personalInfo':
-          return <PersonalInfoView onBack={handleBack} userData={userData} />;
+          return <PersonalInfoView onBack={handleBack} user={user} />;
         case 'language':
           return <LanguageView onBack={handleBack} />;
         case 'terms':
@@ -1909,11 +1896,7 @@ const SettingsSidebar = ({ show, onClose }) => {
                 <li>
                   <button
                     className="sidebar-nav-item"
-                    onClick={() => {
-                      console.log('Navigating to personalInfo'); // Debug click
-                      setCurrentView('personalInfo');
-                    }}
-                    style={{ pointerEvents: 'auto' }}
+                    onClick={() => setCurrentView('personalInfo')}
                   >
                     <span>Personal Information</span>
                     <img
@@ -1927,11 +1910,7 @@ const SettingsSidebar = ({ show, onClose }) => {
                 <li>
                   <button
                     className="sidebar-nav-item"
-                    onClick={() => {
-                      console.log('Navigating to language');
-                      setCurrentView('language');
-                    }}
-                    style={{ pointerEvents: 'auto' }}
+                    onClick={() => setCurrentView('language')}
                   >
                     <span>Language</span>
                     <img
@@ -1945,11 +1924,7 @@ const SettingsSidebar = ({ show, onClose }) => {
                 <li>
                   <button
                     className="sidebar-nav-item"
-                    onClick={() => {
-                      console.log('Navigating to terms');
-                      setCurrentView('terms');
-                    }}
-                    style={{ pointerEvents: 'auto' }}
+                    onClick={() => setCurrentView('terms')}
                   >
                     <span>Terms of Service</span>
                     <img
@@ -1963,11 +1938,7 @@ const SettingsSidebar = ({ show, onClose }) => {
                 <li>
                   <button
                     className="sidebar-nav-item"
-                    onClick={() => {
-                      console.log('Navigating to about');
-                      setCurrentView('about');
-                    }}
-                    style={{ pointerEvents: 'auto' }}
+                    onClick={() => setCurrentView('about')}
                   >
                     <span>About Project</span>
                     <img
@@ -1992,7 +1963,39 @@ const SettingsSidebar = ({ show, onClose }) => {
     );
 };
 
-const PersonalInfoView = ({ onBack, userData }) => {
+const PersonalInfoView = ({ onBack, user }) => {
+    const [copied, setCopied] = useState(false);
+
+    // Hàm xử lý sao chép link affiliate
+    const handleCopyAffiliateLink = () => {
+        if (user?.affiliate) {
+            navigator.clipboard.writeText(user.affiliate).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000); // Reset trạng thái sau 2 giây
+            });
+        }
+    };
+
+    // Giao diện loading nếu chưa có dữ liệu user
+    if (!user) {
+        return (
+            <div className="sidebar-view">
+                <div className="sidebar-view-header">
+                    <button className="icon-button back-button" onClick={onBack}>
+                        <img src={arrowIcon} alt="Back" style={{ width: '18px', height: '18px' }} onError={() => console.error('Failed to load arrow icon')} />
+                    </button>
+                    <h3 className="sidebar-title">Personal Information</h3>
+                </div>
+                <div style={{ padding: '1rem', textAlign: 'center' }}>Loading...</div>
+            </div>
+        );
+    }
+    
+    // Ưu tiên avatar thật, nếu không có thì tạo placeholder
+    const avatarUrl = user.avatar 
+        ? `https://f2farena.com/${user.avatar}` 
+        : generateAvatarUrl(user.fullname || user.username || 'User');
+
     return (
         <div className="sidebar-view">
             <div className="sidebar-view-header">
@@ -2007,20 +2010,41 @@ const PersonalInfoView = ({ onBack, userData }) => {
                 <h3 className="sidebar-title">Personal Information</h3>
             </div>
             <div className="personal-info-header">
-                <img src={generateAvatarUrl(userData.name)} alt="User Avatar" className="personal-info-avatar" />
-                <h4 className="personal-info-name">{userData.name}</h4>
-                <p className="personal-info-id">{userData.telegramId}</p>
+                <img src={avatarUrl} alt="User Avatar" className="personal-info-avatar" />
+                <h4 className="personal-info-name">{user.fullname || user.username}</h4>
+                <p className="personal-info-id">@{user.username || user.telegram_id}</p>
             </div>
             <ul className="sidebar-nav-list scrollable">
-                <li className="list-item"><span className="list-item-label">Email</span><span className="list-item-value">{userData.email}</span></li>
-                <li className="list-item"><span className="list-item-label">Wallet Address</span><span className="list-item-value">{userData.walletAddress}</span></li>
-                <li className="list-item"><span className="list-item-label">VIP Level</span><span className="list-item-value accent">{userData.vipLevel}</span></li>
                 <li className="list-item">
-                    <span className="list-item-label">Affiliate Code</span>
-                    <span className="list-item-value">{userData.affiliateCode}</span>
+                    <span className="list-item-label">Email</span>
+                    <span className="list-item-value">{user.email || 'Chưa cập nhật'}</span>
                 </li>
-                <li className="list-item"><span className="list-item-label">Verified</span><span className={`list-item-value ${userData.isVerified ? 'verified' : 'unverified'}`}>{userData.isVerified ? 'Yes' : 'No'}</span></li>
-                <li className="list-item"><span className="list-item-label">Join Date</span><span className="list-item-value">{userData.joinDate}</span></li>
+                <li className="list-item">
+                    <span className="list-item-label">Wallet Address</span>
+                    <span className="list-item-value">{user.wallet_address || 'Chưa cập nhật'}</span>
+                </li>
+                <li className="list-item">
+                    <span className="list-item-label">VIP Level</span>
+                    <span className="list-item-value accent">{user.vip_level}</span>
+                </li>
+                <li className="list-item">
+                    <span className="list-item-label">Affiliate Link</span>
+                    <button onClick={handleCopyAffiliateLink} className="copy-link-button" style={{background:'var(--color-primary)',color:'white',border:'none',padding:'4px 8px',borderRadius:'4px',cursor:'pointer',fontSize:'0.8rem'}}>
+                        {copied ? 'Đã sao chép!' : 'Sao chép link'}
+                    </button>
+                </li>
+                <li className="list-item">
+                    <span className="list-item-label">Verified</span>
+                    <span className={`list-item-value ${user.veriflied ? 'verified' : 'unverified'}`}>
+                        {user.veriflied ? 'Yes' : 'No'}
+                    </span>
+                </li>
+                <li className="list-item">
+                    <span className="list-item-label">Join Date</span>
+                    <span className="list-item-value">
+                        {user.created_at ? new Date(user.created_at).toLocaleDateString('vi-VN') : 'N/A'}
+                    </span>
+                </li>
             </ul>
         </div>
     );
@@ -2170,161 +2194,176 @@ const ChatbotPage = () => {
 // ===================================================================================
 
 const AppContent = () => {
-  console.log('AppContent component loaded');  // Log 1: Check App load
-  console.log('React version in App:', React.version);  // Log 2: So sánh version với TournamentDetail
+  console.log('AppContent component loaded');
+  console.log('React version in App:', React.version);
 
-  const [showSettingsSidebar, setShowSettingsSidebar] = useState(false);
-  const [showHeader, setShowHeader] = useState(true);
-  const [showFooter, setShowFooter] = useState(true);
-  const [activePage, setActivePage] = useState('home');
-  const location = useLocation();
-  const [user, setUser] = useState(null);
+  const [showSettingsSidebar, setShowSettingsSidebar] = useState(false);
+  const [showHeader, setShowHeader] = useState(true);
+  const [showFooter, setShowFooter] = useState(true);
+  const [activePage, setActivePage] = useState('home');
+  const location = useLocation();
+  const [user, setUser] = useState(null);
 
-  const [walletData, setWalletData] = useState({
-    // Sửa đổi số dư ở đây để kiểm tra các trường hợp khác nhau
-    // Ví dụ: 1500.50 (đủ điều kiện) hoặc 400.00 (không đủ)
+  const [walletData, setWalletData] = useState({
     currentBalance: '1500.50 USDT',
     totalDeposits: '5000.00 USDT',
     totalWithdrawals: '3000.00 USDT',
-    // ... các dữ liệu khác
   });
 
   useEffect(() => {
     const loadUser = async () => {
-      // Lấy từ session trước
       const cachedUser = sessionStorage.getItem('user_data');
       if (cachedUser) {
-        console.log('Loaded user from sessionStorage:', cachedUser);  // Log để nhìn rõ data từ session
+        console.log('Loaded user from sessionStorage:', cachedUser);
         setUser(JSON.parse(cachedUser));
         return;
       }
 
-      // Lấy param userid từ URL
-      const params = new URLSearchParams(location.search);
-      let userid = params.get('userid');
-      console.log('URL param userid:', userid);  // Log để nhìn rõ param từ domain
+      let telegramId = null;
 
-      if (!userid) {
-        userid = 6461541179;  // Default nếu không có
-        console.log('No userid param, using default:', userid);  // Log để nhìn rõ fallback
+      if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        
+        if (tg.initData) {
+            const params = new URLSearchParams(tg.initData);
+            const userParam = params.get('user');
+            if (userParam) {
+                const userData = JSON.parse(userParam);
+                telegramId = userData.id;
+                console.log('Successfully got user ID from Telegram:', telegramId);
+            }
+        }
       }
 
+      if (!telegramId) {
+        const params = new URLSearchParams(location.search);
+        telegramId = params.get('userid');
+        if (telegramId) {
+          console.log('Got user ID from URL param:', telegramId);
+        }
+      }
+
+      if (!telegramId) {
+        telegramId = 6461541179;
+        console.log('No user ID found, using default ID for development:', telegramId);
+      }
+      
       try {
-        const response = await fetch(`https://f2farena.com/api/users/${userid}`);
-        console.log('Fetch user response status:', response.status);
+        const response = await fetch(`https://f2farena.com/api/users/${telegramId}`);
         if (!response.ok) {
-          const errorText = await response.text();  // Thêm: Nhìn detail backend ("User not found")
-          console.error('Fetch user failed, status:', response.status, 'detail:', errorText);
+          const errorText = await response.text();
+          console.error(`Fetch user failed for ID ${telegramId}:`, response.status, errorText);
           return;
         }
         const data = await response.json();
-        console.log('Fetched user data:', data);
+        console.log('Fetched user data from API:', data);
         setUser(data);
         sessionStorage.setItem('user_data', JSON.stringify(data));
       } catch (error) {
-        console.error('Error fetching user:', error);
+        console.error('Error fetching user data:', error);
       }
     };
 
     loadUser();
   }, [location.search]);
 
+  useEffect(() => {
+    const mainContent = document.getElementById('main-content');
+    if (!mainContent) return;
+
+    const sentinel = document.createElement('div');
+    sentinel.style.height = '1px';
+    mainContent.prepend(sentinel);
+
+    const observer = new IntersectionObserver(([entry]) => {
+      const isDetailPage = ['/match/', '/news/', '/arena/', '/tournament/'].some(path => location.pathname.includes(path));
+      if (isDetailPage) {
+        setShowHeader(false);
+        setShowFooter(false);
+      } else {
+        setShowHeader(entry.isIntersecting);
+        setShowFooter(entry.isIntersecting && location.pathname !== '/chatbot');
+      }
+    }, { threshold: 0 });
+
+    observer.observe(sentinel);
+    return () => {
+      observer.disconnect();
+      sentinel.remove();
+    };
+  }, [location.pathname]);
+
+
+  useEffect(() => {
+    const path = location.pathname.substring(1);
+    const page = path.split('/')[0];
+    const isDetailPage = ['match', 'news', 'arena'].includes(page) && path.includes('/');
+
+    if (isDetailPage) {
+      setActivePage('');
+    } else {
+      setActivePage(page || 'home');
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
-    const mainContent = document.getElementById('main-content');
-    if (!mainContent) return;
-
-    const sentinel = document.createElement('div');
-    sentinel.style.height = '1px';
-    mainContent.prepend(sentinel);
-
-    const observer = new IntersectionObserver(([entry]) => {
-      const isDetailPage = ['/match/', '/news/', '/arena/', '/tournament/'].some(path => location.pathname.includes(path));
-      if (isDetailPage) {
-        setShowHeader(false);
-        setShowFooter(false);
-      } else {
-        setShowHeader(entry.isIntersecting);
-        setShowFooter(entry.isIntersecting && location.pathname !== '/chatbot');
-      }
-    }, { threshold: 0 });
-
-    observer.observe(sentinel);
-    return () => {
-      observer.disconnect();
-      sentinel.remove();
-    };
+    setShowHeader(!(location.pathname.startsWith('/match') || location.pathname.startsWith('/news/') || location.pathname.startsWith('/arena/') || location.pathname.startsWith('/tournament/')));
+    setShowFooter(!(location.pathname.startsWith('/match') || location.pathname.startsWith('/news/') || location.pathname.startsWith('/arena/') || location.pathname.startsWith('/tournament/') || location.pathname === '/chatbot'));
   }, [location.pathname]);
 
-
-  // useEffect này để xử lý trạng thái ban đầu khi chuyển trang
-  useEffect(() => {
-    const path = location.pathname.substring(1); // Bỏ dấu / ở đầu
-    const page = path.split('/')[0];
-    const isDetailPage = ['match', 'news', 'arena'].includes(page) && path.includes('/');
-
-    if (isDetailPage) {
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.startsWith('/match') || path.startsWith('/news/')) {
       setActivePage('');
     } else {
-      setActivePage(page || 'home');
+      setActivePage(path.replace('/', '') || 'home');
     }
-  }, [location.pathname]);
+  }, [location]);
 
-useEffect(() => {
-  setShowHeader(!(location.pathname.startsWith('/match') || location.pathname.startsWith('/news/') || location.pathname.startsWith('/arena/') || location.pathname.startsWith('/tournament/')));
-  setShowFooter(!(location.pathname.startsWith('/match') || location.pathname.startsWith('/news/') || location.pathname.startsWith('/arena/') || location.pathname.startsWith('/tournament/') || location.pathname === '/chatbot'));
-}, [location.pathname]);
-
-  useEffect(() => {
-  const path = location.pathname;
-  if (path.startsWith('/match') || path.startsWith('/news/')) {
-    setActivePage('');
-  } else {
-    setActivePage(path.replace('/', '') || 'home');
-  }
-}, [location]);
-
-  return (
-    <div className="app-container">
-      <Header 
-        onSettingsClick={() => setShowSettingsSidebar(true)} 
-        onChatbotClick={() => setActivePage('chatbot')}
-        showHeader={showHeader}
-      />
-      <main
-        id="main-content"
-        className={`main-content ${!showHeader ? 'no-header-padding' : ''} ${!showFooter ? 'no-footer-padding' : ''}`}
-      >
-        <Routes>
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/news" element={<NewsPage user={user} />} />
-          <Route path="/news/:id" element={<NewsDetail />} />
-          <Route path="/arena" element={<ArenaPage user={user} />} />
-          <Route path="/tournament/:id" element={<TournamentDetail user={user} walletData={walletData} />} />
-          <Route path="/arena/:id" element={<ArenaDetail />} />
-          <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/wallet" element={<WalletPage />} />
-          <Route path="/chatbot" element={<ChatbotPage />} />
-          <Route path="/match/:id" element={<MatchDetail />} />
-          <Route path="/" element={<HomePage />} />
-          <Route path="*" element={
-            <div className="page-padding">
-              <h2>404 - Page Not Found</h2>
-              <p>The page you are looking for does not exist.</p>
-            </div>
-          } />
-        </Routes>
-      </main>
-      <Footer 
-        activePage={activePage}
-        setActivePage={setActivePage}
-        showFooter={showFooter}
-      />
-      <SettingsSidebar 
-        show={showSettingsSidebar} 
-        onClose={() => setShowSettingsSidebar(false)} 
-      />
-    </div>
-  );
+  return (
+    <div className="app-container">
+      <Header 
+        onSettingsClick={() => setShowSettingsSidebar(true)} 
+        onChatbotClick={() => setActivePage('chatbot')}
+        showHeader={showHeader}
+      />
+      <main
+        id="main-content"
+        className={`main-content ${!showHeader ? 'no-header-padding' : ''} ${!showFooter ? 'no-footer-padding' : ''}`}
+      >
+        <Routes>
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/news" element={<NewsPage user={user} />} />
+          <Route path="/news/:id" element={<NewsDetail />} />
+          <Route path="/arena" element={<ArenaPage user={user} />} />
+          <Route path="/tournament/:id" element={<TournamentDetail user={user} walletData={walletData} />} />
+          <Route path="/arena/:id" element={<ArenaDetail />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/wallet" element={<WalletPage />} />
+          <Route path="/chatbot" element={<ChatbotPage />} />
+          <Route path="/match/:id" element={<MatchDetail />} />
+          <Route path="/" element={<HomePage />} />
+          <Route path="*" element={
+            <div className="page-padding">
+              <h2>404 - Page Not Found</h2>
+              <p>The page you are looking for does not exist.</p>
+            </div>
+          } />
+        </Routes>
+      </main>
+      <Footer 
+        activePage={activePage}
+        setActivePage={setActivePage}
+        showFooter={showFooter}
+      />
+      <SettingsSidebar 
+        user={user}
+        show={showSettingsSidebar} 
+        onClose={() => setShowSettingsSidebar(false)} 
+      />
+    </div>
+  );
 };
 
 export default function App() {

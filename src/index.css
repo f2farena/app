@@ -1063,3 +1063,13 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
   width: 90%;
   max-width: 400px;
 }
+
+.copy-link-button {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
