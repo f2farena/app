@@ -43,7 +43,7 @@ const MatchDetail = () => {
         return;
       }
       try {
-        const response = await fetch(`http://localhost:8000/api/matches/${id}`);
+        const response = await fetch(`https://f2farena.com/api/matches/${id}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -54,7 +54,7 @@ const MatchDetail = () => {
         let player2 = { name: 'Waiting', avatar: generateAvatarUrl('Waiting'), score: 0, odds: '1:1.0' };
         if (data.player2_id) {
           try {
-            const userRes = await fetch(`http://localhost:8000/api/users/${data.player2_id}`);
+            const userRes = await fetch(`https://f2farena.com/api/users/${data.player2_id}`);
             if (userRes.ok) {
               const userData = await userRes.json();
               player2 = {

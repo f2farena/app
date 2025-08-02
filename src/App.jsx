@@ -256,7 +256,7 @@ const HomePage = () => {
         return;
       }
       try {
-        const response = await fetch('http://localhost:8000/api/events/banner');
+        const response = await fetch('https://f2farena.com/api/events/banner');
         const data = await response.json();
         console.log('Fetched banner data:', data);
         if (data && data.length > 0) {
@@ -265,7 +265,7 @@ const HomePage = () => {
         // Thêm map để prepend full URL cho thumbnail
         const updatedData = data.map(item => ({
           ...item,
-          thumbnail: `http://localhost:8000/${item.thumbnail}`  // Prepend backend base URL
+          thumbnail: `https://f2farena.com/${item.thumbnail}` // Prepend backend base URL
         }));
         setBannerItems(updatedData);
         sessionStorage.setItem('banner_data', JSON.stringify(updatedData));  // Lưu cache
@@ -284,12 +284,12 @@ const HomePage = () => {
         return;
       }
       try {
-        const response = await fetch('http://localhost:8000/api/matches/ongoing');
+        const response = await fetch('https://f2farena.com/api/matches/ongoing');
         const data = await response.json();
         console.log('Fetched ongoing matches for home:', data);
         const updatedData = data.map(item => ({
           ...item,
-          thumbnail: `http://localhost:8000/${item.thumbnail}`  // Prepend đồng bộ banner
+          thumbnail: `https://f2farena.com/${item.thumbnail}`  // Prepend đồng bộ banner
         }));
         const limitedData = updatedData.slice(0, 5);
         setOngoingMatches(limitedData);  // Sửa: setOngoingMatches thay vì setTournaments
@@ -309,12 +309,12 @@ const HomePage = () => {
         return;
       }
       try {
-        const response = await fetch('http://localhost:8000/api/tournaments/?offset=0');
+        const response = await fetch('https://f2farena.com/api/tournaments/?offset=0');
         const data = await response.json();
         console.log('Fetched tournaments for home:', data);
         const updatedData = data.map(item => ({
           ...item,
-          thumbnail: `http://localhost:8000/${item.thumbnail}`  // Thêm prepend full URL cho thumbnail, đồng bộ với banner
+          thumbnail: `https://f2farena.com/${item.thumbnail}`  // Thêm prepend full URL cho thumbnail, đồng bộ với banner
         }));
         const limitedData = updatedData.slice(0, 5);
         setTournaments(limitedData);
@@ -640,7 +640,7 @@ const NewsPage = ({ user }) => {
       }
       if (brokers.length === 0) {
         try {
-          const response = await fetch('http://localhost:8000/api/brokers/list');
+          const response = await fetch('https://f2farena.com/api/brokers/list');
           if (!response.ok) throw new Error('Fetch failed');
           const data = await response.json();
           brokers = data.brokers;
@@ -651,7 +651,7 @@ const NewsPage = ({ user }) => {
         }
       } else {
         try {
-          const response = await fetch('http://localhost:8000/api/brokers/list');
+          const response = await fetch('https://f2farena.com/api/brokers/list');
           if (!response.ok) throw new Error('Fetch failed');
           const data = await response.json();
           const allBrokers = data.brokers;
@@ -678,7 +678,7 @@ const NewsPage = ({ user }) => {
         yearsActive: broker.years,
         score: broker.average_star,
         summary: broker.description,
-        thumbnail: `http://localhost:8000/${broker.thumbnail}`,
+        thumbnail: `https://f2farena.com/${broker.thumbnail}`,
         content: broker.description,
         ratings: { license: broker.star_1, insurance: broker.star_2, localization: broker.star_3, commission: broker.star_4, stability: broker.star_5, 'on-boarding': broker.star_6 }
       })));
@@ -701,7 +701,7 @@ const NewsPage = ({ user }) => {
         return;
       }
       try {
-        const response = await fetch('http://localhost:8000/api/complaints/');
+        const response = await fetch('https://f2farena.com/api/complaints/');
         const data = await response.json();
         console.log('Fetched complaints:', data); // Log để check
         setComplaintsData(data.complaints.map(complaint => ({
@@ -831,7 +831,7 @@ const LeaderboardPage = () => {
         return JSON.parse(cached);
       }
       try {
-        const response = await fetch(`http://localhost:8000/api/leaderboard/${type}`);
+        const response = await fetch(`https://f2farena.com/api/leaderboard/${type}`);
         const data = await response.json();
         console.log(`Fetched ${type} leaderboard:`, data);
         // Map data to format (add rank, name/avatar from generate or future join)
@@ -1007,7 +1007,7 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess }) => 
     const confirmMatchSetup = async () => {  // Add async for await fetch
       console.log("Creating match:", { betAmount, tradingSymbol, challengeMode, opponentId, durationTime, selectedBroker });
       try {
-          const response = await fetch('http://localhost:8000/api/matches/', {
+          const response = await fetch('https://f2farena.com/api/matches/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1482,7 +1482,7 @@ const ArenaPage = ({ user }) => {
     if (!selectedMatch || !user) return;
     console.log('Confirm join, update player2_id with user id:', user.telegram_id);
     try {
-      const response = await fetch(`http://localhost:8000/api/matches/${selectedMatch.id}`, {
+      const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ player2_id: user.telegram_id, status: "live" })
@@ -1515,7 +1515,7 @@ const ArenaPage = ({ user }) => {
       setTournamentItems(parsedData.map(t => ({
         id: t.id,
         title: t.title,
-        thumbnail: t.thumbnail.startsWith('http') ? t.thumbnail : `http://localhost:8000/${t.thumbnail}`,
+        thumbnail: t.thumbnail.startsWith('http') ? t.thumbnail : `https://f2farena.com/${t.thumbnail}`,
         prizePool: t.prize_pool + ' USDT',
         participants: t.participants,
         symbol: t.symbol,
@@ -1535,7 +1535,7 @@ const ArenaPage = ({ user }) => {
       }
       const offset = homeTournaments.length > 0 ? 5 : 0;
       const limit = homeTournaments.length > 0 ? 5 : 10;
-      const response = await fetch(`http://localhost:8000/api/tournaments/?offset=${offset}&limit=${limit}`);
+      const response = await fetch(`https://f2farena.com/api/tournaments/?offset=${offset}&limit=${limit}`);
       console.log('Fetch tournaments response status:', response.status);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1545,7 +1545,7 @@ const ArenaPage = ({ user }) => {
       const mappedData = data.map(t => ({
         id: t.id,
         title: t.title,
-        thumbnail: `http://localhost:8000/${t.thumbnail}`,
+        thumbnail: `https://f2farena.com/${t.thumbnail}`,
         prizePool: t.prize_pool + ' USDT',
         participants: t.participants,
         symbol: t.symbol,
@@ -1579,7 +1579,7 @@ const ArenaPage = ({ user }) => {
       return;
     }
     try {
-      const waitingUrl = 'http://localhost:8000/api/matches/waiting';
+      const waitingUrl = 'https://f2farena.com/api/matches/waiting';
       console.log('Full URL before fetch waiting matches:', waitingUrl);
       const response = await fetch(waitingUrl);
       console.log('Fetch waiting matches status:', response.status);
@@ -1614,7 +1614,7 @@ const ArenaPage = ({ user }) => {
     }
     if (brokers.length === 0) {
       try {
-        const response = await fetch('http://localhost:8000/api/brokers/list');
+        const response = await fetch('https://f2farena.com/api/brokers/list');
         if (!response.ok) throw new Error('Fetch failed');
         const data = await response.json();
         brokers = data.brokers.map(b => ({ id: b.id, name: b.broker_name }));
@@ -1625,7 +1625,7 @@ const ArenaPage = ({ user }) => {
       }
     } else {
       try {
-        const response = await fetch('http://localhost:8000/api/brokers/list');
+        const response = await fetch('https://f2farena.com/api/brokers/list');
         if (!response.ok) throw new Error('Fetch failed');
         const data = await response.json();
         const allBrokers = data.brokers;
@@ -2210,7 +2210,7 @@ const AppContent = () => {
       }
 
       try {
-        const response = await fetch(`http://localhost:8000/api/users/${userid}`);
+        const response = await fetch(`https://f2farena.com/api/users/${userid}`);
         console.log('Fetch user response status:', response.status);
         if (!response.ok) {
           const errorText = await response.text();  // Thêm: Nhìn detail backend ("User not found")

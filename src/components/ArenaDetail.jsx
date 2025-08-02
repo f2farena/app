@@ -34,7 +34,7 @@ const ArenaDetail = () => {
                 return;
             }
             try {
-                const response = await fetch(`http://localhost:8000/api/matches/waiting/${id}`);
+                const response = await fetch(`https://f2farena.com/api/matches/waiting/${id}`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }

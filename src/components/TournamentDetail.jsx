@@ -8,7 +8,7 @@ console.log('useEffect exists:', !!useEffect);  // Check useEffect (sẽ false n
 // Trong handleConfirmRegistration (RegistrationModal):
 const handleConfirmRegistration = async () => {
   try {
-    const response = await fetch('http://localhost:8000/api/tournament-register/', {
+    const response = await fetch('https://f2farena.com/api/tournament-register/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: user.telegram_id, tournament_id: tournament.id, status: 0 })
@@ -51,7 +51,7 @@ const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, us
 
   const handleSubmitNewAccount = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/accounts/', {
+      const response = await fetch('https://f2farena.com/api/accounts/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -89,7 +89,7 @@ const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, us
     }
     console.log('Valid email, sending PUT:', newEmail);  // Log thêm: Nếu valid
     try {
-      const response = await fetch(`http://localhost:8000/api/users/${user.telegram_id}`, {  // Sửa user.id → user.telegram_id
+      const response = await fetch(`https://f2farena.com/api/users/${user.telegram_id}`, {  // Sửa user.id → user.telegram_id
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: newEmail })
@@ -254,7 +254,7 @@ const TournamentDetail = ({ user, walletData }) => {
         return;
       }
       try {
-        const response = await fetch(`http://localhost:8000/api/tournaments/${id}`);
+        const response = await fetch(`https://f2farena.com/api/tournaments/${id}`);
         console.log('Fetch detail response status:', response.status, 'OK:', response.ok); // Log mới: Check status (200 OK, 404 Not Found, etc.)
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`); // Throw để vào catch nếu not OK
@@ -267,7 +267,7 @@ const TournamentDetail = ({ user, walletData }) => {
         const tournamentData = {
           id: data.id,
           title: data.title,
-          thumbnail: `http://localhost:8000/${data.thumbnail}`,
+          thumbnail: `https://f2farena.com/${data.thumbnail}`,
           date: '2025-06-21',
           author: 'PK Team',
           description: data.description,
@@ -316,7 +316,7 @@ const TournamentDetail = ({ user, walletData }) => {
     }
     console.log('Before checkAccountAndEmail GET, linkedBrokers:', user.linkedBrokers);  // Log để xem check session trước GET, confirm nếu không sync
     try {
-      const response = await fetch(`http://localhost:8000/api/accounts/?user_id=${user.telegram_id}&broker_id=${tournament.broker_id}`);
+      const response = await fetch(`https://f2farena.com/api/accounts/?user_id=${user.telegram_id}&broker_id=${tournament.broker_id}`);
       const data = await response.json();
       console.log('Fetched account data:', data); // Log để nhìn rõ API response trước khi set
       if (data.length > 0) {
