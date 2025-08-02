@@ -621,156 +621,136 @@ const ComplaintModal = ({ onClose, onSubmit, user }) => {
 const NewsPage = ({ user }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('broker-review');
-  const [allArticles, setAllArticles] = useState([]); // Thay hardcode bằng state
-  const [complaintsData, setComplaintsData] = useState([]); // Giữ state nhưng fetch
-  const [offset, setOffset] = useState(0);  // New: Offset for next load
-  const [hasMore, setHasMore] = useState(true);  // New: Has more data
-  const [isLoading, setIsLoading] = useState(false);  // New: Loading state
-  const lastItemRef = useRef(null);  // New: Ref for last item
-  const [showComplaintModal, setShowComplaintModal] = useState(false);
+  const [allArticles, setAllArticles] = useState([]);
+  const [complaintsData, setComplaintsData] = useState([]);
+  const [showComplaintModal, setShowComplaintModal] = useState(false); // State để quản lý modal
 
+  // Hàm map dữ liệu brokers để sử dụng trong component
+  const mapBrokerData = (brokers) => {
+    return brokers.map(broker => ({
+      id: broker.id,
+      style: 'broker-review',
+      title: `Broker ${broker.broker_name} Review: Is It Reliable?`,
+      brokerName: broker.broker_name,
+      country: broker.nation_code,
+      countryCode: broker.nation_code === '86' ? 'CN' : broker.nation_code.toUpperCase(),
+      yearsActive: broker.years,
+      score: broker.average_star,
+      summary: broker.description,
+      thumbnail: `https://f2farena.com/${broker.thumbnail}`,
+      content: broker.description,
+      ratings: { license: broker.star_1, insurance: broker.star_2, localization: broker.star_3, commission: broker.star_4, stability: broker.star_5, 'on-boarding': broker.star_6 }
+    }));
+  };
+
+  // Hàm fetch dữ liệu cho Broker Reviews (chạy 1 lần khi component mount)
   useEffect(() => {
     const fetchBrokers = async () => {
-      console.log('fetchBrokers called - checking sessionStorage');
-      let brokers = [];
       const cached = sessionStorage.getItem('brokers_data');
       if (cached) {
-        brokers = JSON.parse(cached).brokers || [];
-        console.log('Loaded', brokers.length, 'brokers from cache');
-      }
-      if (brokers.length === 0) {
-        try {
-          const response = await fetch('https://f2farena.com/api/brokers/list');
-          if (!response.ok) throw new Error('Fetch failed');
-          const data = await response.json();
-          brokers = data.brokers;
-          sessionStorage.setItem('brokers_data', JSON.stringify({ brokers }));
-          console.log('Fetched and stored full brokers:', brokers.length);
-        } catch (error) {
-          console.error('Error fetching brokers:', error);
+        const parsed = JSON.parse(cached);
+        if(parsed.brokers) {
+            setAllArticles(mapBrokerData(parsed.brokers));
+            return;
         }
-      } else {
-        try {
-          const response = await fetch('https://f2farena.com/api/brokers/list');
-          if (!response.ok) throw new Error('Fetch failed');
-          const data = await response.json();
-          const allBrokers = data.brokers;
-          const existingIds = brokers.map(b => b.id);
-          const missingBrokers = allBrokers.filter(b => !existingIds.includes(b.id));
-          if (missingBrokers.length > 0) {
-            brokers = [...brokers, ...missingBrokers];
-            sessionStorage.setItem('brokers_data', JSON.stringify({ brokers }));
-            console.log('Fetched and merged missing brokers:', missingBrokers.length);
-          } else {
-            console.log('No missing brokers, using cache');
-          }
-        } catch (error) {
-          console.error('Error checking missing brokers:', error);
-        }
-      }
-      setAllArticles(brokers.map(broker => ({
-        id: broker.id,
-        style: 'broker-review',
-        title: `Broker ${broker.broker_name} Review: Is It Reliable?`,
-        brokerName: broker.broker_name,
-        country: broker.nation_code,
-        countryCode: broker.nation_code === '86' ? 'CN' : broker.nation_code.toUpperCase(),
-        yearsActive: broker.years,
-        score: broker.average_star,
-        summary: broker.description,
-        thumbnail: `https://f2farena.com/${broker.thumbnail}`,
-        content: broker.description,
-        ratings: { license: broker.star_1, insurance: broker.star_2, localization: broker.star_3, commission: broker.star_4, stability: broker.star_5, 'on-boarding': broker.star_6 }
-      })));
-    };
-
-    const fetchComplaints = async () => {
-      console.log('Checking sessionStorage for complaints_data');  // Log: Kiểm tra trước khi fetch
-      const cachedComplaints = sessionStorage.getItem('complaints_data');
-      if (cachedComplaints) {
-        console.log('Using cached complaints from sessionStorage');
-        const parsedData = JSON.parse(cachedComplaints);
-        setComplaintsData(parsedData.complaints.map(complaint => ({
-          id: complaint.id, // Giả sử id từ backend
-          user: complaint.username,
-          timestamp: complaint.created_at,
-          summary: complaint.title,
-          details: complaint.comment,
-          status: complaint.resolved ? 'resolved' : 'open'
-        })));
-        return;
       }
       try {
-        const response = await fetch('https://f2farena.com/api/complaints/');
+        const response = await fetch('https://f2farena.com/api/brokers/list');
+        if (!response.ok) throw new Error('Fetch failed');
         const data = await response.json();
-        console.log('Fetched complaints:', data); // Log để check
-        setComplaintsData(data.complaints.map(complaint => ({
-          id: complaint.id, // Giả sử id từ backend
-          user: complaint.username,
-          timestamp: complaint.created_at,
-          summary: complaint.title,
-          details: complaint.comment,
-          status: complaint.resolved ? 'resolved' : 'open'
-        })));
-        sessionStorage.setItem('complaints_data', JSON.stringify(data));  // Lưu cache
-        console.log('Stored complaints to sessionStorage');
+        setAllArticles(mapBrokerData(data.brokers));
+        sessionStorage.setItem('brokers_data', JSON.stringify({ brokers: data.brokers }));
       } catch (error) {
-        console.error('Error fetching complaints:', error);
+        console.error('Error fetching brokers:', error);
       }
     };
-
     fetchBrokers();
-    fetchComplaints();
-  }, []); // Fetch khi mount
+  }, []);
 
-  // State để quản lý việc mở/đóng chi tiết của từng mục
+  // Hàm fetch dữ liệu cho Complaints
+  const fetchComplaints = async (clearCache = false) => {
+    if (clearCache) {
+      sessionStorage.removeItem('complaints_data');
+    }
+    const cachedComplaints = sessionStorage.getItem('complaints_data');
+    if (cachedComplaints) {
+      const parsedData = JSON.parse(cachedComplaints);
+      setComplaintsData(parsedData.complaints.map(c => ({ ...c, details: c.comment, summary: c.title, user: c.username, timestamp: c.created_at, status: c.resolved ? 'resolved' : 'open' })));
+      return;
+    }
+    try {
+      const response = await fetch('https://f2farena.com/api/complaints/');
+      const data = await response.json();
+      setComplaintsData(data.complaints.map(c => ({ ...c, details: c.comment, summary: c.title, user: c.username, timestamp: c.created_at, status: c.resolved ? 'resolved' : 'open' })));
+      sessionStorage.setItem('complaints_data', JSON.stringify(data));
+    } catch (error) {
+      console.error('Error fetching complaints:', error);
+    }
+  };
+
+  // Fetch complaints khi component được mount lần đầu hoặc khi tab được chuyển sang 'complaint'
+  useEffect(() => {
+    if (activeTab === 'complaint') {
+      fetchComplaints();
+    }
+  }, [activeTab]);
+
   const [expandedComplaints, setExpandedComplaints] = useState({});
 
-  // Hàm để cập nhật trạng thái "resolved"
   const handleUpdateComplaintStatus = (id, newStatus) => {
-      // Logic này sẽ được thay bằng API call trong thực tế
-      setComplaintsData(prevData =>
-          prevData.map(c => (c.id === id ? { ...c, status: newStatus } : c))
-      );
+    // Logic cập nhật trạng thái complaint (cần API trong tương lai)
+    setComplaintsData(prevData => prevData.map(c => (c.id === id ? { ...c, status: newStatus } : c)));
   };
   
-  // Hàm để bật/tắt hiển thị chi tiết
   const handleToggleExpand = (id) => {
-      setExpandedComplaints(prev => ({
-          ...prev,
-          [id]: !prev[id]
-      }));
+    setExpandedComplaints(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const articlesToShow = allArticles.filter(a => a.style === activeTab);
+  // Hàm xử lý khi submit form tạo complaint mới
+  const handleCreateComplaint = async (complaintData) => {
+    try {
+      const response = await fetch('https://f2farena.com/api/complaints/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(complaintData),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create complaint');
+      }
+      alert('Complaint created successfully!');
+      setShowComplaintModal(false); // Đóng modal sau khi thành công
+      fetchComplaints(true); // Tải lại danh sách complaints, xóa cache cũ
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+      console.error('Error creating complaint:', error);
+    }
+  };
 
-  return (
-    <div className="page-padding">
-      <div className="wallet-tabs">
-        <button className={`wallet-tab-button ${activeTab === 'broker-review' ? 'active' : ''}`} onClick={() => setActiveTab('broker-review')}>Broker Review</button>
+  return (
+    <div className="page-padding">
+      <div className="wallet-tabs">
+        <button className={`wallet-tab-button ${activeTab === 'broker-review' ? 'active' : ''}`} onClick={() => setActiveTab('broker-review')}>Broker Review</button>
         <button className={`wallet-tab-button ${activeTab === 'complaint' ? 'active' : ''}`} onClick={() => setActiveTab('complaint')}>Complaint</button>
-      </div>
+      </div>
 
-      {activeTab !== 'complaint' && articlesToShow.map((article) => (
-        <div key={article.id} className="news-card" onClick={() => navigate(`/news/${article.id}`)} style={{ cursor: 'pointer' }}>
-          <LazyLoad height={220} offset={100}>
-            <img 
+      {activeTab === 'broker-review' && allArticles.map((article) => (
+        <div key={article.id} className="news-card" onClick={() => navigate(`/news/${article.id}`)} style={{ cursor: 'pointer' }}>
+          <LazyLoad height={220} offset={100}>
+            <img 
               src={article.thumbnail} 
               alt={article.title} 
               className="news-thumbnail" 
               loading="lazy" 
               onError={(e) => {
-                console.error(`Broker thumbnail error: ${article.thumbnail}`);  // Log src fail
+                console.error(`Broker thumbnail error: ${article.thumbnail}`);
                 e.target.src = 'https://placehold.co/500x220?text=Image+Error';
               }} 
-              onLoad={() => console.log(`Broker thumbnail loaded: ${article.thumbnail}`)}  // Log success
+              onLoad={() => console.log(`Broker thumbnail loaded: ${article.thumbnail}`)}
             />
-          </LazyLoad>
-          {/* Cấu trúc nội dung mới */}
-          <div className="news-content review-card-content">
-              {/* Khối header chứa thông tin chính và điểm số */}
+          </LazyLoad>
+          <div className="news-content review-card-content">
               <div className="review-card-header">
-                  {/* Cột bên trái chứa tên và thông tin */}
                   <div className="review-card-main-info">
                       <h4 className="review-card-broker-name">{article.brokerName}</h4>
                       <div className="review-card-info-line">
@@ -784,23 +764,26 @@ const NewsPage = ({ user }) => {
                           <span>{article.yearsActive} years</span>
                       </div>
                   </div>
-                  
-                  {/* Cột bên phải chứa điểm số */}
                   <div className="review-card-score">
                       <span className="score-value">{article.score.toFixed(1)}</span>
                       <span className="score-label">Score</span>
                   </div>
               </div>
-
-              {/* Phần mô tả tóm tắt nằm bên dưới */}
               <p className="review-card-summary">{article.summary}</p>
-          </div>
-        </div>
-      ))}
+          </div>
+        </div>
+      ))}
+
       {activeTab === 'complaint' && (
         <div className="complaint-section">
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-                <button className="btn btn-primary" onClick={() => alert('Chức năng tạo thread mới!')} style={{fontSize: '1rem', padding: '0.5rem 1rem'}}>+ New Thread</button>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => setShowComplaintModal(true)} 
+                  style={{fontSize: '1rem', padding: '0.5rem 1rem'}}
+                >
+                  + New Thread
+                </button>
             </div>
             {complaintsData.map(complaint => (
                 <ComplaintThread 
@@ -813,8 +796,17 @@ const NewsPage = ({ user }) => {
             ))}
         </div>
       )}
-    </div>
-  );
+
+      {/* Render Modal Complaint khi state là true */}
+      {showComplaintModal && (
+        <ComplaintModal
+          user={user}
+          onClose={() => setShowComplaintModal(false)}
+          onSubmit={handleCreateComplaint}
+        />
+      )}
+    </div>
+  );
 };
 
 const LeaderboardPage = () => {
