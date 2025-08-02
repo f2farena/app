@@ -1,24 +1,15 @@
-/**
- * Gửi yêu cầu đến backend để thông báo cho admin về lệnh nạp tiền.
- * Backend sẽ chịu trách nhiệm gửi tin nhắn Telegram.
- *
- * @param {string | number} userId - ID của người dùng tạo lệnh nạp.
- * @param {string | number} amount - Số tiền nạp.
- * @param {string} memo - Nội dung memo.
- * @returns {Promise<void>}
- */
+// telegramService.js
 export const notifyAdminOfDeposit = async (userId, amount, memo) => {
-  // URL này là endpoint trên backend Python của anh, anh có thể tùy chỉnh lại.
-  const NOTIFY_API_URL = 'http://f2farena.com/api/notify-deposit-request';
+  const NOTIFY_API_URL = 'https://f2farena.com/api/notify-deposit-request';
 
-  // Dữ liệu gửi lên server
   const payload = {
     user_id: userId,
-    amount: amount,
+    amount: parseFloat(amount), // Đảm bảo amount là số
     memo: memo,
   };
 
   try {
+    console.log('Sending deposit notification request to backend:', payload); // LOG CHI TIẾT
     const response = await fetch(NOTIFY_API_URL, {
       method: 'POST',
       headers: {
@@ -29,13 +20,16 @@ export const notifyAdminOfDeposit = async (userId, amount, memo) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.detail || 'Failed to send notification.');
+      console.error('Backend responded with an error for deposit notification:', errorData); // LOG LỖI TỪ BACKEND
+      throw new Error(errorData.detail || 'Failed to send notification to backend.');
     }
 
     console.log('Successfully requested deposit notification for user:', userId);
+    // Có thể thêm thông báo thành công cho người dùng ở đây
+    alert('Yêu cầu nạp tiền của bạn đã được gửi đến Admin. Vui lòng chờ xác nhận!');
 
   } catch (error) {
     console.error('Error sending deposit notification request:', error);
-    // Có thể thêm logic xử lý lỗi ở đây, ví dụ hiển thị thông báo cho người dùng.
+    alert('Đã có lỗi khi gửi yêu cầu nạp tiền. Vui lòng thử lại hoặc liên hệ hỗ trợ.'); // Thông báo lỗi cho người dùng
   }
 };

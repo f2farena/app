@@ -1124,35 +1124,108 @@ const DepositForm = ({ onClose, user }) => {
   const [depositAmount, setDepositAmount] = useState('');
   const [memoContent, setMemoContent] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [timer, setTimer] = useState(600);
+  const [timer, setTimer] = useState(600); // 10 minutes for QR code visibility
   const [copied, setCopied] = useState(false);
+  const [initialBalance, setInitialBalance] = useState(0); // To store user's balance before deposit
+  const intervalRef = useRef(null); // Ref to store interval ID for polling
   const walletAddress = 'TUYDJGWvzE54Wpq1AqFXWCUkjbyozrK1L2';
 
-  const handleConfirm = (e) => {
-    e.preventDefault();
-    if (!depositAmount || !memoContent) return;
-    if (user && user.telegram_id) {
-      console.log(`Requesting deposit notification for User ID: ${user.telegram_id}`);
-      notifyAdminOfDeposit(user.telegram_id, depositAmount, memoContent);
-    } else {
-      console.error("User data is not available. Cannot send notification.");
+  // Load user's initial balance when the form is opened
+  useEffect(() => {
+    if (user && user.bet_wallet !== undefined) {
+      setInitialBalance(user.bet_wallet);
     }
-    setShowConfirmation(true);
+  }, [user]);
+
+  const handleConfirm = async (e) => {
+    e.preventDefault();
+    if (!depositAmount || !memoContent) {
+      alert('Please enter both deposit amount and memo content.');
+      return;
+    }
+    
+    if (!user || !user.telegram_id) {
+      console.error("User data is not available. Cannot send notification.");
+      alert("User information missing. Please refresh or try again.");
+      return;
+    }
+
+    try {
+      // Send notification to admin
+      await notifyAdminOfDeposit(user.telegram_id, depositAmount, memoContent);
+      setShowConfirmation(true);
+      setTimer(600); // Reset timer for QR code display
+
+      // Start polling for balance change
+      startPollingBalance();
+    } catch (error) {
+      console.error('Error in deposit confirmation process:', error);
+      alert('There was an issue processing your deposit. Please try again or contact support.');
+    }
   };
 
-  const confirmDeposit = () => {
-    console.log("Depositing:", { depositAmount, memoContent });
-    const checkWalletStatus = async () => {
+  const startPollingBalance = () => {
+    // Clear any existing interval to prevent duplicates
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    let pollingAttempts = 0;
+    const maxPollingTime = 600; // Total polling time: 10 minutes (matching QR timer)
+    const intervalDuration = 30 * 1000; // Poll every 30 seconds
+
+    intervalRef.current = setInterval(async () => {
+      pollingAttempts++;
+      console.log(`Polling attempt ${pollingAttempts} for user ${user.telegram_id} balance...`);
+
+      if (timer <= 0) { // Stop polling if QR code timer runs out
+        clearInterval(intervalRef.current);
+        console.log('Polling stopped: QR code timer expired.');
+        alert("Deposit confirmation time expired. If you've sent money, please contact support!");
+        onClose(); // Close the form
+        return;
+      }
+
       try {
-        console.log('Checking wallet status for deposit:', { depositAmount, memoContent });
+        const response = await fetch(`https://f2farena.com/api/users/${user.telegram_id}`);
+        if (!response.ok) throw new Error('Failed to fetch user balance from API');
+        const data = await response.json();
+        const currentBetWallet = parseFloat(data.bet_wallet);
+        const expectedBalance = initialBalance + parseFloat(depositAmount);
+
+        console.log(`Fetched current balance: ${currentBetWallet}, Expected after deposit: ${expectedBalance}`);
+
+        // Compare balances using a small epsilon for floating-point precision
+        if (Math.abs(currentBetWallet - expectedBalance) < 0.001) { // 0.001 is a common epsilon
+          alert("🎉 Deposit successful! Your balance has been updated.");
+          clearInterval(intervalRef.current); // Stop polling
+          onClose(); // Close the form
+          window.location.reload(); // Reload the page to update UI with new balance
+        }
       } catch (error) {
-        console.error('Error checking wallet:', error);
+        console.error('Error fetching current balance during polling:', error);
+        // Do not alert user for polling errors, just log them
+      }
+    }, intervalDuration);
+  };
+
+  // Clear interval when component unmounts or confirmation view changes
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
       }
     };
-    checkWalletStatus();
-    setShowConfirmation(false);
-    onClose();
-  };
+  }, []); 
+
+  // Timer for QR code display
+  useEffect(() => {
+    if (!showConfirmation || timer <= 0) return;
+    const countdown = setInterval(() => {
+      setTimer((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(countdown);
+  }, [showConfirmation, timer]);
 
   const formatTimer = () => {
     const minutes = Math.floor(timer / 60).toString().padStart(2, '0');
@@ -1167,19 +1240,11 @@ const DepositForm = ({ onClose, user }) => {
     });
   };
 
-  useEffect(() => {
-    if (!showConfirmation || timer <= 0) return;
-    const interval = setInterval(() => {
-      setTimer((prev) => prev - 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [showConfirmation, timer]);
-
   return (
     <div className="deposit-modal-wrapper" onClick={onClose}>
       <div className="deposit-modal-content" onClick={(e) => e.stopPropagation()}>
         {showConfirmation ? (
-          // Giao diện QR Code và đếm giờ
+          // QR Code and Timer Interface
           <>
             <div className="form-header">
               <h2>Scan QR to Deposit</h2>
@@ -1218,7 +1283,7 @@ const DepositForm = ({ onClose, user }) => {
             </div>
           </>
         ) : (
-          // Giao diện Form nhập liệu
+          // Input Form Interface
           <>
             <div className="form-header">
               <h2>Deposit Funds</h2>
