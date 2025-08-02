@@ -445,19 +445,7 @@ const HomePage = () => {
 
 const ComplaintThread = ({ complaint, onUpdateStatus, onToggleExpand, isExpanded }) => {
     const detailRef = useRef(null);
-    const [isEditing, setIsEditing] = useState(false);
-    const [editedContent, setEditedContent] = useState(complaint.details);
 
-    const handleSave = () => {
-        // Trong ứng dụng thực tế, bạn sẽ gọi API ở đây để lưu nội dung đã sửa
-        console.log(`Saving complaint ${complaint.id} with new content: ${editedContent}`);
-        
-        // Cập nhật lại state (giả lập)
-        // Lưu ý: Trong thực tế, bạn sẽ muốn cập nhật state ở component cha
-        complaint.details = editedContent; 
-        setIsEditing(false);
-    };
-    
     return (
         <div className="card complaint-thread">
             <div className="complaint-thread__header">
@@ -465,10 +453,13 @@ const ComplaintThread = ({ complaint, onUpdateStatus, onToggleExpand, isExpanded
                     <img src={generateAvatarUrl(complaint.user)} alt={complaint.user} className="challenger-avatar" />
                     <div>
                         <p className="challenger-name">{complaint.user}</p>
+                        {/* Bổ sung tên Broker */}
+                        <p className="challenger-country">
+                            Broker: <span style={{ fontWeight: 'bold' }}>{complaint.broker_name}</span>
+                        </p>
                         <p className="challenger-country">{new Date(complaint.timestamp).toLocaleString()}</p>
                     </div>
                 </div>
-                {complaint.status === 'resolved' && <span className="complaint-thread__status resolved">Resolved</span>}
             </div>
             <p className="complaint-thread__summary">{complaint.summary}</p>
             <div 
@@ -477,30 +468,15 @@ const ComplaintThread = ({ complaint, onUpdateStatus, onToggleExpand, isExpanded
                 style={{ maxHeight: isExpanded ? `${detailRef.current?.scrollHeight}px` : '0px' }}
             >
                 <div className="complaint-thread__details-content">
-                    {isEditing ? (
-                        <textarea 
-                            className="form-input" 
-                            value={editedContent}
-                            onChange={(e) => setEditedContent(e.target.value)}
-                            rows={4}
-                        />
-                    ) : (
-                        <p>{complaint.details}</p>
-                    )}
+                    <p>{complaint.details}</p>
                 </div>
             </div>
             <div className="complaint-thread__actions">
                 <div className="action-buttons-left">
-                     {isEditing ? (
-                        <button className="btn-action" onClick={handleSave}>Save</button>
-                    ) : (
-                        <button className="btn-action" onClick={() => setIsEditing(true)}>Edit</button>
-                    )}
-                    {complaint.status !== 'resolved' && (
-                         <button className="btn-action resolve" onClick={() => onUpdateStatus(complaint.id, 'resolved')}>
-                            Mark as Resolved
-                        </button>
-                    )}
+                    {/* Nút Mark as Resolved giờ sẽ gọi onUpdateStatus */}
+                    <button className="btn-action resolve" onClick={() => onUpdateStatus(complaint.id)}>
+                        Mark as Resolved
+                    </button>
                 </div>
                  <button className="btn-action" onClick={() => onToggleExpand(complaint.id)}>
                     {isExpanded ? 'Collapse' : 'View Detail'}
@@ -675,20 +651,19 @@ const NewsPage = ({ user }) => {
     const cachedComplaints = sessionStorage.getItem('complaints_data');
     if (cachedComplaints) {
       const parsedData = JSON.parse(cachedComplaints);
-      setComplaintsData(parsedData.complaints.map(c => ({ ...c, details: c.comment, summary: c.title, user: c.username, timestamp: c.created_at, status: c.resolved ? 'resolved' : 'open' })));
+      setComplaintsData(parsedData.complaints.map(c => ({ ...c, id: c.id, details: c.comment, summary: c.title, user: c.username, timestamp: c.created_at, status: c.resolved ? 'resolved' : 'open' })));
       return;
     }
     try {
       const response = await fetch('https://f2farena.com/api/complaints/');
       const data = await response.json();
-      setComplaintsData(data.complaints.map(c => ({ ...c, details: c.comment, summary: c.title, user: c.username, timestamp: c.created_at, status: c.resolved ? 'resolved' : 'open' })));
+      setComplaintsData(data.complaints.map(c => ({ ...c, id: c.id, details: c.comment, summary: c.title, user: c.username, timestamp: c.created_at, status: c.resolved ? 'resolved' : 'open' })));
       sessionStorage.setItem('complaints_data', JSON.stringify(data));
     } catch (error) {
       console.error('Error fetching complaints:', error);
     }
   };
 
-  // Fetch complaints khi component được mount lần đầu hoặc khi tab được chuyển sang 'complaint'
   useEffect(() => {
     if (activeTab === 'complaint') {
       fetchComplaints();
@@ -696,14 +671,26 @@ const NewsPage = ({ user }) => {
   }, [activeTab]);
 
   const [expandedComplaints, setExpandedComplaints] = useState({});
-
-  const handleUpdateComplaintStatus = (id, newStatus) => {
-    // Logic cập nhật trạng thái complaint (cần API trong tương lai)
-    setComplaintsData(prevData => prevData.map(c => (c.id === id ? { ...c, status: newStatus } : c)));
-  };
-  
   const handleToggleExpand = (id) => {
     setExpandedComplaints(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Hàm xử lý khi nhấn nút "Mark as Resolved"
+  const handleUpdateComplaintStatus = async (complaintId) => {
+      try {
+          const response = await fetch(`https://f2farena.com/api/complaints/${complaintId}/resolve`, {
+              method: 'PATCH',
+          });
+          if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.detail || 'Failed to update status');
+          }
+          alert('Complaint marked as resolved.');
+          fetchComplaints(true); // Tải lại danh sách để loại bỏ complaint đã giải quyết
+      } catch (error) {
+          alert(`Error: ${error.message}`);
+          console.error('Error updating complaint status:', error);
+      }
   };
 
   // Hàm xử lý khi submit form tạo complaint mới
@@ -719,8 +706,8 @@ const NewsPage = ({ user }) => {
         throw new Error(errorData.detail || 'Failed to create complaint');
       }
       alert('Complaint created successfully!');
-      setShowComplaintModal(false); // Đóng modal sau khi thành công
-      fetchComplaints(true); // Tải lại danh sách complaints, xóa cache cũ
+      setShowComplaintModal(false);
+      fetchComplaints(true);
     } catch (error) {
       alert(`Error: ${error.message}`);
       console.error('Error creating complaint:', error);
@@ -776,28 +763,27 @@ const NewsPage = ({ user }) => {
 
       {activeTab === 'complaint' && (
         <div className="complaint-section">
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-                <button 
-                  className="btn btn-primary" 
-                  onClick={() => setShowComplaintModal(true)} 
-                  style={{fontSize: '1rem', padding: '0.5rem 1rem'}}
-                >
-                  + New Thread
-                </button>
-            </div>
-            {complaintsData.map(complaint => (
-                <ComplaintThread 
-                    key={complaint.id}
-                    complaint={complaint}
-                    onUpdateStatus={handleUpdateComplaintStatus}
-                    onToggleExpand={handleToggleExpand}
-                    isExpanded={!!expandedComplaints[complaint.id]}
-                />
-            ))}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <button 
+              className="btn btn-primary" 
+              onClick={() => setShowComplaintModal(true)} 
+              style={{fontSize: '1rem', padding: '0.5rem 1rem'}}
+            >
+              + New Thread
+            </button>
+          </div>
+          {complaintsData.map(complaint => (
+            <ComplaintThread
+              key={complaint.id}
+              complaint={complaint}
+              onUpdateStatus={handleUpdateComplaintStatus} // Truyền hàm mới vào
+              onToggleExpand={handleToggleExpand}
+              isExpanded={!!expandedComplaints[complaint.id]}
+            />
+          ))}
         </div>
       )}
 
-      {/* Render Modal Complaint khi state là true */}
       {showComplaintModal && (
         <ComplaintModal
           user={user}
