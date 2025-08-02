@@ -9,7 +9,7 @@
  */
 export const notifyAdminOfDeposit = async (userId, amount, memo) => {
   // URL này là endpoint trên backend Python của anh, anh có thể tùy chỉnh lại.
-  const NOTIFY_API_URL = 'http://localhost:8000/api/notify-deposit-request';
+  const NOTIFY_API_URL = 'http://f2farena.com/api/notify-deposit-request';
 
   // Dữ liệu gửi lên server
   const payload = {
