@@ -25,106 +25,115 @@ const NewsDetail = ({ user }) => {
   const [newComment, setNewComment] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [offset, setOffset] = useState(0);
-  const [hasMoreComments, setHasMoreComments] = useState(true);
-  const loadingRef = useRef(null);
+  const [hasMoreComments, setHasMoreComments] = useState(true);
+  const loadingRef = useRef(null);
 
+  // === Start: Tách các useEffect ra ===
+
+  // 1. useEffect để fetch chi tiết Broker (chỉ chạy khi `id` thay đổi)
   useEffect(() => {
-    console.log('NewsDetail mounted, fetching id:', id);  // Log để check component load OK
+    console.log('NewsDetail mounted, fetching id:', id);
     const fetchBrokerDetail = async () => {
-        const cacheKey = `broker_detail_${id}`;  // Key động theo id
-        console.log(`Checking sessionStorage for ${cacheKey}`);  // Log: Kiểm tra trước khi fetch
-        const cachedDetail = sessionStorage.getItem(cacheKey);
-        if (cachedDetail) {
-          console.log(`Using cached broker detail for id ${id} from sessionStorage`);
-          const parsedData = JSON.parse(cachedDetail);
-          setArticle(parsedData);
-          return;
+      const cacheKey = `broker_detail_${id}`;
+      console.log(`Checking sessionStorage for ${cacheKey}`);
+      const cachedDetail = sessionStorage.getItem(cacheKey);
+      if (cachedDetail) {
+        console.log(`Using cached broker detail for id ${id} from sessionStorage`);
+        const parsedData = JSON.parse(cachedDetail);
+        setArticle(parsedData);
+        return;
+      }
+      try {
+        const response = await fetch(`https://f2farena.com/api/brokers/${id}`);
+        console.log('Fetch broker detail response status:', response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-        try {
-            const response = await fetch(`https://f2farena.com/api/brokers/${id}`);
-            console.log('Fetch broker detail response status:', response.status);  // Log mới: Check status
-            if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            console.log('Fetched broker detail:', data); // Log
-            const articleData = {
-            id: data.id,
-            style: 'broker-review',
-            title: `Broker ${data.broker_name} Review: Is It Reliable?`,
-            date: '10/06/2025', // Giữ hardcode hoặc thêm field ở backend
-            author: 'TradeChallenge Team',
-            summary: data.description,
-            thumbnail: `https://f2farena.com/${data.thumbnail}`,  // Prepend URL
-            content: data.pk_review,
-            ratings: { license: data.star_1, insurance: data.star_2, localization: data.star_3, commission: data.star_4, stability: data.star_5, onboarding: data.star_6 }
-            };
-            setArticle(articleData);
-            sessionStorage.setItem(cacheKey, JSON.stringify(articleData));  // Lưu cache với key động
-            console.log(`Stored broker detail for id ${id} to sessionStorage`);
-        } catch (error) {
-            console.error('Error fetching broker detail:', error);
-        }
+        const data = await response.json();
+        console.log('Fetched broker detail:', data);
+        const articleData = {
+          id: data.id,
+          style: 'broker-review',
+          title: `Broker ${data.broker_name} Review: Is It Reliable?`,
+          date: '10/06/2025', // Giữ hardcode hoặc thêm field ở backend
+          author: 'TradeChallenge Team',
+          summary: data.description,
+          thumbnail: `https://f2farena.com/${data.thumbnail}`,
+          content: data.pk_review,
+          ratings: { license: data.star_1, insurance: data.star_2, localization: data.star_3, commission: data.star_4, stability: data.star_5, onboarding: data.star_6 }
+        };
+        setArticle(articleData);
+        sessionStorage.setItem(cacheKey, JSON.stringify(articleData));
+        console.log(`Stored broker detail for id ${id} to sessionStorage`);
+      } catch (error) {
+        console.error('Error fetching broker detail:', error);
+      }
+    };
+    fetchBrokerDetail();
+  }, [id]);
+
+  // 2. Hàm fetchComments, được định nghĩa bên ngoài useEffect để có thể gọi lại nhiều lần
+  const fetchComments = async (currentOffset) => {
+    if (!id) return; // Đảm bảo có ID trước khi fetch comments
+    if (!hasMoreComments && currentOffset > 0) return;
+    try {
+      const response = await fetch(`https://f2farena.com/api/trader_reviews/${id}?offset=${currentOffset}&limit=10`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('Fetched comments:', data);
+
+      const commentsData = data.list_comments.map(c => ({
+        id: c.id,
+        username: c.username,
+        content: c.comment,
+        timestamp: c.created_at
+      }));
+
+      setComments(prevComments => {
+        return currentOffset === 0 ? commentsData : [...prevComments, ...commentsData];
+      });
+      setOffset(currentOffset + commentsData.length);
+      setHasMoreComments(commentsData.length === 10); // Nếu số lượng trả về ít hơn 10, tức là không còn data
+
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    }
+  };
+
+  // 3. useEffect để khởi tạo và reset comments khi `id` thay đổi hoặc tab chuyển sang 'trader-reviews'
+  useEffect(() => {
+    const initializeComments = async () => { // Tạo một hàm async bên trong
+      if (activeTab === 'trader-reviews' || id) {
+        setComments([]);
+        setOffset(0);
+        setHasMoreComments(true);
+        await fetchComments(0); // Giờ có thể dùng await
+      }
     };
 
-    const fetchComments = async (currentOffset) => {
-      if (!hasMoreComments && currentOffset > 0) return;
-      try {
-        const response = await fetch(`https://f2farena.com/api/trader_reviews/${id}?offset=${currentOffset}&limit=10`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log('Fetched comments:', data);
+    initializeComments(); // Gọi hàm async này
+  }, [id, activeTab]);
 
-        const commentsData = data.list_comments.map(c => ({
-          id: c.id,
-          username: c.username,
-          content: c.comment,
-          timestamp: c.created_at
-        }));
+  // 4. useEffect cho Intersection Observer (infinite scrolling)
+  useEffect(() => {
+    if (!loadingRef.current || !id || activeTab !== 'trader-reviews') return; // Chỉ kích hoạt khi ở tab đúng và có ID
 
-        setComments(prevComments => {
-          return currentOffset === 0 ? commentsData : [...prevComments, ...commentsData];
-        });
-        setOffset(currentOffset + commentsData.length);
-        setHasMoreComments(commentsData.length === 10);
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMoreComments) {
+        fetchComments(offset);
+      }
+    }, { threshold: 1.0 });
 
-      } catch (error) {
-        console.error('Error fetching comments:', error);
-      }
-    };
+    observer.observe(loadingRef.current);
 
-    useEffect(() => {
-      fetchBrokerDetail();
-      setComments([]); // Reset comments khi id thay đổi để tải lại từ đầu
-      setOffset(0); // Reset offset
-      setHasMoreComments(true); // Reset hasMoreComments
-      fetchComments(0); // Tải 10 comment đầu tiên
-    }, [id]); // Fetch khi id thay đổi
-
-    // Intersection Observer cho infinite scrolling
-    useEffect(() => {
-      if (!loadingRef.current) return;
-
-      const observer = new IntersectionObserver(entries => {
-        if (entries[0].isIntersecting && hasMoreComments) {
-          fetchComments(offset);
-        }
-      }, { threshold: 1.0 }); // Khi phần tử cuối cùng hiện lên hoàn toàn
-
-      observer.observe(loadingRef.current);
-
-      return () => {
-        if (loadingRef.current) {
-          observer.unobserve(loadingRef.current);
-        }
-      };
-    }, [offset, hasMoreComments]); // Chạy lại khi offset hoặc hasMoreComments thay đổi
-
-    fetchBrokerDetail();
-    fetchComments();
-  }, [id]); // Fetch khi id thay đổi
+    return () => {
+      if (loadingRef.current) {
+        observer.unobserve(loadingRef.current);
+      }
+    };
+  }, [offset, hasMoreComments, id, activeTab]);
 
   if (!article) {
     return (
@@ -265,46 +274,46 @@ const NewsDetail = ({ user }) => {
         )}
 
         {activeTab === 'trader-reviews' && (
-          <div className="comments-section">
-            <h4 className="comments-title">Comments ({comments.length})</h4>
-            {comments.length === 0 && !hasMoreComments && ( // Thêm điều kiện !hasMoreComments để chỉ hiển thị khi không còn comments và không còn gì để tải
-              <p className="no-comments" style={{ color: 'var(--color-secondary-text)' }}>
-                No comments yet. Be the first to comment!
-              </p>
-            )}
-            {comments.map(comment => (
-              <div key={comment.id} className="comment-card card">
-                <div className="comment-header">
-                  <span className="comment-username">{comment.username || 'Anonymous User'}</span>
-                  <span className="comment-timestamp">{new Date(comment.timestamp).toLocaleString()}</span>
-                </div>
-                <p className="comment-content">{comment.content}</p>
-              </div>
-            ))}
-            {hasMoreComments && (
-              <div ref={loadingRef} style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-secondary-text)' }}>
-                Loading more comments...
-              </div>
-            )}
-            <form className="comment-form card" onSubmit={handleCommentSubmit} style={{ marginTop: '1.5rem' }}>
-              <div className="form-group">
-                <label className="form-label" htmlFor="comment-input">Add a Comment</label>
-                <textarea
-                  id="comment-input"
-                  className="form-input"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Write your comment here..."
-                  rows="4"
-                  required
-                />
-              </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-                Post Comment
-              </button>
-            </form>
-          </div>
-        )}
+          <div className="comments-section">
+            <h4 className="comments-title">Comments ({comments.length})</h4>
+            {comments.length === 0 && !hasMoreComments && ( // Thêm điều kiện !hasMoreComments để chỉ hiển thị khi không còn comments và không còn gì để tải
+              <p className="no-comments" style={{ color: 'var(--color-secondary-text)' }}>
+                No comments yet. Be the first to comment!
+              </p>
+            )}
+            {comments.map(comment => (
+              <div key={comment.id} className="comment-card card">
+                <div className="comment-header">
+                  <span className="comment-username">{comment.username || 'Anonymous User'}</span>
+                  <span className="comment-timestamp">{comment.timestamp ? new Date(comment.timestamp).toLocaleString() : 'N/A'}</span>
+                </div>
+                <p className="comment-content">{comment.content}</p>
+              </div>
+            ))}
+            {hasMoreComments && ( // Chỉ hiển thị div này nếu còn comments để tải
+              <div ref={loadingRef} style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-secondary-text)' }}>
+                Loading more comments...
+              </div>
+            )}
+            <form className="comment-form card" onSubmit={handleCommentSubmit} style={{ marginTop: '1.5rem' }}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="comment-input">Add a Comment</label>
+                <textarea
+                  id="comment-input"
+                  className="form-input"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Write your comment here..."
+                  rows="4"
+                  required
+                />
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
+                Post Comment
+              </button>
+            </form>
+          </div>
+        )}
       </div>
 
       {showConfirmation && (
