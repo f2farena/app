@@ -1017,13 +1017,10 @@ const WalletPage = ({ user, onUserUpdate }) => {
             <span className="value accent">{walletData.affiliateCommission.toFixed(2)} USDT</span>
           </div>
           <div className="wallet-buttons">
-            <button className="btn btn-accent" onClick={() => setShowWithdrawForm(true)}>Withdraw</button>
-          </div>
+            <button className="btn btn-accent" onClick={handleWithdrawClick}>Withdraw</button>
+          </div>
         </div>
       )}
-      <div className="wallet-buttons">
-        <button className="btn btn-accent" onClick={handleWithdrawClick}>Withdraw</button>
-      </div>
       {activeTab === 'transactionHistory' && (
         <div className="card">
           {walletData.transactionHistory.length > 0 ? (
@@ -2595,9 +2592,6 @@ const AppContent = () => {
         show={showSettingsSidebar} 
         onClose={() => setShowSettingsSidebar(false)} 
       />
-      {showDepositModal && (
-          <DepositForm onClose={() => setShowDepositModal(false)} user={user} onUserUpdate={handleUserUpdate} />
-       )}
     </div>
   );
 };
