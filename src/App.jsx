@@ -2565,7 +2565,7 @@ const AppContent = () => {
         <Routes>
           <Route path="/home" element={<HomePage />} />
           <Route path="/news" element={<NewsPage user={user} />} />
-          <Route path="/news/:id" element={<NewsDetail />} />
+          <Route path="/news/:id" element={<NewsDetail user={user} />} />
           <Route path="/arena" element={<ArenaPage user={user} onUserUpdate={handleUserUpdate} />} />
           <Route path="/tournament/:id" element={<TournamentDetail user={user} walletData={walletData} />} />
           <Route path="/arena/:id" element={<ArenaDetail />} />
