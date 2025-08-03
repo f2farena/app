@@ -6,7 +6,7 @@ import ArenaDetail from './components/ArenaDetail';
 import TournamentDetail from './components/TournamentDetail';
 import LazyLoad from 'react-lazyload';
 import { FixedSizeList } from 'react-window';
-import { notifyAdminOfDeposit } from './services/telegramService';
+import { notifyAdminOfDeposit, requestWithdrawal } from './services/telegramService';
 
 import settingIcon from './assets/setting.png';
 import chatboxIcon from './assets/chatbox.png';
@@ -25,10 +25,6 @@ import arrowIcon from './assets/arrow.png';
 import qrCode from './assets/QR-code.gif';
 import copyIcon1 from './assets/copy-1.png';
 import copyIcon2 from './assets/copy-2.png';
-
-// ===================================================================================
-// CÁC COMPONENT GIAO DIỆN PHỤ
-// ===================================================================================
 
 const Header = ({ onSettingsClick, onChatbotClick, showHeader }) => {
   const navigate = useNavigate();
@@ -882,89 +878,129 @@ const LeaderboardPage = () => {
   );
 };
 
-const WalletPage = () => {
-  const [activeTab, setActiveTab] = useState('assetInfo');
-  const [showWithdrawForm, setShowWithdrawForm] = useState(false);
+const WalletPage = ({ user }) => { // Nhận user prop
+  const [activeTab, setActiveTab] = useState('assetInfo');
+  const [showWithdrawForm, setShowWithdrawForm] = useState(false);
+  const [walletData, setWalletData] = useState({
+    currentBalance: 0,
+    totalDeposits: 0,
+    totalWithdrawals: 0,
+    totalWinnings: 0, // Dữ liệu này cần được tính toán ở backend
+    totalLosses: 0, // Dữ liệu này cần được tính toán ở backend
+    affiliateCommission: 0, // Dữ liệu này cần được tính toán ở backend
+    transactionHistory: [],
+  });
 
-  const walletData = {
-    currentBalance: '1500.50 USDT',
-    totalDeposits: '5000.00 USDT',
-    totalWithdrawals: '3000.00 USDT',
-    totalWinnings: '150.00 USDT',
-    totalLosses: '50.00 USDT',
-    affiliateCommission: '25.00 USDT',
-    transactionHistory: [
-      { id: 1, type: 'Deposit', amount: '500 USDT', date: '2025-06-01', status: 'Completed' },
-      { id: 2, type: 'Win', amount: '20 USDT', date: '2025-06-02', matchId: 'M-123', status: 'Completed' },
-      { id: 3, type: 'Withdraw', amount: '100 USDT', date: '2025-06-03', status: 'Pending' },
-      { id: 4, type: 'Loss', amount: '10 USDT', date: '2025-06-04', matchId: 'M-124', status: 'Completed' },
-    ],
-  };
+  useEffect(() => {
+    const fetchWalletData = async () => {
+      if (!user || !user.telegram_id) return;
 
-  if (showWithdrawForm) {
-    return <WithdrawForm onClose={() => setShowWithdrawForm(false)} currentBalance={walletData.currentBalance} />;
-  }
+      try {
+        const response = await fetch(`https://f2farena.com/api/users/${user.telegram_id}/wallet-history`);
+        if (!response.ok) throw new Error('Failed to fetch wallet data');
+        const data = await response.json();
 
-  return (
-    <div className="page-padding">
-      <div className="wallet-tabs">
-        <button className={`wallet-tab-button ${activeTab === 'assetInfo' ? 'active' : ''}`} onClick={() => setActiveTab('assetInfo')}>
-          Asset Information
-        </button>
-        <button className={`wallet-tab-button ${activeTab === 'transactionHistory' ? 'active' : ''}`} onClick={() => setActiveTab('transactionHistory')}>
-          Transaction History
-        </button>
-      </div>
+        // Tính toán totalDeposits và totalWithdrawals từ transactionHistory
+        const totalDeposits = data.transaction_history
+            .filter(tx => tx.type === 'deposit')
+            .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
 
-      {activeTab === 'assetInfo' && (
-        <div className="card">
-          <div className="wallet-info-row">
-            <span className="label">Current Balance</span>
-            <span className="value accent">{walletData.currentBalance}</span>
-          </div>
-          <div className="wallet-info-row">
-            <span className="label">Total Deposits</span>
-            <span className="value win">{walletData.totalDeposits}</span>
-          </div>
-          <div className="wallet-info-row">
-            <span className="label">Total Withdrawals</span>
-            <span className="value secondary">{walletData.totalWithdrawals}</span>
-          </div>
-          <div className="wallet-info-row">
-            <span className="label">Total Winnings</span>
-            <span className="value win">{walletData.totalWinnings}</span>
-          </div>
-          <div className="wallet-info-row">
-            <span className="label">Total Losses</span>
-            <span className="value loss">{walletData.totalLosses}</span>
-          </div>
-          <div className="wallet-info-row">
-            <span className="label">Affiliate Commission</span>
-            <span className="value accent">{walletData.affiliateCommission}</span>
-          </div>
-          <div className="wallet-buttons">
-            <button className="btn btn-accent" onClick={() => setShowWithdrawForm(true)}>Withdraw</button>
-          </div>
-        </div>
-      )}
-      {activeTab === 'transactionHistory' && (
-        <div className="card">
-          {walletData.transactionHistory.map(tx => (
-            <div key={tx.id} className="wallet-info-row">
-              <div>
-                <p className="label" style={{ margin: 0 }}>{tx.type} {tx.matchId ? `(${tx.matchId})` : ''}</p>
-                <p className="secondary" style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-secondary-text)' }}>{tx.date}</p>
-              </div>
-              <div className={`value ${tx.type === 'Loss' || tx.type === 'Withdraw' ? 'loss' : 'win'}`}>
-                <span>{tx.type === 'Loss' || tx.type === 'Withdraw' ? '-' : '+'} {tx.amount}</span>
-                <span className={`status-dot ${tx.status.toLowerCase()}`}>{tx.status}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+        const totalWithdrawals = data.transaction_history
+            .filter(tx => tx.type === 'withdraw')
+            .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+
+        setWalletData({
+          currentBalance: data.current_balance,
+          totalDeposits: totalDeposits,
+          totalWithdrawals: totalWithdrawals,
+          totalWinnings: 0, // Cần backend tính toán hoặc mock dữ liệu
+          totalLosses: 0, // Cần backend tính toán hoặc mock dữ liệu
+          affiliateCommission: 0, // Cần backend tính toán hoặc mock dữ liệu
+          transactionHistory: data.transaction_history.map(tx => ({
+                id: `${tx.type}-${tx.created_at}`, // Tạo ID duy nhất
+                type: tx.type.charAt(0).toUpperCase() + tx.type.slice(1), // Chuyển "deposit" -> "Deposit"
+                amount: `${parseFloat(tx.amount).toFixed(2)} USDT`,
+                date: new Date(tx.created_at).toLocaleString(),
+                status: 'Completed', // Giả định tất cả giao dịch trong history là completed
+            })),
+        });
+      } catch (error) {
+        console.error('Error fetching wallet data:', error);
+        // Hiển thị thông báo lỗi cho người dùng nếu cần
+      }
+    };
+
+    fetchWalletData();
+  }, [user]); // Chạy lại khi user thay đổi
+
+  if (showWithdrawForm) {
+    return <WithdrawForm onClose={() => setShowWithdrawForm(false)} user={user} />;
+  }
+
+  return (
+    <div className="page-padding">
+      <div className="wallet-tabs">
+        <button className={`wallet-tab-button ${activeTab === 'assetInfo' ? 'active' : ''}`} onClick={() => setActiveTab('assetInfo')}>
+          Asset Information
+        </button>
+        <button className={`wallet-tab-button ${activeTab === 'transactionHistory' ? 'active' : ''}`} onClick={() => setActiveTab('transactionHistory')}>
+          Transaction History
+        </button>
+      </div>
+
+      {activeTab === 'assetInfo' && (
+        <div className="card">
+          <div className="wallet-info-row">
+            <span className="label">Current Balance</span>
+            <span className="value accent">{walletData.currentBalance.toFixed(2)} USDT</span>
+          </div>
+          <div className="wallet-info-row">
+            <span className="label">Total Deposits</span>
+            <span className="value win">{walletData.totalDeposits.toFixed(2)} USDT</span>
+          </div>
+          <div className="wallet-info-row">
+            <span className="label">Total Withdrawals</span>
+            <span className="value secondary">{walletData.totalWithdrawals.toFixed(2)} USDT</span>
+          </div>
+          <div className="wallet-info-row">
+            <span className="label">Total Winnings</span>
+            <span className="value win">{walletData.totalWinnings.toFixed(2)} USDT</span>
+          </div>
+          <div className="wallet-info-row">
+            <span className="label">Total Losses</span>
+            <span className="value loss">{walletData.totalLosses.toFixed(2)} USDT</span>
+          </div>
+          <div className="wallet-info-row">
+            <span className="label">Affiliate Commission</span>
+            <span className="value accent">{walletData.affiliateCommission.toFixed(2)} USDT</span>
+          </div>
+          <div className="wallet-buttons">
+            <button className="btn btn-accent" onClick={() => setShowWithdrawForm(true)}>Withdraw</button>
+          </div>
+        </div>
+      )}
+      {activeTab === 'transactionHistory' && (
+        <div className="card">
+          {walletData.transactionHistory.length > 0 ? (
+            walletData.transactionHistory.map(tx => (
+              <div key={tx.id} className="wallet-info-row">
+                <div>
+                  <p className="label" style={{ margin: 0 }}>{tx.type}</p>
+                  <p className="secondary" style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-secondary-text)' }}>{tx.date}</p>
+                </div>
+                <div className={`value ${tx.type === 'Loss' || tx.type === 'Withdraw' ? 'loss' : 'win'}`}>
+                  <span>{tx.type === 'Loss' || tx.type === 'Withdraw' ? '-' : '+'} {tx.amount}</span>
+                  <span className={`status-dot ${tx.status.toLowerCase()}`}>{tx.status}</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p style={{ textAlign: 'center', color: 'var(--color-secondary-text)' }}>No transactions found.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess }) => {
@@ -1323,81 +1359,119 @@ const DepositForm = ({ onClose, user }) => {
   );
 };
 
-const WithdrawForm = ({ onClose, currentBalance }) => {
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [destinationWallet, setDestinationWallet] = useState('');
-  const [showConfirmation, setShowConfirmation] = useState(false);
+const WithdrawForm = ({ onClose, user }) => { // Thêm prop 'user'
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [destinationWallet, setDestinationWallet] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Thêm state cho trạng thái submit
+  const [currentBalance, setCurrentBalance] = useState(0); // Lấy balance từ user prop
 
-  const handleConfirm = (e) => {
-    e.preventDefault();
-    if (!withdrawAmount || !destinationWallet) return;
-    setShowConfirmation(true);
-  };
+  useEffect(() => {
+    if (user && user.bet_wallet !== undefined) {
+      setCurrentBalance(parseFloat(user.bet_wallet)); // Cập nhật balance từ user prop
+    }
+  }, [user]);
 
-  const confirmWithdrawal = () => {
-    console.log("Withdrawing:", { withdrawAmount, destinationWallet });
-    setShowConfirmation(false);
-    onClose();
-  };
+  const handleConfirm = (e) => {
+    e.preventDefault();
+    if (!withdrawAmount || !destinationWallet) {
+      alert('Vui lòng nhập số tiền và địa chỉ ví.');
+      return;
+    }
+    if (parseFloat(withdrawAmount) <= 0) {
+      alert('Số tiền rút phải lớn hơn 0.');
+      return;
+    }
+    if (parseFloat(withdrawAmount) > currentBalance) {
+        alert('Số dư không đủ để thực hiện giao dịch này.');
+        return;
+    }
+    setShowConfirmation(true);
+  };
 
-  return (
-    <>
-      <div className="page-padding">
-        <div className="form-header">
-          <h2>Withdraw Funds</h2>
-          <button onClick={onClose} className="icon-button close-button">×</button>
-        </div>
-        <div className="wallet-info-row" style={{ marginBottom: '1rem' }}>
-          <span className="label">Available Balance</span>
-          <span className="value accent">{currentBalance}</span>
-        </div>
-        <form className="card" onSubmit={handleConfirm}>
-          <div className="form-group">
-            <label className="form-label">Withdrawal Amount (USDT)</label>
-            <input
-              type="number"
-              className="form-input"
-              value={withdrawAmount}
-              onChange={(e) => setWithdrawAmount(e.target.value)}
-              placeholder="e.g., 100"
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Destination Wallet Address</label>
-            <input
-              type="text"
-              className="form-input"
-              value={destinationWallet}
-              onChange={(e) => setDestinationWallet(e.target.value)}
-              placeholder="e.g., 0x123..."
-              required
-            />
-          </div>
-          <button type="submit" className="btn btn-accent" style={{ width: '100%', marginTop: '1rem' }}>
-            Confirm Withdrawal
-          </button>
-        </form>
-      </div>
+  const confirmWithdrawal = async () => {
+    if (!user || !user.telegram_id) {
+      console.error("User data is not available. Cannot send withdrawal request.");
+      alert("Thông tin người dùng không khả dụng. Vui lòng thử lại.");
+      return;
+    }
 
-      {showConfirmation && (
-        <>
-        <div className="confirmation-modal-wrapper">
-          <div className="confirmation-overlay" onClick={() => setShowConfirmation(false)}></div>
-          <div className="confirmation-modal card">
-            <h4>Confirm Withdrawal</h4>
-            <p>Withdraw {withdrawAmount} USDT to {destinationWallet}?</p>
-            <p>Available Balance: {currentBalance}</p>
-            <div className="confirmation-buttons">
-              <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={confirmWithdrawal}>Confirm</button>
-            </div>
-          </div>
-        </div>         
-        </>
-      )}
-    </>
-  );
+    setIsSubmitting(true);
+    try {
+      // Gọi hàm API để gửi yêu cầu rút tiền
+      await requestWithdrawal(user.telegram_id, withdrawAmount, destinationWallet);
+      alert('Yêu cầu rút tiền đã được gửi thành công. Vui lòng chờ admin xác nhận.');
+      setShowConfirmation(false);
+      onClose(); // Đóng form sau khi gửi thành công
+      window.location.reload(); // Tải lại trang để cập nhật số dư và lịch sử
+    } catch (error) {
+      console.error('Error sending withdrawal request:', error);
+      alert(`Lỗi: ${error.message}`); // Hiển thị lỗi từ backend
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="deposit-modal-wrapper" onClick={onClose}> {/* Đổi class để dùng chung style */}
+        <div className="deposit-modal-content" onClick={(e) => e.stopPropagation()}> {/* Đổi class để dùng chung style */}
+          {!showConfirmation ? (
+            <>
+              <div className="form-header">
+                <h2>Withdraw Funds</h2>
+                <button onClick={onClose} className="icon-button close-button">×</button>
+              </div>
+              <div className="wallet-info-row" style={{ marginBottom: '1rem' }}>
+                <span className="label">Available Balance</span>
+                <span className="value accent">{currentBalance.toFixed(2)} USDT</span>
+              </div>
+              <form className="card" onSubmit={handleConfirm} style={{border: 'none', background: 'transparent', padding: 0}}>
+                <div className="form-group">
+                  <label className="form-label">Withdrawal Amount (USDT)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    placeholder="e.g., 100"
+                    required
+                    min="0.01" step="0.01" // Đảm bảo số dương và có thể nhập số lẻ
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Destination Wallet Address</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={destinationWallet}
+                    onChange={(e) => setDestinationWallet(e.target.value)}
+                    placeholder="e.g., 0x123..."
+                    required
+                  />
+                </div>
+                <button type="submit" className="btn btn-accent" style={{ width: '100%', marginTop: '1rem' }} disabled={isSubmitting}>
+                  {isSubmitting ? 'Submitting...' : 'Confirm Withdrawal'}
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="confirmation-modal card" style={{position: 'static', transform: 'none', background: 'transparent', boxShadow: 'none'}}>
+              <h4>Xác nhận rút tiền</h4>
+              <p>Bạn có muốn rút <span className="accent">{withdrawAmount} USDT</span> tới ví <span style={{wordBreak: 'break-all'}}>{destinationWallet}</span> không?</p>
+              <p>Số dư hiện tại: <span className="accent">{currentBalance.toFixed(2)} USDT</span></p>
+              <div className="confirmation-buttons">
+                <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)} disabled={isSubmitting}>Hủy</button>
+                <button className="btn btn-primary" onClick={confirmWithdrawal} disabled={isSubmitting}>
+                  {isSubmitting ? 'Đang xác nhận...' : 'Xác nhận'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
 };
 
 // Helper component để xử lý logic đếm ngược và hiển thị trạng thái
@@ -2383,7 +2457,7 @@ const AppContent = () => {
           <Route path="/tournament/:id" element={<TournamentDetail user={user} walletData={walletData} />} />
           <Route path="/arena/:id" element={<ArenaDetail />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/wallet" element={<WalletPage />} />
+          <Route path="/wallet" element={<WalletPage user={user} />} />
           <Route path="/chatbot" element={<ChatbotPage />} />
           <Route path="/match/:id" element={<MatchDetail />} />
           <Route path="/" element={<HomePage />} />

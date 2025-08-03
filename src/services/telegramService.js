@@ -33,3 +33,24 @@ export const notifyAdminOfDeposit = async (userId, amount, memo) => {
     alert('Đã có lỗi khi gửi yêu cầu nạp tiền. Vui lòng thử lại hoặc liên hệ hỗ trợ.'); // Thông báo lỗi cho người dùng
   }
 };
+
+export const requestWithdrawal = async (userId, amount, walletAddress) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/notify-withdrawal-request`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_id: userId, amount: parseFloat(amount), wallet_address: walletAddress }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to send withdrawal request');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error requesting withdrawal:', error);
+        throw error;
+    }
+};
