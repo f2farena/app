@@ -878,64 +878,106 @@ const LeaderboardPage = () => {
   );
 };
 
-const WalletPage = ({ user }) => { // Nhận user prop
+const WalletPage = ({ user, onUserUpdate }) => {
   const [activeTab, setActiveTab] = useState('assetInfo');
   const [showWithdrawForm, setShowWithdrawForm] = useState(false);
+  const [showUpdateWalletAddressForm, setShowUpdateWalletAddressForm] = useState(false);
   const [walletData, setWalletData] = useState({
     currentBalance: 0,
     totalDeposits: 0,
     totalWithdrawals: 0,
-    totalWinnings: 0, // Dữ liệu này cần được tính toán ở backend
-    totalLosses: 0, // Dữ liệu này cần được tính toán ở backend
-    affiliateCommission: 0, // Dữ liệu này cần được tính toán ở backend
+    totalWinnings: 0, 
+    totalLosses: 0, 
+    affiliateCommission: 0, 
     transactionHistory: [],
   });
 
+  // Lấy currentBalance từ user.bet_wallet khi component mount hoặc user thay đổi
   useEffect(() => {
-    const fetchWalletData = async () => {
+    if (user && user.bet_wallet !== undefined) {
+      setWalletData(prevData => ({
+        ...prevData,
+        currentBalance: parseFloat(user.bet_wallet)
+      }));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const fetchTransactionHistory = async () => {
       if (!user || !user.telegram_id) return;
 
       try {
-        const response = await fetch(`https://f2farena.com/api/users/${user.telegram_id}/wallet-history`);
-        if (!response.ok) throw new Error('Failed to fetch wallet data');
+        // Chỉ fetch lịch sử giao dịch, không fetch current_balance nữa
+        const response = await fetch(`https://f2farena.com/api/users/${user.telegram_id}/history-transactions`); // Sẽ điều chỉnh endpoint này ở main.py
+        if (!response.ok) throw new Error('Failed to fetch transaction history');
         const data = await response.json();
 
-        // Tính toán totalDeposits và totalWithdrawals từ transactionHistory
-        const totalDeposits = data.transaction_history
-            .filter(tx => tx.type === 'deposit')
-            .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+        const totalDeposits = data.transaction_history
+            .filter(tx => tx.type === 'deposit')
+            .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
 
-        const totalWithdrawals = data.transaction_history
-            .filter(tx => tx.type === 'withdraw')
-            .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+        const totalWithdrawals = data.transaction_history
+            .filter(tx => tx.type === 'withdraw')
+            .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
 
-        setWalletData({
-          currentBalance: data.current_balance,
+        setWalletData(prevData => ({
+          ...prevData,
           totalDeposits: totalDeposits,
           totalWithdrawals: totalWithdrawals,
-          totalWinnings: 0, // Cần backend tính toán hoặc mock dữ liệu
-          totalLosses: 0, // Cần backend tính toán hoặc mock dữ liệu
-          affiliateCommission: 0, // Cần backend tính toán hoặc mock dữ liệu
           transactionHistory: data.transaction_history.map(tx => ({
-                id: `${tx.type}-${tx.created_at}`, // Tạo ID duy nhất
-                type: tx.type.charAt(0).toUpperCase() + tx.type.slice(1), // Chuyển "deposit" -> "Deposit"
-                amount: `${parseFloat(tx.amount).toFixed(2)} USDT`,
-                date: new Date(tx.created_at).toLocaleString(),
-                status: 'Completed', // Giả định tất cả giao dịch trong history là completed
-            })),
-        });
+                id: `${tx.type}-${tx.created_at}-${tx.amount}`, // Tạo ID duy nhất hơn
+                type: tx.type.charAt(0).toUpperCase() + tx.type.slice(1), 
+                amount: `${parseFloat(tx.amount).toFixed(2)} USDT`,
+                date: new Date(tx.created_at).toLocaleString(),
+                status: 'Completed', 
+            })),
+        }));
       } catch (error) {
-        console.error('Error fetching wallet data:', error);
-        // Hiển thị thông báo lỗi cho người dùng nếu cần
+        console.error('Error fetching transaction history:', error);
       }
     };
 
-    fetchWalletData();
-  }, [user]); // Chạy lại khi user thay đổi
+    fetchTransactionHistory();
+  }, [user]);
 
-  if (showWithdrawForm) {
-    return <WithdrawForm onClose={() => setShowWithdrawForm(false)} user={user} />;
-  }
+  const handleWithdrawClick = () => {
+    if (!user) {
+      alert('Thông tin người dùng chưa được tải. Vui lòng thử lại.');
+      return;
+    }
+    // Kiểm tra nếu wallet_address chưa có hoặc là string rỗng (hoặc chỉ toàn khoảng trắng)
+    if (!user.wallet_address || user.wallet_address.trim() === '') {
+      setShowUpdateWalletAddressForm(true); // Hiển thị form cập nhật ví
+    } else {
+      setShowWithdrawForm(true); // Hiển thị form rút tiền
+    }
+  };
+
+  const handleWalletAddressUpdated = (updatedUser) => {
+    onUserUpdate(updatedUser); // Cập nhật user state ở AppContent
+    setShowUpdateWalletAddressForm(false); // Đóng form cập nhật
+    setShowWithdrawForm(true); // Mở form rút tiền ngay lập tức
+  };
+
+  if (showUpdateWalletAddressForm) {
+    return (
+      <UpdateWalletAddressForm
+        onClose={() => setShowUpdateWalletAddressForm(false)}
+        user={user}
+        onWalletAddressUpdated={handleWalletAddressUpdated}
+      />
+    );
+  }
+
+  if (showWithdrawForm) {
+    return (
+      <WithdrawForm
+        onClose={() => setShowWithdrawForm(false)}
+        user={user}
+        onUserUpdate={onUserUpdate}
+      />
+    );
+  }
 
   return (
     <div className="page-padding">
@@ -979,6 +1021,9 @@ const WalletPage = ({ user }) => { // Nhận user prop
           </div>
         </div>
       )}
+      <div className="wallet-buttons">
+        <button className="btn btn-accent" onClick={handleWithdrawClick}>Withdraw</button>
+      </div>
       {activeTab === 'transactionHistory' && (
         <div className="card">
           {walletData.transactionHistory.length > 0 ? (
@@ -1156,94 +1201,82 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess }) => 
     );
 };
 
-const DepositForm = ({ onClose, user }) => {
-  const [depositAmount, setDepositAmount] = useState('');
-  const [memoContent, setMemoContent] = useState('');
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [timer, setTimer] = useState(600); // 10 minutes for QR code visibility
-  const [copied, setCopied] = useState(false);
-  const [initialBalance, setInitialBalance] = useState(0); // To store user's balance before deposit
-  const intervalRef = useRef(null); // Ref to store interval ID for polling
-  const walletAddress = 'TUYDJGWvzE54Wpq1AqFXWCUkjbyozrK1L2';
+const DepositForm = ({ onClose, user, onUserUpdate }) => {
+  const [depositAmount, setDepositAmount] = useState('');
+  const [memoContent, setMemoContent] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [timer, setTimer] = useState(600);
+  const [copied, setCopied] = useState(false);
+  const intervalRef = useRef(null); 
+  const walletAddress = 'TUYDJGWvzE54Wpq1AqFXWCUkjbyozrK1L2';
 
-  // Load user's initial balance when the form is opened
-  useEffect(() => {
-    if (user && user.bet_wallet !== undefined) {
-      setInitialBalance(user.bet_wallet);
-    }
-  }, [user]);
+  const handleConfirm = async (e) => {
+    e.preventDefault();
+    if (!depositAmount || !memoContent) {
+      alert('Please enter both deposit amount and memo content.');
+      return;
+    }
+    
+    if (!user || !user.telegram_id) {
+      console.error("User data is not available. Cannot send notification.");
+      alert("User information missing. Please refresh or try again.");
+      return;
+    }
 
-  const handleConfirm = async (e) => {
-    e.preventDefault();
-    if (!depositAmount || !memoContent) {
-      alert('Please enter both deposit amount and memo content.');
-      return;
-    }
-    
-    if (!user || !user.telegram_id) {
-      console.error("User data is not available. Cannot send notification.");
-      alert("User information missing. Please refresh or try again.");
-      return;
-    }
+    try {
+      await notifyAdminOfDeposit(user.telegram_id, depositAmount, memoContent);
+      setShowConfirmation(true);
+      setTimer(600); 
 
-    try {
-      // Send notification to admin
-      await notifyAdminOfDeposit(user.telegram_id, depositAmount, memoContent);
-      setShowConfirmation(true);
-      setTimer(600); // Reset timer for QR code display
+      startPollingBalance();
+    } catch (error) {
+      console.error('Error in deposit confirmation process:', error);
+      alert('There was an issue processing your deposit. Please try again or contact support.');
+    }
+  };
 
-      // Start polling for balance change
-      startPollingBalance();
-    } catch (error) {
-      console.error('Error in deposit confirmation process:', error);
-      alert('There was an issue processing your deposit. Please try again or contact support.');
-    }
-  };
+  const startPollingBalance = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
 
-  const startPollingBalance = () => {
-    // Clear any existing interval to prevent duplicates
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
+    let pollingAttempts = 0;
+    const maxPollingTime = 600; 
+    const intervalDuration = 30 * 1000; 
 
-    let pollingAttempts = 0;
-    const maxPollingTime = 600; // Total polling time: 10 minutes (matching QR timer)
-    const intervalDuration = 30 * 1000; // Poll every 30 seconds
+    intervalRef.current = setInterval(async () => {
+      pollingAttempts++;
+      console.log(`Polling attempt ${pollingAttempts} for user ${user.telegram_id} balance...`);
 
-    intervalRef.current = setInterval(async () => {
-      pollingAttempts++;
-      console.log(`Polling attempt ${pollingAttempts} for user ${user.telegram_id} balance...`);
+      if (timer <= 0) { 
+        clearInterval(intervalRef.current);
+        console.log('Polling stopped: QR code timer expired.');
+        alert("Deposit confirmation time expired. If you've sent money, please contact support!");
+        onClose(); 
+        return;
+      }
 
-      if (timer <= 0) { // Stop polling if QR code timer runs out
-        clearInterval(intervalRef.current);
-        console.log('Polling stopped: QR code timer expired.');
-        alert("Deposit confirmation time expired. If you've sent money, please contact support!");
-        onClose(); // Close the form
-        return;
-      }
+      try {
+        // Fetch lại user data để có balance mới nhất
+        const response = await fetch(`https://f2farena.com/api/users/${user.telegram_id}`);
+        if (!response.ok) throw new Error('Failed to fetch user balance from API');
+        const updatedUserData = await response.json();
+        const currentBetWallet = parseFloat(updatedUserData.bet_wallet);
+        const expectedBalance = parseFloat(user.bet_wallet) + parseFloat(depositAmount); // So sánh với balance LÚC BẮT ĐẦU nạp + số tiền nạp
 
-      try {
-        const response = await fetch(`https://f2farena.com/api/users/${user.telegram_id}`);
-        if (!response.ok) throw new Error('Failed to fetch user balance from API');
-        const data = await response.json();
-        const currentBetWallet = parseFloat(data.bet_wallet);
-        const expectedBalance = initialBalance + parseFloat(depositAmount);
+        console.log(`Fetched current balance: ${currentBetWallet}, Expected after deposit: ${expectedBalance}`);
 
-        console.log(`Fetched current balance: ${currentBetWallet}, Expected after deposit: ${expectedBalance}`);
-
-        // Compare balances using a small epsilon for floating-point precision
-        if (Math.abs(currentBetWallet - expectedBalance) < 0.001) { // 0.001 is a common epsilon
-          alert("🎉 Deposit successful! Your balance has been updated.");
-          clearInterval(intervalRef.current); // Stop polling
-          onClose(); // Close the form
-          window.location.reload(); // Reload the page to update UI with new balance
-        }
-      } catch (error) {
-        console.error('Error fetching current balance during polling:', error);
-        // Do not alert user for polling errors, just log them
-      }
-    }, intervalDuration);
-  };
+        if (Math.abs(currentBetWallet - expectedBalance) < 0.001) { 
+          alert("🎉 Deposit successful! Your balance has been updated.");
+          clearInterval(intervalRef.current); 
+          onClose(); 
+          onUserUpdate(updatedUserData); // Cập nhật user object ở AppContent
+        }
+      } catch (error) {
+        console.error('Error fetching current balance during polling:', error);
+      }
+    }, intervalDuration);
+  };
 
   // Clear interval when component unmounts or confirmation view changes
   useEffect(() => {
@@ -1359,7 +1392,7 @@ const DepositForm = ({ onClose, user }) => {
   );
 };
 
-const WithdrawForm = ({ onClose, user }) => { // Thêm prop 'user'
+const WithdrawForm = ({ onClose, user, onUserUpdate }) => {
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [destinationWallet, setDestinationWallet] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -1368,7 +1401,7 @@ const WithdrawForm = ({ onClose, user }) => { // Thêm prop 'user'
 
   useEffect(() => {
     if (user && user.bet_wallet !== undefined) {
-      setCurrentBalance(parseFloat(user.bet_wallet)); // Cập nhật balance từ user prop
+      setCurrentBalance(parseFloat(user.bet_wallet));
     }
   }, [user]);
 
@@ -1398,15 +1431,18 @@ const WithdrawForm = ({ onClose, user }) => { // Thêm prop 'user'
 
     setIsSubmitting(true);
     try {
-      // Gọi hàm API để gửi yêu cầu rút tiền
       await requestWithdrawal(user.telegram_id, withdrawAmount, destinationWallet);
       alert('Yêu cầu rút tiền đã được gửi thành công. Vui lòng chờ admin xác nhận.');
       setShowConfirmation(false);
-      onClose(); // Đóng form sau khi gửi thành công
-      window.location.reload(); // Tải lại trang để cập nhật số dư và lịch sử
+      onClose();
+      const response = await fetch(`https://f2farena.com/api/users/${user.telegram_id}`);
+      if (!response.ok) throw new Error('Failed to fetch updated user data');
+      const updatedUserData = await response.json();
+      onUserUpdate(updatedUserData);
+
     } catch (error) {
       console.error('Error sending withdrawal request:', error);
-      alert(`Lỗi: ${error.message}`); // Hiển thị lỗi từ backend
+      alert(`Lỗi: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -1474,6 +1510,81 @@ const WithdrawForm = ({ onClose, user }) => { // Thêm prop 'user'
   );
 };
 
+const UpdateWalletAddressForm = ({ onClose, user, onWalletAddressUpdated }) => {
+  const [walletAddress, setWalletAddress] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!walletAddress.trim()) {
+      alert('Vui lòng nhập địa chỉ ví.');
+      return;
+    }
+    if (!user || !user.telegram_id) {
+      alert('Thông tin người dùng không khả dụng. Vui lòng thử lại.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Gửi request PATCH đến backend để cập nhật wallet_address
+      const response = await fetch(`https://f2farena.com/api/users/${user.telegram_id}`, {
+        method: 'PUT', // Sử dụng PUT hoặc PATCH tùy theo API của bạn
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ wallet_address: walletAddress }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Không thể cập nhật địa chỉ ví.');
+      }
+
+      const updatedUser = await response.json(); // Nhận về user object đã cập nhật
+      alert('Địa chỉ ví đã được cập nhật thành công!');
+      onWalletAddressUpdated(updatedUser); // Cập nhật user state ở AppContent
+      onClose(); // Đóng form
+    } catch (error) {
+      console.error('Lỗi khi cập nhật địa chỉ ví:', error);
+      alert(`Lỗi: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="deposit-modal-wrapper" onClick={onClose}>
+      <div className="deposit-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="form-header">
+          <h2>Bổ sung địa chỉ ví</h2>
+          <button onClick={onClose} className="icon-button close-button">×</button>
+        </div>
+        <p style={{ textAlign: 'center', marginBottom: '1rem' }}>
+          Bạn cần cập nhật địa chỉ ví USDT (TRC20) để thực hiện rút tiền.
+        </p>
+        <form className="card" onSubmit={handleSubmit} style={{ border: 'none', background: 'transparent', padding: 0 }}>
+          <div className="form-group">
+            <label className="form-label">Địa chỉ ví USDT (TRC20)</label>
+            <input
+              type="text"
+              className="form-input"
+              value={walletAddress}
+              onChange={(e) => setWalletAddress(e.target.value)}
+              placeholder="Nhập địa chỉ ví của bạn..."
+              required
+              disabled={isSubmitting}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={isSubmitting}>
+            {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật địa chỉ ví'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // Helper component để xử lý logic đếm ngược và hiển thị trạng thái
 const TournamentStatus = ({ startTime }) => {
   const calculateTimeLeft = () => {
@@ -1533,7 +1644,7 @@ const TournamentStatus = ({ startTime }) => {
   );
 };
 
-const ArenaPage = ({ user }) => {
+const ArenaPage = ({ user, onUserUpdate }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('tournament');
   const [tournamentFilter, setTournamentFilter] = useState('all');
@@ -1961,8 +2072,8 @@ const ArenaPage = ({ user }) => {
         </>
       )}
       {showDepositModal && (
-        <DepositForm onClose={() => setShowDepositModal(false)} user={user} />
-      )}
+        <DepositForm onClose={() => setShowDepositModal(false)} user={user} onUserUpdate={onUserUpdate} />
+      )}
       {showJoinConfirm && (
         <JoinConfirmModal
           onClose={() => setShowJoinConfirm(false)}
@@ -2138,7 +2249,7 @@ const PersonalInfoView = ({ onBack, user }) => {
                 </li>
                 <li className="list-item">
                     <span className="list-item-label">Wallet Address</span>
-                    <span className="list-item-value">{user.wallet_address || 'Chưa cập nhật'}</span>
+                    <span className="list-item-value">{user.wallet_address || 'Null'}</span>
                 </li>
                 <li className="list-item">
                     <span className="list-item-label">VIP Level</span>
@@ -2321,6 +2432,11 @@ const AppContent = () => {
   const location = useLocation();
   const [user, setUser] = useState(null);
 
+  const handleUserUpdate = (updatedUserData) => {
+    setUser(updatedUserData);
+    sessionStorage.setItem('user_data', JSON.stringify(updatedUserData)); // Cập nhật cache
+  };
+
   const [walletData, setWalletData] = useState({
     currentBalance: '1500.50 USDT',
     totalDeposits: '5000.00 USDT',
@@ -2367,20 +2483,20 @@ const AppContent = () => {
       }
       
       try {
-        const response = await fetch(`https://f2farena.com/api/users/${telegramId}`);
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Fetch user failed for ID ${telegramId}:`, response.status, errorText);
-          return;
-        }
-        const data = await response.json();
-        console.log('Fetched user data from API:', data);
-        setUser(data);
-        sessionStorage.setItem('user_data', JSON.stringify(data));
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    };
+        const response = await fetch(`https://f2farena.com/api/users/${telegramId}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Fetch user failed for ID ${telegramId}:`, response.status, errorText);
+          return;
+        }
+        const data = await response.json();
+        console.log('Fetched user data from API:', data);
+        setUser(data);
+        sessionStorage.setItem('user_data', JSON.stringify(data));
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
 
     loadUser();
   }, [location.search]);
@@ -2453,11 +2569,11 @@ const AppContent = () => {
           <Route path="/home" element={<HomePage />} />
           <Route path="/news" element={<NewsPage user={user} />} />
           <Route path="/news/:id" element={<NewsDetail />} />
-          <Route path="/arena" element={<ArenaPage user={user} />} />
+          <Route path="/arena" element={<ArenaPage user={user} onUserUpdate={handleUserUpdate} />} />
           <Route path="/tournament/:id" element={<TournamentDetail user={user} walletData={walletData} />} />
           <Route path="/arena/:id" element={<ArenaDetail />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/wallet" element={<WalletPage user={user} />} />
+          <Route path="/wallet" element={<WalletPage user={user} onUserUpdate={handleUserUpdate} />} />
           <Route path="/chatbot" element={<ChatbotPage />} />
           <Route path="/match/:id" element={<MatchDetail />} />
           <Route path="/" element={<HomePage />} />
@@ -2479,6 +2595,9 @@ const AppContent = () => {
         show={showSettingsSidebar} 
         onClose={() => setShowSettingsSidebar(false)} 
       />
+      {showDepositModal && (
+          <DepositForm onClose={() => setShowDepositModal(false)} user={user} onUserUpdate={handleUserUpdate} />
+       )}
     </div>
   );
 };
