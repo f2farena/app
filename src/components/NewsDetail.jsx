@@ -38,7 +38,7 @@ const NewsDetail = () => {
           return;
         }
         try {
-            const response = await fetch(`http://localhost:8000/api/brokers/${id}`);
+            const response = await fetch(`https://f2farena.com/api/brokers/${id}`);
             console.log('Fetch broker detail response status:', response.status);  // Log mới: Check status
             if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -52,7 +52,7 @@ const NewsDetail = () => {
             date: '10/06/2025', // Giữ hardcode hoặc thêm field ở backend
             author: 'TradeChallenge Team',
             summary: data.description,
-            thumbnail: `http://localhost:8000/${data.thumbnail}`,  // Prepend URL
+            thumbnail: `https://f2farena.com/${data.thumbnail}`,  // Prepend URL
             content: data.pk_review,
             ratings: { license: data.star_1, insurance: data.star_2, localization: data.star_3, commission: data.star_4, stability: data.star_5, onboarding: data.star_6 }
             };
@@ -75,7 +75,7 @@ const NewsDetail = () => {
         return;
       }
       try {
-        const response = await fetch(`http://localhost:8000/api/trader_reviews/${id}`);
+        const response = await fetch(`https://f2farena.com/api/trader_reviews/${id}`);
         const data = await response.json();
         console.log('Fetched comments:', data); // Log
         const commentsData = data.list_comments.map(c => ({
@@ -151,7 +151,7 @@ const NewsDetail = () => {
             />
             {article.logo && (  // Nếu backend return logo field, add img (giả sử)
                 <img
-                src={`http://localhost:8000/${article.logo}`}  // Prepend
+                src={`https://f2farena.com/${article.logo}`}  // Prepend
                 alt="Broker Logo"
                 style={{ position: 'absolute', top: '10px', left: '10px', width: '50px', height: '50px' }}  // Style tùy ý
                 onError={(e) => console.error(`Logo error: ${article.logo}`)}
