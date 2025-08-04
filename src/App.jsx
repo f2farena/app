@@ -1582,6 +1582,193 @@ const UpdateWalletAddressForm = ({ onClose, user, onWalletAddressUpdated }) => {
   );
 };
 
+const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersList, conditionType }) => {
+    const navigate = useNavigate();
+    const [newAccount, setNewAccount] = useState({ name_account: '', server_account: '' });
+    const [newEmail, setNewEmail] = useState(user?.email || ''); // Initialize with user's current email
+
+    // Lấy thông tin broker của trận đấu
+    const matchBroker = brokersList.find(b => b.id === match.broker_id);
+    const brokerName = matchBroker?.name || 'this broker';
+    const brokerRegistrationUrl = matchBroker?.registration_url || 'https://example.com/register'; // Cần lấy từ API broker hoặc hardcode nếu không có
+
+    const currentBalance = parseFloat(user?.bet_wallet || 0);
+    const hasSufficientBalance = currentBalance >= match.betAmount;
+    const hasBrokerAccount = user?.linkedBrokers?.includes(match.broker_id) || false;
+    const hasEmail = user?.email && user.email.trim() !== '';
+
+    const handleGoToWallet = () => {
+        navigate('/wallet');
+        onClose();
+    };
+
+    const handleSubmitNewAccount = async () => {
+        if (!newAccount.name_account.trim() || !newAccount.server_account.trim()) {
+            alert('Vui lòng nhập đầy đủ Tên tài khoản và Server.');
+            return;
+        }
+        try {
+            const response = await fetch('https://f2farena.com/api/accounts/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: user.telegram_id,
+                    broker_id: match.broker_id,
+                    name_account: newAccount.name_account,
+                    server_account: newAccount.server_account
+                })
+            });
+            const data = await response.json();
+            if (data.id) {
+                const updatedLinkedBrokers = [...new Set([...(user.linkedBrokers || []), match.broker_id])]; // Đảm bảo unique
+                const updatedUser = { ...user, linkedBrokers: updatedLinkedBrokers };
+                onUserUpdate(updatedUser);
+                alert('Tài khoản đã được liên kết thành công!');
+                onClose(); // Đóng modal sau khi liên kết thành công
+            } else {
+                alert(data.detail || 'Liên kết tài khoản thất bại.');
+            }
+        } catch (error) {
+            console.error('Lỗi khi liên kết tài khoản:', error);
+            alert('Lỗi khi liên kết tài khoản: ' + error.message);
+        }
+    };
+
+    const handleSubmitNewEmail = async () => {
+        const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!newEmail || !emailPattern.test(newEmail)) {
+            alert('Vui lòng nhập địa chỉ email hợp lệ.');
+            return;
+        }
+        try {
+            const response = await fetch(`https://f2farena.com/api/users/${user.telegram_id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: newEmail })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Cập nhật email thất bại.');
+            }
+            const updatedUserData = await response.json(); // Nhận về user object đã cập nhật
+            onUserUpdate(updatedUserData);
+            alert('Email đã được cập nhật thành công!');
+            onClose(); // Đóng modal sau khi cập nhật email
+        } catch (error) {
+            console.error('Lỗi khi cập nhật email:', error);
+            alert('Lỗi khi cập nhật email: ' + error.message);
+        }
+    };
+
+    const renderContent = () => {
+        if (!hasBrokerAccount) {
+            return (
+                <>
+                    <h4>Yêu cầu tài khoản sàn</h4>
+                    <p>Bạn cần có tài khoản với sàn <strong>{brokerName}</strong> để tham gia trận đấu này.</p>
+                    <p>
+                        Nhấn <a href={brokerRegistrationUrl} target="_blank" rel="noopener,noreferrer" style={{ color: 'var(--color-accent)' }}>vào đây</a> để đăng ký tài khoản mới trên sàn nếu bạn chưa có.
+                    </p>
+                    <div className="form-group">
+                        <label className="form-label">Tên tài khoản Trading</label>
+                        <input
+                            type="text"
+                            value={newAccount.name_account}
+                            onChange={(e) => setNewAccount({ ...newAccount, name_account: e.target.value })}
+                            placeholder="Nhập tên tài khoản của bạn (ví dụ: PK_YourName)"
+                            className="form-input"
+                            required
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Server của tài khoản</label>
+                        <input
+                            type="text"
+                            value={newAccount.server_account}
+                            onChange={(e) => setNewAccount({ ...newAccount, server_account: e.target.value })}
+                            placeholder="Nhập tên server (ví dụ: GoMarkets-Live)"
+                            className="form-input"
+                            required
+                        />
+                    </div>
+                    <div className="confirmation-buttons">
+                        <button className="btn btn-secondary" onClick={onClose}>Hủy</button>
+                        <button className="btn btn-primary" onClick={handleSubmitNewAccount}>Liên kết tài khoản</button>
+                    </div>
+                </>
+            );
+        }
+
+        if (!hasSufficientBalance) {
+            return (
+                <>
+                    <h4>Số dư không đủ</h4>
+                    <p>Số dư hiện tại của bạn là <strong>{currentBalance.toFixed(2)} USDT</strong>. Trận đấu này yêu cầu tối thiểu <strong>{match.betAmount} USDT</strong>.</p>
+                    <p>Vui lòng nạp thêm tiền vào ví của bạn.</p>
+                    <div className="confirmation-buttons">
+                        <button className="btn btn-secondary" onClick={onClose}>Hủy</button>
+                        <button className="btn btn-primary" onClick={handleGoToWallet}>Đi đến ví</button>
+                    </div>
+                </>
+            );
+        }
+        
+        if (!hasEmail) {
+            return (
+                <>
+                    <h4>Yêu cầu Email</h4>
+                    <p>Vui lòng cung cấp email của bạn để tham gia trận đấu. Email này sẽ được dùng để liên lạc và xác nhận thông tin.</p>
+                    <div className="form-group">
+                        <label className="form-label">Email của bạn</label>
+                        <input
+                            type="email"
+                            value={newEmail}
+                            onChange={(e) => setNewEmail(e.target.value)}
+                            placeholder="Nhập email của bạn"
+                            className="form-input"
+                            required
+                        />
+                    </div>
+                    <div className="confirmation-buttons">
+                        <button className="btn btn-secondary" onClick={onClose}>Hủy</button>
+                        <button className="btn btn-primary" onClick={handleSubmitNewEmail}>Cập nhật Email</button>
+                    </div>
+                </>
+            );
+        }
+
+        return null; // Không nên tới đây nếu logic điều kiện chuẩn đã cover
+    };
+
+    return (
+        <div className="deposit-modal-wrapper" onClick={onClose}>
+            <div className="deposit-modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="form-header">
+                    <h2>Điều kiện tham gia trận đấu</h2>
+                    <button onClick={onClose} className="icon-button close-button">&times;</button>
+                </div>
+                {renderContent()}
+            </div>
+        </div>
+    );
+};
+
+const JoinConfirmModal = ({ onClose, onConfirm, match }) => {
+    return (
+      <>
+        <div className="confirmation-overlay" onClick={onClose}></div>
+        <div className="confirmation-modal card">
+          <h4>Xác nhận tham gia Challenge</h4>
+          <p>Bạn có chắc muốn tham gia trận {match.id} với bet {match.betAmount} USDT?</p>
+          <div className="confirmation-buttons">
+            <button className="btn btn-secondary" onClick={onClose}>Hủy</button>
+            <button className="btn btn-primary" onClick={onConfirm}>Xác nhận</button>
+          </div>
+        </div>
+      </>
+    );
+  };
+
 // Helper component để xử lý logic đếm ngược và hiển thị trạng thái
 const TournamentStatus = ({ startTime }) => {
   const calculateTimeLeft = () => {
@@ -1658,61 +1845,51 @@ const ArenaPage = ({ user, onUserUpdate }) => {
   const filterContentRef = useRef(null);
   const [tournamentItems, setTournamentItems] = useState([]);
   const [waitingMatches, setWaitingMatches] = useState([]);
-
-  // [SỬA] ĐỊNH NGHĨA COMPONENT CON Ở ĐÂY, BÊN NGOÀI RETURN
-  const JoinConfirmModal = ({ onClose, onConfirm, match }) => {
-    return (
-      <>
-        <div className="confirmation-overlay" onClick={onClose}></div>
-        <div className="confirmation-modal card">
-          <h4>Xác nhận tham gia Challenge</h4>
-          <p>Bạn có chắc muốn tham gia trận {match.id} với bet {match.betAmount} USDT?</p>
-          <div className="confirmation-buttons">
-            <button className="btn btn-secondary" onClick={onClose}>Hủy</button>
-            <button className="btn btn-primary" onClick={onConfirm}>Xác nhận</button>
-          </div>
-        </div>
-      </>
-    );
-  };
+  const [showJoinMatchConditionModal, setShowJoinMatchConditionModal] = useState(false);
 
   const handleJoinChallenge = (match) => {
-    console.log('User data for check:', user);
-    const betWallet = user?.bet_wallet || 0;
-    console.log('Bet wallet:', betWallet, 'Match bet:', match.bet);
-
-    // Kiểm tra điều kiện số dư
-    if (betWallet < match.betAmount) { // match.betAmount đã được map từ match.bet
-        console.log('Bet wallet < bet, show deposit modal');
-        setSelectedMatch(match);
-        setShowDepositModal(true);
+    if (!user) {
+        alert('Thông tin người dùng chưa được tải. Vui lòng thử lại.');
         return;
     }
 
-    // Kiểm tra điều kiện broker liên kết
-    // Cần đảm bảo user.linkedBrokers được cập nhật chính xác (ví dụ khi user đăng nhập hoặc refresh)
-    const userFromSession = JSON.parse(sessionStorage.getItem('user_data')) || {};
-    const linkedBrokers = userFromSession.linkedBrokers || [];
-    // Chú ý: `match.broker_id` là id của broker, `linkedBrokers` là mảng các id broker mà user đã liên kết.
-    if (!linkedBrokers.includes(match.broker_id)) { 
-        console.log('User not linked to required broker, show modal');
-        setSelectedMatch(match);
-        // Có thể hiển thị một modal khác yêu cầu liên kết broker hoặc chuyển hướng đến trang liên kết
-        // Tạm thời dùng DepositForm, nhưng cần một modal riêng cho broker
-        alert("Bạn cần liên kết tài khoản Broker này để tham gia trận đấu.");
-        // Giả định bạn có một modal `LinkBrokerModal`
-        // setShowLinkBrokerModal(true); 
-        return;
-    }
+    // Tạo một đối tượng user tạm thời để sử dụng nhất quán (vì user prop có thể bị delay cập nhật)
+    const currentUserData = user; // Giả sử user prop đã được cập nhật hoặc lấy từ sessionStorage
 
-    // Kiểm tra nếu match.player1_id trùng với user.telegram_id (người chơi không thể tham gia trận của chính họ)
-    if (user && user.telegram_id === match.player1_id) {
+    const betWallet = parseFloat(currentUserData?.bet_wallet || 0);
+    const hasEmail = currentUserData?.email && currentUserData.email.trim() !== '';
+    const linkedBrokers = currentUserData?.linkedBrokers || [];
+    const hasBrokerAccount = linkedBrokers.includes(match.broker_id);
+    const isPlayer1 = currentUserData.telegram_id === match.player1_id;
+
+    // Ưu tiên kiểm tra người chơi không thể thách đấu chính mình
+    if (isPlayer1) {
         alert("Bạn không thể tham gia trận đấu của chính mình!");
         return;
     }
 
+    // Kiểm tra email
+    if (!hasEmail) {
+        setSelectedMatch(match);
+        setShowJoinMatchConditionModal(true); // Hiển thị modal với thông báo thiếu email
+        return;
+    }
+
+    // Kiểm tra tài khoản sàn liên kết
+    if (!hasBrokerAccount) {
+        setSelectedMatch(match);
+        setShowJoinMatchConditionModal(true); // Hiển thị modal với thông báo thiếu tài khoản sàn
+        return;
+    }
+
+    // Kiểm tra số dư
+    if (betWallet < match.betAmount) {
+        setSelectedMatch(match);
+        setShowJoinMatchConditionModal(true); // Hiển thị modal với thông báo thiếu số dư
+        return;
+    }
+
     // Nếu tất cả điều kiện đều thỏa mãn, hiển thị xác nhận tham gia
-    console.log('All checks ok, show join confirm');
     setSelectedMatch(match);
     setShowJoinConfirm(true);
   };
@@ -1876,7 +2053,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
         const response = await fetch('https://f2farena.com/api/brokers/list');
         if (!response.ok) throw new Error('Fetch failed');
         const data = await response.json();
-        brokers = data.brokers.map(b => ({ id: b.id, name: b.broker_name }));
+        brokers = data.brokers.map(b => ({ id: b.id, name: b.broker_name, registration_url: b.registration_url }));
         sessionStorage.setItem('brokers_data', JSON.stringify({ brokers }));
         console.log('Fetched and stored full brokers:', brokers.length);
       } catch (error) {
@@ -2102,6 +2279,15 @@ const ArenaPage = ({ user, onUserUpdate }) => {
           ))}
         </>
       )}
+      {showJoinMatchConditionModal && (
+        <JoinMatchConditionModal
+          onClose={() => setShowJoinMatchConditionModal(false)}
+          match={selectedMatch}
+          user={user}
+          onUserUpdate={onUserUpdate}
+          brokersList={brokersList} // Truyền brokersList để lấy thông tin broker
+        />
+      )}
       {showDepositModal && (
         <DepositForm onClose={() => setShowDepositModal(false)} user={user} onUserUpdate={onUserUpdate} />
       )}
