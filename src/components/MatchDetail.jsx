@@ -25,75 +25,166 @@ const initialBets = [
 ];
 
 const MatchDetail = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const widgetRef = useRef(null); // Ref để theo dõi widget
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const widgetRef = useRef(null);
 
-  const [matchData, setMatchData] = useState(null);  // State thay vì hardcode
+    const [matchData, setMatchData] = useState(null);
 
-  // useEffect mới: Fetch detail từ endpoint với sessionStorage
-  useEffect(() => {
-    const fetchMatchDetail = async () => {
-      const cacheKey = `match_detail_${id}`;
-      console.log(`Checking sessionStorage for ${cacheKey}`);  // Log kiểm tra cache
-      const cachedData = sessionStorage.getItem(cacheKey);
-      if (cachedData) {
-        console.log(`Using cached match detail for id ${id}`);
-        setMatchData(JSON.parse(cachedData));
-        return;
-      }
-      try {
-        const response = await fetch(`https://f2farena.com/api/matches/${id}`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+    useEffect(() => {
+        // Đảm bảo user đã được tải và có telegram_id
+        const currentUser = JSON.parse(sessionStorage.getItem('user_data'));
+        if (!currentUser || !currentUser.telegram_id) {
+            console.log("MatchDetail: Waiting for current user data to listen for WebSocket.");
+            return;
         }
-        const data = await response.json();
-        console.log('Fetched pair:', data.pair);
-        console.log('Fetched match detail:', data);
-        // Get player2 info nếu player2_id exist
-        let player2 = { name: 'Waiting', avatar: generateAvatarUrl('Waiting'), score: 0, odds: '1:1.0' };
-        if (data.player2_id) {
-          try {
-            const userRes = await fetch(`https://f2farena.com/api/users/${data.player2_id}`);
-            if (userRes.ok) {
-              const userData = await userRes.json();
-              player2 = {
-                name: userData.username || 'Anonymous',
-                avatar: userData.avatar || generateAvatarUrl(userData.username || 'Anonymous'),
-                score: data.player2_score || 0,
-                odds: data.player2_odds || '1:1.0'
-              };
-              console.log('Fetched player2 info:', player2); // Log để xem avatar/username
-            } else {
-              console.error('Failed to fetch player2 user, status:', userRes.status);
+
+        const wsUrl = `wss://f2farena.com/ws/${currentUser.telegram_id}`; // WebSocket của user hiện tại
+        let ws = null;
+        let reconnectInterval = null;
+
+        const connectWebSocket = () => {
+            console.log(`MatchDetail: Attempting to connect WebSocket to ${wsUrl}`);
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('MatchDetail: WebSocket connected successfully.');
+                if (reconnectInterval) {
+                    clearInterval(reconnectInterval);
+                    reconnectInterval = null;
+                }
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.match_id !== parseInt(id)) { // Chỉ xử lý tin nhắn cho trận đấu hiện tại
+                        console.log(`MatchDetail: Ignoring message for other match ID: ${message.match_id}`);
+                        return;
+                    }
+
+                    console.log('MatchDetail: WebSocket message received:', message);
+                    switch (message.type) {
+                        case "NEW_TRADE":
+                            setTrades(prev => {
+                                const newTrades = [...prev, {
+                                    id: prev.length + 1,
+                                    player: message.data.player_name,
+                                    type: message.data.type,
+                                    amount: message.data.amount,
+                                    price: message.data.price,
+                                    timestamp: message.data.timestamp
+                                }];
+                                return newTrades.slice(-50); // Giới hạn số lượng trade hiển thị
+                            });
+                            break;
+                        case "NEW_COMMENT":
+                            setComments(prev => {
+                                const newComments = [...prev, {
+                                    id: prev.length + 1,
+                                    user: message.data.username,
+                                    comment: message.data.comment,
+                                    timestamp: message.data.timestamp
+                                }];
+                                return newComments.slice(-50); // Giới hạn số lượng comment hiển thị
+                            });
+                            break;
+                        case "SCORE_UPDATE":
+                            setMatchData(prev => ({
+                                ...prev,
+                                player1: { ...prev.player1, score: message.data.player1_score },
+                                player2: { ...prev.player2, score: message.data.player2_score }
+                            }));
+                            break;
+                        // Thêm các loại cập nhật khác nếu có
+                        default:
+                            console.log("Unknown message type:", message.type);
+                    }
+                } catch (e) {
+                    console.error("Failed to parse WebSocket message or handle:", e, event.data);
+                }
+            };
+
+            ws.onclose = (event) => {
+                console.log('MatchDetail: WebSocket closed:', event.code, event.reason);
+                if (!reconnectInterval) {
+                    reconnectInterval = setInterval(connectWebSocket, 5000);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('MatchDetail: WebSocket error:', error);
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.close();
+                }
+            };
+        };
+
+        connectWebSocket();
+
+        return () => {
+            console.log('MatchDetail: Cleaning up WebSocket connection...');
+            if (ws) {
+                ws.close();
             }
-          } catch (error) {
-            console.error('Error fetch player2:', error);
+            if (reconnectInterval) {
+                clearInterval(reconnectInterval);
+            }
+        };
+    }, [id]);
+
+    // Cập nhật useEffect để fetch detail từ endpoint backend thực tế
+    useEffect(() => {
+      const fetchMatchDetail = async () => {
+          const cacheKey = `match_detail_${id}`;
+          const cachedData = sessionStorage.getItem(cacheKey);
+          if (cachedData) {
+              setMatchData(JSON.parse(cachedData));
+              return;
           }
-        }
-        data.player2 = player2;
-        setMatchData(data);
-        sessionStorage.setItem(cacheKey, JSON.stringify(data));
-        console.log(`Stored match detail for id ${id} to sessionStorage`);
-      } catch (error) {
-        console.error('Error fetching match detail:', error);
-        setMatchData(null);  // Để show Not Found
-      }
-    };
-    fetchMatchDetail();
+          try {
+              const response = await fetch(`https://f2farena.com/api/matches/${id}`);
+              if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              const data = await response.json();
+              console.log('Fetched match detail:', data);
+
+              // Prepend 'server/' cho avatar nếu cần (phụ thuộc vào cách bạn phục vụ static files)
+              if (data.player1 && data.player1.avatar && !data.player1.avatar.startsWith('http')) {
+                  data.player1.avatar = `https://f2farena.com/${data.player1.avatar}`;
+              }
+              if (data.player2 && data.player2.avatar && !data.player2.avatar.startsWith('http')) {
+                  data.player2.avatar = `https://f2farena.com/${data.player2.avatar}`;
+              }
+              
+              setMatchData(data); // Set dữ liệu trực tiếp từ API
+              sessionStorage.setItem(cacheKey, JSON.stringify(data));
+          } catch (error) {
+              console.error('Error fetching match detail:', error);
+              setMatchData(null);
+          }
+      };
+      fetchMatchDetail();
   }, [id]);
 
   if (!matchData) {
-    return (
-      <div className="match-detail-container">
-        <div className="page-padding">
-          <h2>Match Not Found</h2>
-          <p>No match found with ID {id}. Please try another match.</p>
-          <button className="btn btn-primary" onClick={() => navigate('/home')}>Back to Home</button>
-        </div>
-      </div>
-    );
-  }
+        return (
+            <div className="match-detail-container">
+                <div className="page-padding">
+                    <h2>Loading Match...</h2>
+                    <p>Fetching match details for ID {id}.</p>
+                    <button className="btn btn-primary" onClick={() => navigate('/home')}>Back to Home</button>
+                </div>
+            </div>
+        );
+    }
+    // Cập nhật lại timeRemaining khi matchData thay đổi
+    useEffect(() => {
+        if (matchData && matchData.timeRemaining) {
+            setTimeRemaining(matchData.timeRemaining);
+        }
+    }, [matchData]);
 
   const [timeRemaining, setTimeRemaining] = useState(matchData.timeRemaining);
   const [trades, setTrades] = useState(initialTrades);
@@ -166,18 +257,32 @@ const MatchDetail = () => {
   }, [comments, activeTab]);
 
   // Xử lý gửi bình luận mới
-  const handleSendComment = (e) => {
-    e.preventDefault();
-    const trimmedInput = commentInput.trim();
-    if (!trimmedInput) return;
-    const newComment = {
-      id: comments.length + 1,
-      user: 'CurrentUser', // Giả lập user hiện tại
-      comment: trimmedInput,
-      timestamp: new Date().toISOString(),
-    };
-    setComments((prev) => [...prev, newComment]);
-    setCommentInput('');
+  const handleSendComment = async (e) => {
+      e.preventDefault();
+      const trimmedInput = commentInput.trim();
+      if (!trimmedInput || !user || !user.telegram_id || !matchData) return;
+
+      try {
+          const response = await fetch('[https://f2farena.com/api/matches/comment](https://f2farena.com/api/matches/comment)', { // Sử dụng API mới
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  match_id: parseInt(id),
+                  user_id: user.telegram_id,
+                  comment: trimmedInput
+              })
+          });
+
+          if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.detail || 'Failed to post comment.');
+          }
+          setCommentInput('');
+          // Không cần cập nhật state comments ở đây, vì WebSocket sẽ đẩy tin nhắn về
+      } catch (error) {
+          console.error('Error sending comment:', error);
+          alert('Failed to send comment: ' + error.message);
+      }
   };
 
   useEffect(() => {
@@ -220,7 +325,7 @@ const MatchDetail = () => {
         widgetRef.current = new window.TradingView.widget({
           width: '100%',
           height: 400, // Đồng bộ với CSS
-          symbol: `BINANCE:${matchData.pair.replace('/', '')}`,
+          symbol: `BINANCE:${matchData.pair.split('/')[0].replace('/', '')}USDT`,
           interval: '1',
           timezone: 'Etc/UTC',
           theme: 'dark',

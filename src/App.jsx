@@ -1677,59 +1677,93 @@ const ArenaPage = ({ user, onUserUpdate }) => {
   };
 
   const handleJoinChallenge = (match) => {
-    console.log('User data for check:', user);
-    const betWallet = user?.bet_wallet || 0;
-    console.log('Bet wallet:', betWallet, 'Match bet:', match.bet);
-    if (betWallet < match.bet) {
-      console.log('Bet wallet < bet, show modal - current showDepositModal:', showDepositModal);
-      setSelectedMatch(match);
-      setShowDepositModal(true);
-      console.log('After set showDepositModal to true');
-      return;
-    }
-    const userFromSession = JSON.parse(sessionStorage.getItem('user_data')) || {};
-    const linkedBrokers = userFromSession.linkedBrokers || [];
-    console.log('Linked brokers:', linkedBrokers, 'Match broker_id:', match.broker_id);
-    if (!linkedBrokers.includes(match.broker_id)) {
-      console.log('No broker id, show modal');
-      setSelectedMatch(match);
-      setShowDepositModal(true);
-      return;
-    }
-    console.log('Checks ok, show join confirm');
-    setSelectedMatch(match);
-    setShowJoinConfirm(true);
-    console.log('Join ok, navigate to match detail');
-    navigate(`/match/${match.id}`);
-  };
+    console.log('User data for check:', user);
+    const betWallet = user?.bet_wallet || 0;
+    console.log('Bet wallet:', betWallet, 'Match bet:', match.bet);
 
-  const handleConfirmJoin = async () => {
-    if (!selectedMatch || !user) return;
-    console.log('Confirm join, update player2_id with user id:', user.telegram_id);
-    try {
-      const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player2_id: user.telegram_id, status: "live" })
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Update failed:', response.status, errorData.detail);
-        alert('Tham gia thất bại: ' + errorData.detail);
-        return;
-      }
-      const data = await response.json();
-      console.log('Update success:', data);
-      fetchWaitingMatches(true);
-      navigate(`/match/${selectedMatch.id}`);
-    } catch (error) {
-      console.error('Error update match:', error);
-      alert('Lỗi khi tham gia trận đấu');
-    } finally {
-      setShowJoinConfirm(false);
-      setSelectedMatch(null);
-    }
-  };
+    // Kiểm tra điều kiện số dư
+    if (betWallet < match.betAmount) { // match.betAmount đã được map từ match.bet
+        console.log('Bet wallet < bet, show deposit modal');
+        setSelectedMatch(match);
+        setShowDepositModal(true);
+        return;
+    }
+
+    // Kiểm tra điều kiện broker liên kết
+    // Cần đảm bảo user.linkedBrokers được cập nhật chính xác (ví dụ khi user đăng nhập hoặc refresh)
+    const userFromSession = JSON.parse(sessionStorage.getItem('user_data')) || {};
+    const linkedBrokers = userFromSession.linkedBrokers || [];
+    // Chú ý: `match.broker_id` là id của broker, `linkedBrokers` là mảng các id broker mà user đã liên kết.
+    if (!linkedBrokers.includes(match.broker_id)) { 
+        console.log('User not linked to required broker, show modal');
+        setSelectedMatch(match);
+        // Có thể hiển thị một modal khác yêu cầu liên kết broker hoặc chuyển hướng đến trang liên kết
+        // Tạm thời dùng DepositForm, nhưng cần một modal riêng cho broker
+        alert("Bạn cần liên kết tài khoản Broker này để tham gia trận đấu.");
+        // Giả định bạn có một modal `LinkBrokerModal`
+        // setShowLinkBrokerModal(true); 
+        return;
+    }
+
+    // Kiểm tra nếu match.player1_id trùng với user.telegram_id (người chơi không thể tham gia trận của chính họ)
+    if (user && user.telegram_id === match.player1_id) {
+        alert("Bạn không thể tham gia trận đấu của chính mình!");
+        return;
+    }
+
+    // Nếu tất cả điều kiện đều thỏa mãn, hiển thị xác nhận tham gia
+    console.log('All checks ok, show join confirm');
+    setSelectedMatch(match);
+    setShowJoinConfirm(true);
+  };
+
+  const handleConfirmJoin = async () => {
+      if (!selectedMatch || !user) return;
+      
+      console.log('Confirm join for match:', selectedMatch.id, 'by user:', user.telegram_id);
+      
+      try {
+          const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                  player2_id: user.telegram_id, 
+                  status: "pending_confirmation", // Gửi trạng thái chờ xác nhận
+                  player2_username: user.username || user.telegram_id.toString(), // Truyền username của player2
+                  bet_amount: selectedMatch.betAmount // Truyền số tiền cược
+              })
+          });
+          
+          if (!response.ok) {
+              const errorData = await response.json();
+              console.error('Update match (join) failed:', response.status, errorData.detail);
+              alert('Tham gia thất bại: ' + (errorData.detail || 'Lỗi không xác định.'));
+              return;
+          }
+          
+          const data = await response.json();
+          console.log('Update match success:', data);
+          
+          // Sau khi gửi request PATCH thành công, không điều hướng ngay
+          // mà thông báo cho user rằng yêu cầu đã được gửi đến Player 1
+          alert("Yêu cầu tham gia của bạn đã được gửi đến người tạo ván. Vui lòng chờ xác nhận!");
+          
+          // Cập nhật lại danh sách trận chờ để ẩn trận này (hoặc thay đổi trạng thái nếu bạn có state cho nó)
+          fetchWaitingMatches(true); // Clear cache và fetch lại để cập nhật UI
+          
+          // Không navigate ngay lập tức, chỉ đóng modal
+          setShowJoinConfirm(false);
+          setSelectedMatch(null);
+
+      } catch (error) {
+          console.error('Error updating match (join):', error);
+          alert('Lỗi khi gửi yêu cầu tham gia trận đấu. Vui lòng thử lại.');
+      } finally {
+          // Dù thành công hay thất bại, đóng modal xác nhận
+          setShowJoinConfirm(false);
+          setSelectedMatch(null);
+      }
+  };
 
   const fetchTournaments = async () => {
     console.log('Checking sessionStorage for tournaments_data');
@@ -2360,7 +2394,7 @@ const ChatbotPage = () => {
   const sendMessage = async (e) => {
     e.preventDefault();
     const trimmedInput = input.trim();
-    if (!trimmedInput || isLoading) return;
+    if (!trimmedInput || !user || !user.telegram_id || !matchData) return;
 
     const userMessage = { text: trimmedInput, sender: 'user' };
     setMessages(prev => [...prev, userMessage].slice(-50)); // Giới hạn 50 tin nhắn
@@ -2419,15 +2453,74 @@ const ChatbotPage = () => {
 // ===================================================================================
 
 const AppContent = () => {
-  console.log('AppContent component loaded');
-  console.log('React version in App:', React.version);
-
   const [showSettingsSidebar, setShowSettingsSidebar] = useState(false);
   const [showHeader, setShowHeader] = useState(true);
   const [showFooter, setShowFooter] = useState(true);
   const [activePage, setActivePage] = useState('home');
   const location = useLocation();
   const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+      if (!user || !user.telegram_id) {
+          console.log("Waiting for user data to establish WebSocket connection.");
+          return;
+      }
+
+      const wsUrl = `wss://f2farena.com/ws/${user.telegram_id}`; // Thay thế bằng URL WebSocket thật của bạn
+      let ws = null;
+      let reconnectInterval = null;
+
+      const connectWebSocket = () => {
+          console.log(`Attempting to connect WebSocket to ${wsUrl}`);
+          ws = new WebSocket(wsUrl);
+
+          ws.onopen = () => {
+              console.log('WebSocket connected successfully.');
+              if (reconnectInterval) {
+                  clearInterval(reconnectInterval);
+                  reconnectInterval = null;
+              }
+          };
+
+          ws.onmessage = (event) => {
+              console.log('WebSocket message received:', event.data);
+              const message = event.data;
+              if (message.startsWith("MATCH_STARTED:")) {
+                  const matchId = message.split(":")[1];
+                  alert(`Trận đấu ${matchId} đã bắt đầu!`);
+                  navigate(`/match/${matchId}`); // Điều hướng đến trang chi tiết trận đấu
+              }
+              // Thêm các loại tin nhắn khác nếu cần
+          };
+
+          ws.onclose = (event) => {
+              console.log('WebSocket closed:', event.code, event.reason);
+              if (!reconnectInterval) { // Prevent multiple intervals
+                  reconnectInterval = setInterval(connectWebSocket, 5000); // Thử kết nối lại sau 5 giây
+              }
+          };
+
+          ws.onerror = (error) => {
+              console.error('WebSocket error:', error);
+              if (ws && ws.readyState === WebSocket.OPEN) {
+                  ws.close(); // Close to trigger onclose and reconnect logic
+              }
+          };
+      };
+
+      connectWebSocket();
+
+      return () => {
+          console.log('Cleaning up WebSocket connection...');
+          if (ws) {
+              ws.close();
+          }
+          if (reconnectInterval) {
+              clearInterval(reconnectInterval);
+          }
+      };
+  }, [user, navigate]);
 
   const handleUserUpdate = (updatedUserData) => {
     setUser(updatedUserData);
@@ -2567,12 +2660,12 @@ const AppContent = () => {
           <Route path="/news" element={<NewsPage user={user} />} />
           <Route path="/news/:id" element={<NewsDetail user={user} />} />
           <Route path="/arena" element={<ArenaPage user={user} onUserUpdate={handleUserUpdate} />} />
-          <Route path="/tournament/:id" element={<TournamentDetail user={user} walletData={walletData} />} />
+          <Route path="/tournament/:id" element={<TournamentDetail user={user} walletData={walletData} onUserUpdate={handleUserUpdate} />} />
           <Route path="/arena/:id" element={<ArenaDetail />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/wallet" element={<WalletPage user={user} onUserUpdate={handleUserUpdate} />} />
           <Route path="/chatbot" element={<ChatbotPage />} />
-          <Route path="/match/:id" element={<MatchDetail />} />
+          <Route path="/match/:id" element={<MatchDetail user={user} />} />
           <Route path="/" element={<HomePage />} />
           <Route path="*" element={
             <div className="page-padding">

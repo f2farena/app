@@ -22,7 +22,7 @@ const handleConfirmRegistration = async () => {
   onClose();
 };
 
-const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, userEmail, setUserEmail, newEmail, setNewEmail, accountInfo, setAccountInfo, newAccount, setNewAccount }) => {
+const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, userEmail, setUserEmail, newEmail, setNewEmail, accountInfo, setAccountInfo, newAccount, setNewAccount, onUserUpdate }) => {
   const [showDownloadStep, setShowDownloadStep] = useState(false);  
   // Logic kiểm tra
   console.log('User object in RegistrationModal:', user);  // Log thêm: Để nhìn full user (sau fix sẽ thấy linkedBrokers)
@@ -51,30 +51,41 @@ const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, us
 
   const handleSubmitNewAccount = async () => {
     try {
-      const response = await fetch('https://f2farena.com/api/accounts/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user.telegram_id,
-          broker_id: tournament.broker_id,
-          name_account: newAccount.name_account,
-          server_account: newAccount.server_account
-        })
-      });
-      const data = await response.json();
-      console.log('POST new account response:', data); // Log để nhìn rõ POST thành công
-      if (data.id) {
-        setAccountInfo(data); // Update state sau tạo
-        console.log('Before update linkedBrokers:', user.linkedBrokers);  // Log để xem array trước update
-        const updatedLinkedBrokers = [...(user.linkedBrokers || []), tournament.broker_id];
-        const updatedUser = { ...user, linkedBrokers: updatedLinkedBrokers };
-        sessionStorage.setItem('user_data', JSON.stringify(updatedUser));
-        console.log('After update linkedBrokers:', updatedLinkedBrokers);  // Log để xem array sau update, confirm add broker_id
-        alert('Account added successfully!');
-        setShowDownloadStep(true);  // Switch sang bước tải software, không close modal
-      }
+        const response = await fetch('[https://f2farena.com/api/accounts/](https://f2farena.com/api/accounts/)', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: user.telegram_id,
+                broker_id: tournament.broker_id,
+                name_account: newAccount.name_account,
+                server_account: newAccount.server_account
+            })
+        });
+        const data = await response.json();
+        console.log('POST new account response:', data);
+        if (data.id) {
+            setAccountInfo(data);
+
+            // Cập nhật linkedBrokers trong user object và sessionStorage
+            const updatedLinkedBrokers = [...(user.linkedBrokers || []), tournament.broker_id];
+            const updatedUser = { ...user, linkedBrokers: updatedLinkedBrokers };
+            // Truyền updatedUser lên AppContent để cập nhật state user chính
+            if (typeof onUserUpdate === 'function') { // Đảm bảo onUserUpdate là một prop có sẵn và là hàm
+                onUserUpdate(updatedUser); 
+            } else {
+                sessionStorage.setItem('user_data', JSON.stringify(updatedUser));
+            }
+            
+            onUserUpdate(updatedUser);
+            alert('Account added successfully!');
+            setShowDownloadStep(true);
+        } else {
+            // Xử lý trường hợp backend trả về không thành công nhưng không throw lỗi HTTP
+            alert(data.detail || 'Failed to add account.');
+        }
     } catch (error) {
-      console.error('Error POST account:', error);
+        console.error('Error POST account:', error);
+        alert('Error adding account: ' + error.message);
     }
   };
 
@@ -239,7 +250,7 @@ const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, us
   );
 };
 
-const TournamentDetail = ({ user, walletData }) => {
+const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
   const { id } = useParams();
 
   useEffect(() => {  
@@ -467,6 +478,7 @@ const TournamentDetail = ({ user, walletData }) => {
             setAccountInfo={setAccountInfo}
             newAccount={newAccount}
             setNewAccount={setNewAccount}
+            onUserUpdate={onUserUpdate}
         />
       )}
     </div>
