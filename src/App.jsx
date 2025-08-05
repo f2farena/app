@@ -617,7 +617,7 @@ const NewsPage = ({ user }) => {
       title: `Broker ${broker.broker_name} Review: Is It Reliable?`,
       brokerName: broker.broker_name,
       country: broker.nation_code,
-      countryCode: broker.nation_code === '86' ? 'CN' : broker.nation_code.toUpperCase(),
+      countryCode: String(broker.nation_code) === '86' ? 'CN' : String(broker.nation_code).toUpperCase(),
       yearsActive: broker.years,
       score: broker.average_star,
       summary: broker.description,
@@ -760,7 +760,7 @@ const NewsPage = ({ user }) => {
                       </div>
                   </div>
                   <div className="review-card-score">
-                      <span className="score-value">{article.score.toFixed(1)}</span>
+                      <span className="score-value">{(article.score || 0).toFixed(1)}</span>
                       <span className="score-label">Score</span>
                   </div>
               </div>
@@ -1989,23 +1989,34 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     };
 
     const fetchBrokersForArena = async () => {
-      let brokers = [];
       const cached = sessionStorage.getItem('brokers_data');
       if (cached) {
-          brokers = JSON.parse(cached).brokers || [];
+          const parsedBrokers = JSON.parse(cached).brokers || [];
+          // Map lại dữ liệu để `CreateNewMatchForm` có đúng định dạng `id` và `name`
+          setBrokersList(parsedBrokers.map(b => ({ id: b.id, name: b.broker_name, registration_url: b.registration_url })));
+          return; // Dừng lại nếu đã có cache
       }
-      if (brokers.length === 0) {
-          try {
-              const response = await fetch('https://f2farena.com/api/brokers/list');
-              if (!response.ok) throw new Error('Fetch failed');
-              const data = await response.json();
-              brokers = data.brokers.map(b => ({ id: b.id, name: b.broker_name, registration_url: b.registration_url }));
-              sessionStorage.setItem('brokers_data', JSON.stringify({ brokers }));
-          } catch (error) {
-              console.error('Error fetching brokers for Arena:', error);
+
+      // Nếu không có cache, fetch mới
+      try {
+          const response = await fetch('https://f2farena.com/api/brokers/list');
+          if (!response.ok) throw new Error('Fetch failed');
+          const data = await response.json();
+
+          // Lưu toàn bộ dữ liệu đầy đủ vào cache
+          // `data.brokers` là mảng nguyên gốc từ API
+          if (data && data.brokers) {
+              sessionStorage.setItem('brokers_data', JSON.stringify({ brokers: data.brokers }));
+
+              // Map dữ liệu để `CreateNewMatchForm` có đúng định dạng `id` và `name`
+              setBrokersList(data.brokers.map(b => ({ id: b.id, name: b.broker_name, registration_url: b.registration_url })));
+          } else {
+              setBrokersList([]); // Set mảng rỗng nếu API không trả về dữ liệu đúng
           }
+      } catch (error) {
+          console.error('Error fetching brokers for Arena:', error);
+          setBrokersList([]); // Set mảng rỗng khi có lỗi
       }
-      setBrokersList(brokers);
     };
 
     useEffect(() => {
@@ -2543,14 +2554,26 @@ const AppContent = () => {
           };
 
           ws.onmessage = (event) => {
-              console.log('WebSocket message received:', event.data);
-              const message = event.data;
-              if (message.startsWith("MATCH_STARTED:")) {
-                  const matchId = message.split(":")[1];
-                  alert(`Trận đấu ${matchId} đã bắt đầu!`);
-                  navigate(`/match/${matchId}`); // Điều hướng đến trang chi tiết trận đấu
-              }
-              // Thêm các loại tin nhắn khác nếu cần
+            console.log('WebSocket message received:', event.data);
+            try {
+                // Logic cũ cho tin nhắn dạng string
+                if (event.data.startsWith("MATCH_STARTED:")) {
+                    const matchId = event.data.split(":")[1];
+                    alert(`Trận đấu ${matchId} đã bắt đầu!`);
+                    navigate(`/match/${matchId}`);
+                    return;
+                }
+
+                // Logic mới cho tin nhắn dạng JSON
+                const message = JSON.parse(event.data);
+                // Bạn có thể tạo một Event Bus hoặc dùng Context API để truyền dữ liệu xuống MatchDetail
+                // Hoặc đơn giản là tạo một custom event để component con lắng nghe
+                const matchUpdateEvent = new CustomEvent('match-update', { detail: message });
+                window.dispatchEvent(matchUpdateEvent);
+
+            } catch (e) {
+                console.error("Failed to parse or handle WebSocket message:", e, event.data);
+            }
           };
 
           ws.onclose = (event) => {

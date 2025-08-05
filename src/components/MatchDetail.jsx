@@ -39,6 +39,55 @@ const MatchDetail = ({ user }) => {
     const [activeTab, setActiveTab] = useState('matching');
 
     useEffect(() => {
+        const handleMatchUpdate = (event) => {
+            const message = event.detail;
+
+            // Đảm bảo message này là cho trận đấu hiện tại
+            if (message.match_id !== parseInt(id)) {
+                return;
+            }
+
+            console.log('MatchDetail received update from global WebSocket:', message);
+
+            // Xử lý các loại tin nhắn giống hệt như logic đã xóa
+            switch (message.type) {
+                case "NEW_TRADE":
+                    const newTrade = {
+                        ...message.data,
+                        player: message.data.player_id === matchData.player1.id ? matchData.player1.name : matchData.player2.name
+                    };
+                    setTrades(prev => [...prev, newTrade]);
+                    break;
+                case "NEW_COMMENT":
+                    setComments(prev => [...prev, { id: prev.length + 1, ...message.data }].slice(-50));
+                    break;
+                case "SCORE_UPDATE":
+                    setMatchData(prevData => {
+                        if (!prevData) return null;
+                        return {
+                            ...prevData,
+                            player1: { ...prevData.player1, score: message.data.player1_score },
+                            player2: { ...prevData.player2, score: message.data.player2_score }
+                        };
+                    });
+                    break;
+                case "MATCH_DONE":
+                    setMatchResult(message.data);
+                    setShowResultModal(true);
+                    break;
+                // Thêm các case khác nếu cần (VIEWS_UPDATE, etc.)
+            }
+        };
+
+        window.addEventListener('match-update', handleMatchUpdate);
+
+        // Cleanup: gỡ bỏ listener khi component unmount
+        return () => {
+            window.removeEventListener('match-update', handleMatchUpdate);
+        };
+    }, [id, matchData]);
+
+    useEffect(() => {
         if (matchData) {
             setViews(matchData.views || 0);
             setOutsideBetsTotal(matchData.outsideBetsTotal || 0);
@@ -124,111 +173,6 @@ const MatchDetail = ({ user }) => {
     }, [matchData]); // Dependency chỉ vào matchData để khởi động lại timer khi dữ liệu mới được fetch
 
     // CÁC useEffect KHÁC
-    // Websocket Connection
-    useEffect(() => {
-        const currentUser = JSON.parse(sessionStorage.getItem('user_data'));
-        if (!currentUser || !currentUser.telegram_id) {
-            console.log("MatchDetail: Waiting for current user data to listen for WebSocket.");
-            return;
-        }
-
-        const wsUrl = `wss://f2farena.com/ws/${currentUser.telegram_id}`;
-        let ws = null;
-        let reconnectInterval = null;
-
-        const connectWebSocket = () => {
-            console.log(`MatchDetail: Attempting to connect WebSocket to ${wsUrl}`);
-            ws = new WebSocket(wsUrl);
-
-            ws.onopen = () => {
-                console.log('MatchDetail: WebSocket connected successfully.');
-                if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({
-                        action: "join",
-                        match_id: parseInt(id)
-                    }));
-                }
-                if (reconnectInterval) {
-                    clearInterval(reconnectInterval);
-                    reconnectInterval = null;
-                }
-            };
-
-            ws.onmessage = (event) => {
-                try {
-                    const message = JSON.parse(event.data);
-                    // Đảm bảo message là cho match hiện tại
-                    if (message.match_id !== parseInt(id)) {
-                        console.log(`MatchDetail: Ignoring message for other match ID: ${message.match_id}`);
-                        return;
-                    }
-                    console.log('MatchDetail: WebSocket message received:', message);
-                    switch (message.type) {
-                        case "NEW_TRADE":
-                            // Dữ liệu từ WS đã đủ, chỉ cần thêm tên player vào
-                            const newTrade = {
-                                ...message.data,
-                                player: message.data.player_id === matchData.player1.id ? matchData.player1.name : matchData.player2.name
-                            };
-                            setTrades(prev => [...prev, newTrade]);
-                            break;
-                        case "NEW_COMMENT":
-                            setComments(prev => [...prev, { id: prev.length + 1, ...message.data }].slice(-50));
-                            break;
-                         case "SCORE_UPDATE":
-                            // Cập nhật lại state matchData để re-render score bar và text
-                            setMatchData(prevData => {
-                                if (!prevData) return null;
-                                return {
-                                    ...prevData,
-                                    player1: { ...prevData.player1, score: message.data.player1_score },
-                                    player2: { ...prevData.player2, score: message.data.player2_score }
-                                };
-                            });
-                            break;
-                        case "VIEWS_UPDATE":
-                            setViews(message.data.new_views_count); // Cập nhật state views
-                            break;
-                        case "OUTSIDE_BET_UPDATE":
-                            setOutsideBetsTotal(message.data.outside_bets_total); // Cập nhật state total bet
-                            break;
-                        case "MATCH_DONE":
-                            console.log('Match ended. Showing results modal.');
-                            setMatchResult(message.data);
-                            setShowResultModal(true);
-                            break;
-                        default:
-                            console.log("Unknown message type:", message.type);
-                    }
-                } catch (e) {
-                    console.error("Failed to parse WebSocket message or handle:", e, event.data);
-                }
-            };
-            ws.onclose = (event) => {
-                console.log('MatchDetail: WebSocket closed:', event.code, event.reason);
-                if (!reconnectInterval) {
-                    reconnectInterval = setInterval(connectWebSocket, 5000);
-                }
-            };
-            ws.onerror = (error) => {
-                console.error('MatchDetail: WebSocket error:', error);
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.close();
-                }
-            };
-        };
-        connectWebSocket();
-        return () => {
-            console.log('MatchDetail: Cleaning up WebSocket connection...');
-            if (ws) {
-                ws.close();
-            }
-            if (reconnectInterval) {
-                clearInterval(reconnectInterval);
-            }
-        };
-    }, [id, user, matchData]);
-
     const ResultModal = ({ result, onClose }) => {
         const isWinner = user?.telegram_id === result.winner_id;
         const isDraw = result.winner_id === "draw";
