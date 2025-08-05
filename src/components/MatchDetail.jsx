@@ -228,7 +228,7 @@ const MatchDetail = ({ user }) => {
                 widgetRef.current = new window.TradingView.widget({
                     width: '100%',
                     height: 400,
-                    symbol: `BINANCE:${matchData.pair.replace('/', '')}`, // Sử dụng matchData.pair
+                    symbol: `BINANCE:${matchData.symbol.replace('/', '')}`, // Sử dụng matchData.symbol
                     interval: '1',
                     timezone: 'Etc/UTC',
                     theme: 'dark',
@@ -246,7 +246,7 @@ const MatchDetail = ({ user }) => {
             if (widgetDiv) widgetDiv.innerHTML = '';
             widgetRef.current = null;
         };
-    }, [activeTab, matchData?.pair]);
+    }, [activeTab, matchData?.symbol]);
 
     // Logic gửi bình luận mới
     const handleSendComment = async (e) => {
@@ -325,7 +325,7 @@ const MatchDetail = ({ user }) => {
             </div>
             <div className="header-bottom-section">
                 <div className="info-group">
-                    <div className="info-item"><p className="primary-p">{matchData.pair}</p></div>
+                    <div className="info-item"><p className="primary-p">{matchData.symbol}</p></div>
                     <div className="info-item"><p className="accent-p">{matchData.betAmount} USDT</p></div>
                 </div>
                 <div className="info-group">
@@ -373,7 +373,7 @@ const MatchDetail = ({ user }) => {
                                 >
                                     <div className="trade-info">
                                         <span className="trade-type">{trade.type}</span>
-                                        <span className="trade-amount">{trade.amount} {matchData.pair?.split('/')[0] || matchData.pair}</span>
+                                        <span className="trade-amount">{trade.amount} {matchData.symbol?.split('/')[0] || matchData.symbol}</span>
                                         <span className="trade-price">${trade.price}</span>
                                         <span className="trade-time">{new Date(trade.timestamp).toLocaleTimeString()}</span>
                                     </div>
