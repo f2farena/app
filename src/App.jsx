@@ -2530,6 +2530,12 @@ const AppContent = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
+  const [walletData, setWalletData] = useState({
+        currentBalance: '0.00 USDT',
+        totalDeposits: '0.00 USDT',
+        totalWithdrawals: '0.00 USDT',
+    });
+
   useEffect(() => {
       if (!user || !user.telegram_id) {
           console.log("Waiting for user data to establish WebSocket connection.");
