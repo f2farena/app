@@ -382,7 +382,7 @@ const HomePage = () => {
               </div>
               <div className="bottom-section">
                 <div className="info-group">
-                  <div className="info-item"><p className="primary-p">{match.pair}</p></div>
+                  <div className="info-item"><p className="primary-p">{match.symbol}</p></div>
                   <div className="info-item"><p className="accent-p">{match.betAmount} USDT</p></div>
                 </div>
                 <div className="info-group">
@@ -1081,7 +1081,7 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess }) => 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               bet: parseFloat(betAmount),
-              pair: tradingSymbol,
+              symbol: tradingSymbol,
               player1_id: user?.telegram_id,
               player2_id: challengeMode === 'waiting' ? null : Number(opponentId),
               duration_time: durationTime,
@@ -2108,7 +2108,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
         return {
             ...match,
             betAmount: match.bet,
-            symbol: match.pair,
+            symbol: match.symbol,
             waitingTime: 'It is the waiting time',
             country: 'Vietnam',
             challenger: {

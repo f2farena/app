@@ -136,11 +136,11 @@ const ArenaDetail = () => {
             const container = document.getElementById('tradingview_widget_container');
             // Ensure the container exists and doesn't already have a widget initialized
             if (container && !container.hasChildNodes()) {
-                console.log("Pair for TradingView in ArenaDetail:", matchData.pair);
+                console.log("symbol for TradingView in ArenaDetail:", matchData.symbol);
                 new window.TradingView.widget({
                     width: '100%',
                     height: 400,
-                    symbol: `BINANCE:${matchData.pair.split('/')[0].replace('/', '')}USDT`, // Ensure correct symbol format for TradingView
+                    symbol: `BINANCE:${matchData.symbol.split('/')[0].replace('/', '')}USDT`, // Ensure correct symbol format for TradingView
                     interval: '1',
                     timezone: 'Etc/UTC',
                     theme: 'dark',
@@ -228,7 +228,7 @@ const ArenaDetail = () => {
             {/* Header Bottom Section */}
             <div className="header-bottom-section">
                 <div className="info-group">
-                    <div className="info-item"><p className="primary-p">{matchData.pair}</p></div>
+                    <div className="info-item"><p className="primary-p">{matchData.symbol}</p></div>
                     <div className="info-item"><p className="accent-p">{matchData.betAmount} USDT</p></div>
                 </div>
                 <div className="info-group">
@@ -267,7 +267,7 @@ const ArenaDetail = () => {
                                     <div key={trade.id} className={`trade-box right`}>
                                         <div className="trade-info">
                                             <span className="trade-type">{trade.type}</span>
-                                            <span className="trade-amount">{trade.amount} {matchData.pair.split('/')[0]}</span>
+                                            <span className="trade-amount">{trade.amount} {matchData.symbol.split('/')[0]}</span>
                                             <span className="trade-price">${trade.price}</span>
                                             <span className="trade-time">{new Date(trade.timestamp).toLocaleTimeString()}</span>
                                         </div>
