@@ -1828,90 +1828,34 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     const [filterAmount, setFilterAmount] = useState('');
     const [filterCountry, setFilterCountry] = useState('');
     const [filterSymbol, setFilterSymbol] = useState('');
-    const [showDepositModal, setShowDepositModal] = useState(false);
     const [showJoinConfirm, setShowJoinConfirm] = useState(false);
     const [selectedMatch, setSelectedMatch] = useState(null);
     const [brokersList, setBrokersList] = useState([]);
     const [filterPanelHeight, setFilterPanelHeight] = useState(0);
     const filterContentRef = useRef(null);
     const [tournamentItems, setTournamentItems] = useState([]);
-    const [waitingMatches, setWaitingMatches] = useState([]);
-    const [liveMatches, setLiveMatches] = useState([]); // Khai báo state để lưu danh sách live
+    const [allPersonalMatches, setAllPersonalMatches] = useState([]);
     const [showJoinMatchConditionModal, setShowJoinMatchConditionModal] = useState(false);
 
-    const handleJoinChallenge = (match) => {
-        if (!user) {
-            alert('Thông tin người dùng chưa được tải. Vui lòng thử lại.');
-            return;
-        }
-
-        const currentUserData = user;
-        const betWallet = parseFloat(currentUserData?.bet_wallet || 0);
-        const hasEmail = currentUserData?.email && currentUserData.email.trim() !== '';
-        const linkedBrokers = currentUserData?.linkedBrokers || [];
-        const hasBrokerAccount = linkedBrokers.includes(match.broker_id);
-        const isPlayer1 = currentUserData.telegram_id === match.player1.id; // Chỉnh sửa để lấy id của player1
-
-        if (isPlayer1) {
-            alert("Bạn không thể tham gia trận đấu của chính mình!");
-            return;
-        }
-        if (!hasEmail) {
-            setSelectedMatch(match);
-            setShowJoinMatchConditionModal(true);
-            return;
-        }
-        if (!hasBrokerAccount) {
-            setSelectedMatch(match);
-            setShowJoinMatchConditionModal(true);
-            return;
-        }
-        if (betWallet < match.betAmount) {
-            setSelectedMatch(match);
-            setShowJoinMatchConditionModal(true);
-            return;
-        }
-
-        setSelectedMatch(match);
-        setShowJoinConfirm(true);
-    };
-
-    const handleConfirmJoin = async () => {
-        if (!selectedMatch || !user) return;
-
+    const fetchAllPersonalMatches = async () => {
         try {
-            const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    player2_id: user.telegram_id,
-                    status: "pending_confirmation",
-                    player2_username: user.username || user.telegram_id.toString(),
-                    bet_amount: selectedMatch.betAmount
-                })
-            });
-
+            const response = await fetch('https://f2farena.com/api/matches/all_active');
             if (!response.ok) {
                 const errorData = await response.json();
-                console.error('Update match (join) failed:', response.status, errorData.detail);
-                alert('Tham gia thất bại: ' + (errorData.detail || 'Lỗi không xác định.'));
+                console.error(`API Error: ${response.status} - ${errorData.detail}`);
+                throw new Error('Failed to fetch active matches.');
+            }
+            const data = await response.json();
+            if (!Array.isArray(data)) {
+                console.error('API response is not an array:', data);
+                setAllPersonalMatches([]);
                 return;
             }
-
-            const data = await response.json();
-            console.log('Update match success:', data);
-            alert("Yêu cầu tham gia của bạn đã được gửi đến người tạo ván. Vui lòng chờ xác nhận!");
-
-            fetchAllMatches(true); // Gọi hàm mới để fetch lại toàn bộ danh sách
-            setShowJoinConfirm(false);
-            setSelectedMatch(null);
-
+            setAllPersonalMatches(data);
+            console.log('Fetched all matches successfully. Count:', data.length);
         } catch (error) {
-            console.error('Error updating match (join):', error);
-            alert('Lỗi khi gửi yêu cầu tham gia trận đấu. Vui lòng thử lại.');
-        } finally {
-            setShowJoinConfirm(false);
-            setSelectedMatch(null);
+            console.error('Error fetching all active matches:', error);
+            setAllPersonalMatches([]);
         }
     };
 
@@ -1937,43 +1881,6 @@ const ArenaPage = ({ user, onUserUpdate }) => {
         }
     };
 
-    const fetchAllMatches = async () => {
-      let waitingData = [];
-      let ongoingData = [];
-
-      try {
-          const waitingResponse = await fetch('https://f2farena.com/api/matches/waiting');
-          if (waitingResponse.ok) {
-              waitingData = await waitingResponse.json();
-          } else {
-              console.warn(`Warning: API /matches/waiting returned status ${waitingResponse.status}`);
-          }
-      } catch (error) {
-          console.error('Error fetching waiting matches:', error);
-      }
-
-      try {
-          const ongoingResponse = await fetch('https://f2farena.com/api/matches/ongoing');
-          if (ongoingResponse.ok) {
-              ongoingData = await ongoingResponse.json();
-          } else {
-              // This is the key change. We log the warning but don't throw an error.
-              console.warn(`Warning: API /matches/ongoing returned status ${ongoingResponse.status}`);
-          }
-      } catch (error) {
-          console.error('Error fetching ongoing matches:', error);
-      }
-
-      setWaitingMatches(waitingData);
-      setLiveMatches(ongoingData);
-
-      // Update cache
-      sessionStorage.setItem('waiting_matches', JSON.stringify(waitingData));
-      sessionStorage.setItem('ongoing_matches', JSON.stringify(ongoingData));
-
-      console.log('Fetched all matches successfully. Waiting:', waitingData.length, 'Live:', ongoingData.length);
-  };
-
     const fetchBrokersForArena = async () => {
         let brokers = [];
         const cached = sessionStorage.getItem('brokers_data');
@@ -1996,13 +1903,64 @@ const ArenaPage = ({ user, onUserUpdate }) => {
 
     useEffect(() => {
         fetchTournaments();
-        fetchAllMatches(); // Gọi hàm mới ở đây
+        fetchAllPersonalMatches();
         fetchBrokersForArena();
     }, []);
 
-    // Logic để gộp và lọc danh sách trận đấu
-    const allPersonalMatches = [...liveMatches, ...waitingMatches];
+    const handleJoinChallenge = (match) => {
+        if (!user) {
+            alert('Thông tin người dùng chưa được tải. Vui lòng thử lại.');
+            return;
+        }
+        const currentUserData = user;
+        const betWallet = parseFloat(currentUserData?.bet_wallet || 0);
+        const hasEmail = currentUserData?.email && currentUserData.email.trim() !== '';
+        const linkedBrokers = currentUserData?.linkedBrokers || [];
+        const hasBrokerAccount = linkedBrokers.includes(match.broker_id);
+        const isPlayer1 = currentUserData.telegram_id === match.player1.id;
+        if (isPlayer1) {
+            alert("Bạn không thể tham gia trận đấu của chính mình!");
+            return;
+        }
+        if (!hasEmail || !hasBrokerAccount || betWallet < match.betAmount) {
+            setSelectedMatch(match);
+            setShowJoinMatchConditionModal(true);
+            return;
+        }
+        setSelectedMatch(match);
+        setShowJoinConfirm(true);
+    };
 
+    const handleConfirmJoin = async () => {
+        if (!selectedMatch || !user) return;
+        try {
+            const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    player2_id: user.telegram_id,
+                    status: "pending_confirmation",
+                    player2_username: user.username || user.telegram_id.toString(),
+                    bet_amount: selectedMatch.betAmount
+                })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                alert('Tham gia thất bại: ' + (errorData.detail || 'Lỗi không xác định.'));
+                return;
+            }
+            alert("Yêu cầu tham gia của bạn đã được gửi đến người tạo ván. Vui lòng chờ xác nhận!");
+            fetchAllPersonalMatches();
+        } catch (error) {
+            console.error('Error updating match (join):', error);
+            alert('Lỗi khi gửi yêu cầu tham gia trận đấu. Vui lòng thử lại.');
+        } finally {
+            setShowJoinConfirm(false);
+            setSelectedMatch(null);
+        }
+    };
+    
+    // Lọc danh sách trận đấu dựa trên bộ lọc
     const filteredMatches = allPersonalMatches.filter(match => {
         const amountCondition = !filterAmount || match.betAmount <= parseFloat(filterAmount);
         const countryCondition = !filterCountry || (match.country && match.country.toLowerCase().includes(filterCountry.toLowerCase()));
@@ -2015,7 +1973,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     }, [showFilters]);
 
     if (showCreateForm) {
-        return <CreateNewMatchForm onClose={() => setShowCreateForm(false)} brokersList={brokersList} onCreateSuccess={() => fetchAllMatches()} user={user} />;
+        return <CreateNewMatchForm onClose={() => setShowCreateForm(false)} brokersList={brokersList} onCreateSuccess={() => fetchAllPersonalMatches()} user={user} />;
     }
 
     return (
@@ -2029,45 +1987,40 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                 </button>
             </div>
 
-            {activeTab === 'tournament' && (
-                <>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.5rem' }}>
-                        <button className={`btn ${tournamentFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTournamentFilter('all')} style={{ fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>
-                            All
-                        </button>
-                        <button className={`btn ${tournamentFilter === 'live' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTournamentFilter('live')} style={{ fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>
-                            Live
-                        </button>
-                        <button className={`btn ${tournamentFilter === 'demo' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTournamentFilter('demo')} style={{ fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>
-                            Demo
-                        </button>
-                    </div>
-                    <div className="tournament-list">
-                        {tournamentItems.filter(item => (tournamentFilter === 'all' || item.type === tournamentFilter)).map(item => (
-                            <div key={item.id} className="card tournament-card">
-                                <div className="tournament-thumbnail-wrapper">
-                                    <img src={item.thumbnail} alt={item.title} className="tournament-thumbnail" loading="lazy" onError={(e) => {
-                                        console.error(`Failed to load image: ${item.thumbnail}`);
-                                        e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
-                                    }} onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }} />
-                                    <TournamentStatus startTime={item.startTime} />
-                                </div>
-                                <div className="tournament-content">
-                                    <h3 className="tournament-title">{item.title}</h3>
-                                    <div className="tournament-details-grid">
-                                        <div className="detail-item"><span>Prize Pool</span><p className="detail-value accent">{item.prizePool}</p></div>
-                                        <div className="detail-item"><span>Participants</span><p className="detail-value">{item.participants}</p></div>
-                                        <div className="detail-item"><span>Symbol</span><p className="detail-value primary">{item.symbol}</p></div>
+            {activeTab === 'tournament' && (() => {
+                const filteredTournaments = tournamentItems.filter(item => (tournamentFilter === 'all' || item.type === tournamentFilter));
+                return (
+                    <>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.5rem' }}>
+                            <button className={`btn ${tournamentFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTournamentFilter('all')} style={{ fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>All</button>
+                            <button className={`btn ${tournamentFilter === 'live' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTournamentFilter('live')} style={{ fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>Live</button>
+                            <button className={`btn ${tournamentFilter === 'demo' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTournamentFilter('demo')} style={{ fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>Demo</button>
+                        </div>
+                        <div className="tournament-list">
+                            {filteredTournaments.map(item => (
+                                <div key={item.id} className="card tournament-card">
+                                    <div className="tournament-thumbnail-wrapper">
+                                        <img src={item.thumbnail} alt={item.title} className="tournament-thumbnail" loading="lazy" onError={(e) => {
+                                            console.error(`Failed to load image: ${item.thumbnail}`);
+                                            e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
+                                        }} onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }} />
+                                        <TournamentStatus startTime={item.startTime} />
                                     </div>
-                                    <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} onClick={() => navigate(`/tournament/${item.id}`)}>
-                                        Detail
-                                    </button>
+                                    <div className="tournament-content">
+                                        <h3 className="tournament-title">{item.title}</h3>
+                                        <div className="tournament-details-grid">
+                                            <div className="detail-item"><span>Prize Pool</span><p className="detail-value accent">{item.prizePool}</p></div>
+                                            <div className="detail-item"><span>Participants</span><p className="detail-value">{item.participants}</p></div>
+                                            <div className="detail-item"><span>Symbol</span><p className="detail-value primary">{item.symbol}</p></div>
+                                        </div>
+                                        <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} onClick={() => navigate(`/tournament/${item.id}`)}>Detail</button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                </>
-            )}
+                            ))}
+                        </div>
+                    </>
+                );
+            })()}
 
             {activeTab === 'personal' && (
                 <>
@@ -2146,9 +2099,6 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                     onUserUpdate={onUserUpdate}
                     brokersList={brokersList}
                 />
-            )}
-            {showDepositModal && (
-                <DepositForm onClose={() => setShowDepositModal(false)} user={user} onUserUpdate={onUserUpdate} />
             )}
             {showJoinConfirm && (
                 <JoinConfirmModal
