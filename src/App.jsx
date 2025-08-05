@@ -2101,17 +2101,23 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     fetchBrokersForArena();
   }, []);
 
-  const filteredMatches = waitingMatches.map(match => ({
-    ...match,
-    betAmount: match.bet,
-    symbol: match.pair,
-    waitingTime: 'It is the waiting time',
-    country: 'Vietnam',
-    challenger: {
-      name: match.player1_name || 'Anonymous',
-      avatar: match.player1_avatar || generateAvatarUrl(match.player1_name || 'Anonymous')
-    }
-  })).filter(match => {
+  const filteredMatches = waitingMatches.map(match => {
+    // Đảm bảo tên được lấy từ các trường có sẵn trong response của backend
+    const player1_name = match.player1_fullname || match.player1_username || 'Anonymous';
+    const player1_avatar = match.player1_avatar ? `https://f2farena.com/server/${match.player1_avatar}` : generateAvatarUrl(player1_name);
+    
+    return {
+      ...match,
+      betAmount: match.bet,
+      symbol: match.pair,
+      waitingTime: 'It is the waiting time', 
+      country: 'Vietnam',
+      challenger: {
+        name: player1_name,
+        avatar: player1_avatar
+      }
+    };
+  }).filter(match => {
     const amountCondition = !filterAmount || match.betAmount <= parseInt(filterAmount);
     const countryCondition = !filterCountry || match.country.toLowerCase().includes(filterCountry.toLowerCase());
     const symbolCondition = !filterSymbol || match.symbol.toLowerCase().includes(filterSymbol.toLowerCase());
