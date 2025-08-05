@@ -241,6 +241,27 @@ const HomePage = () => {
   const [ongoingMatches, setOngoingMatches] = useState([]);
   const [tournaments, setTournaments] = useState([]);
 
+  const fetchLiveMatchesFromActive = async () => {
+      try {
+          const response = await fetch('https://f2farena.com/api/matches/active');
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const allActiveMatches = await response.json();
+          if (!Array.isArray(allActiveMatches)) {
+              console.error('API response for active matches is not an array:', allActiveMatches);
+              setOngoingMatches([]);
+              return;
+          }
+          // Lọc ra các trận đấu có status là 'live' và lấy 5 trận đầu tiên
+          const liveMatches = allActiveMatches.filter(match => match.status === 'live').slice(0, 5);
+          setOngoingMatches(liveMatches);
+      } catch (error) {
+          console.error('Error fetching live matches for home:', error);
+          setOngoingMatches([]);
+      }
+  };
+
   useEffect(() => {
       const fetchBanner = async () => {
           const cachedBanner = sessionStorage.getItem('banner_data');
@@ -313,7 +334,7 @@ const HomePage = () => {
       };
 
       fetchBanner();
-      fetchOngoing();
+      fetchLiveMatchesFromActive();
       fetchTournaments();
   }, []);
 
@@ -1839,164 +1860,149 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     const [liveMatches, setLiveMatches] = useState([]); // Khai báo state để lưu danh sách live
     const [showJoinMatchConditionModal, setShowJoinMatchConditionModal] = useState(false);
 
+    const [allActiveMatches, setAllActiveMatches] = useState([]);
+    const fetchAllMatches = async () => {
+      try {
+          const response = await fetch('https://f2farena.com/api/matches/active');
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          if (!Array.isArray(data)) {
+              console.error('API response for active matches is not an array:', data);
+              setAllActiveMatches([]);
+              return;
+          }
+          setAllActiveMatches(data);
+          // Lưu cache chung để các component khác có thể sử dụng
+          sessionStorage.setItem('active_matches', JSON.stringify(data));
+      } catch (error) {
+          console.error('Error fetching all active matches:', error);
+          setAllActiveMatches([]);
+      }
+    };
+
     const handleJoinChallenge = (match) => {
-        if (!user) {
-            alert('Thông tin người dùng chưa được tải. Vui lòng thử lại.');
-            return;
-        }
+      if (!user) {
+          alert('Thông tin người dùng chưa được tải. Vui lòng thử lại.');
+          return;
+      }
 
-        const currentUserData = user;
-        const betWallet = parseFloat(currentUserData?.bet_wallet || 0);
-        const hasEmail = currentUserData?.email && currentUserData.email.trim() !== '';
-        const linkedBrokers = currentUserData?.linkedBrokers || [];
-        const hasBrokerAccount = linkedBrokers.includes(match.broker_id);
-        const isPlayer1 = currentUserData.telegram_id === match.player1.id; // Chỉnh sửa để lấy id của player1
+      const currentUserData = user;
+      const betWallet = parseFloat(currentUserData?.bet_wallet || 0);
+      const hasEmail = currentUserData?.email && currentUserData.email.trim() !== '';
+      const linkedBrokers = currentUserData?.linkedBrokers || [];
+      const hasBrokerAccount = linkedBrokers.includes(match.broker_id);
+      const isPlayer1 = currentUserData.telegram_id === match.player1.id; // Chỉnh sửa để lấy id của player1
 
-        if (isPlayer1) {
-            alert("Bạn không thể tham gia trận đấu của chính mình!");
-            return;
-        }
-        if (!hasEmail) {
-            setSelectedMatch(match);
-            setShowJoinMatchConditionModal(true);
-            return;
-        }
-        if (!hasBrokerAccount) {
-            setSelectedMatch(match);
-            setShowJoinMatchConditionModal(true);
-            return;
-        }
-        if (betWallet < match.betAmount) {
-            setSelectedMatch(match);
-            setShowJoinMatchConditionModal(true);
-            return;
-        }
+      if (isPlayer1) {
+        alert("Bạn không thể tham gia trận đấu của chính mình!");
+        return;
+      }
+      if (!hasEmail) {
+          setSelectedMatch(match);
+          setShowJoinMatchConditionModal(true);
+          return;
+      }
+      if (!hasBrokerAccount) {
+          setSelectedMatch(match);
+          setShowJoinMatchConditionModal(true);
+          return;
+      }
+      if (betWallet < match.betAmount) {
+          setSelectedMatch(match);
+          setShowJoinMatchConditionModal(true);
+          return;
+      }
 
-        setSelectedMatch(match);
-        setShowJoinConfirm(true);
+      setSelectedMatch(match);
+      setShowJoinConfirm(true);
     };
 
     const handleConfirmJoin = async () => {
-        if (!selectedMatch || !user) return;
+      if (!selectedMatch || !user) return;
 
-        try {
-            const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    player2_id: user.telegram_id,
-                    status: "pending_confirmation",
-                    player2_username: user.username || user.telegram_id.toString(),
-                    bet_amount: selectedMatch.betAmount
-                })
-            });
+      try {
+          const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  player2_id: user.telegram_id,
+                  status: "pending_confirmation",
+                  player2_username: user.username || user.telegram_id.toString(),
+                  bet_amount: selectedMatch.betAmount
+              })
+          });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error('Update match (join) failed:', response.status, errorData.detail);
-                alert('Tham gia thất bại: ' + (errorData.detail || 'Lỗi không xác định.'));
-                return;
-            }
+          if (!response.ok) {
+              const errorData = await response.json();
+              console.error('Update match (join) failed:', response.status, errorData.detail);
+              alert('Tham gia thất bại: ' + (errorData.detail || 'Lỗi không xác định.'));
+              return;
+          }
 
-            const data = await response.json();
-            console.log('Update match success:', data);
-            alert("Yêu cầu tham gia của bạn đã được gửi đến người tạo ván. Vui lòng chờ xác nhận!");
+          const data = await response.json();
+          console.log('Update match success:', data);
+          alert("Yêu cầu tham gia của bạn đã được gửi đến người tạo ván. Vui lòng chờ xác nhận!");
 
-            fetchAllMatches(true); // Gọi hàm mới để fetch lại toàn bộ danh sách
-            setShowJoinConfirm(false);
-            setSelectedMatch(null);
+          fetchAllMatches(true); // Gọi hàm mới để fetch lại toàn bộ danh sách
+          setShowJoinConfirm(false);
+          setSelectedMatch(null);
 
-        } catch (error) {
-            console.error('Error updating match (join):', error);
-            alert('Lỗi khi gửi yêu cầu tham gia trận đấu. Vui lòng thử lại.');
-        } finally {
-            setShowJoinConfirm(false);
-            setSelectedMatch(null);
-        }
+      } catch (error) {
+          console.error('Error updating match (join):', error);
+          alert('Lỗi khi gửi yêu cầu tham gia trận đấu. Vui lòng thử lại.');
+      } finally {
+          setShowJoinConfirm(false);
+          setSelectedMatch(null);
+      }
     };
 
     const fetchTournaments = async () => {
-        const cachedTournaments = sessionStorage.getItem('tournaments_data');
-        if (cachedTournaments) {
-            setTournamentItems(JSON.parse(cachedTournaments));
-            return;
-        }
-        try {
-            const response = await fetch(`https://f2farena.com/api/tournaments/`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const data = await response.json();
-            const mappedData = data.map(t => ({
-                ...t,
-                thumbnail: `https://f2farena.com/${t.thumbnail}`,
-                prizePool: `${t.prize_pool} USDT`
-            }));
-            setTournamentItems(mappedData);
-            sessionStorage.setItem('tournaments_data', JSON.stringify(mappedData));
-        } catch (error) {
-            console.error('Error fetching tournaments:', error.message);
-        }
+      const cachedTournaments = sessionStorage.getItem('tournaments_data');
+      if (cachedTournaments) {
+          setTournamentItems(JSON.parse(cachedTournaments));
+          return;
+      }
+      try {
+          const response = await fetch(`https://f2farena.com/api/tournaments/`);
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const data = await response.json();
+          const mappedData = data.map(t => ({
+              ...t,
+              thumbnail: `https://f2farena.com/${t.thumbnail}`,
+              prizePool: `${t.prize_pool} USDT`
+          }));
+          setTournamentItems(mappedData);
+          sessionStorage.setItem('tournaments_data', JSON.stringify(mappedData));
+      } catch (error) {
+          console.error('Error fetching tournaments:', error.message);
+      }
     };
 
-    const fetchAllMatches = async () => {
-      let waitingData = [];
-      let ongoingData = [];
-
-      try {
-          const waitingResponse = await fetch('https://f2farena.com/api/matches/waiting');
-          if (waitingResponse.ok) {
-              waitingData = await waitingResponse.json();
-          } else {
-              console.warn(`Warning: API /matches/waiting returned status ${waitingResponse.status}`);
-          }
-      } catch (error) {
-          console.error('Error fetching waiting matches:', error);
-      }
-
-      try {
-          const ongoingResponse = await fetch('https://f2farena.com/api/matches/ongoing');
-          if (ongoingResponse.ok) {
-              ongoingData = await ongoingResponse.json();
-          } else {
-              // This is the key change. We log the warning but don't throw an error.
-              console.warn(`Warning: API /matches/ongoing returned status ${ongoingResponse.status}`);
-          }
-      } catch (error) {
-          console.error('Error fetching ongoing matches:', error);
-      }
-
-      setWaitingMatches(waitingData);
-      setLiveMatches(ongoingData);
-
-      // Update cache
-      sessionStorage.setItem('waiting_matches', JSON.stringify(waitingData));
-      sessionStorage.setItem('ongoing_matches', JSON.stringify(ongoingData));
-
-      console.log('Fetched all matches successfully. Waiting:', waitingData.length, 'Live:', ongoingData.length);
-  };
-
     const fetchBrokersForArena = async () => {
-        let brokers = [];
-        const cached = sessionStorage.getItem('brokers_data');
-        if (cached) {
-            brokers = JSON.parse(cached).brokers || [];
-        }
-        if (brokers.length === 0) {
-            try {
-                const response = await fetch('https://f2farena.com/api/brokers/list');
-                if (!response.ok) throw new Error('Fetch failed');
-                const data = await response.json();
-                brokers = data.brokers.map(b => ({ id: b.id, name: b.broker_name, registration_url: b.registration_url }));
-                sessionStorage.setItem('brokers_data', JSON.stringify({ brokers }));
-            } catch (error) {
-                console.error('Error fetching brokers for Arena:', error);
-            }
-        }
-        setBrokersList(brokers);
+      let brokers = [];
+      const cached = sessionStorage.getItem('brokers_data');
+      if (cached) {
+          brokers = JSON.parse(cached).brokers || [];
+      }
+      if (brokers.length === 0) {
+          try {
+              const response = await fetch('https://f2farena.com/api/brokers/list');
+              if (!response.ok) throw new Error('Fetch failed');
+              const data = await response.json();
+              brokers = data.brokers.map(b => ({ id: b.id, name: b.broker_name, registration_url: b.registration_url }));
+              sessionStorage.setItem('brokers_data', JSON.stringify({ brokers }));
+          } catch (error) {
+              console.error('Error fetching brokers for Arena:', error);
+          }
+      }
+      setBrokersList(brokers);
     };
 
     useEffect(() => {
         fetchTournaments();
-        fetchAllMatches(); // Gọi hàm mới ở đây
+        fetchAllMatches();
         fetchBrokersForArena();
     }, []);
 
