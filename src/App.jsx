@@ -1938,35 +1938,41 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     };
 
     const fetchAllMatches = async () => {
-        try {
-            // Fetch cả hai danh sách đồng thời
-            const [waitingResponse, ongoingResponse] = await Promise.all([
-                fetch('https://f2farena.com/api/matches/waiting'),
-                fetch('https://f2farena.com/api/matches/ongoing')
-            ]);
+      let waitingData = [];
+      let ongoingData = [];
 
-            if (!waitingResponse.ok || !ongoingResponse.ok) {
-                throw new Error('Failed to fetch one or more match lists.');
-            }
+      try {
+          const waitingResponse = await fetch('https://f2farena.com/api/matches/waiting');
+          if (waitingResponse.ok) {
+              waitingData = await waitingResponse.json();
+          } else {
+              console.warn(`Warning: API /matches/waiting returned status ${waitingResponse.status}`);
+          }
+      } catch (error) {
+          console.error('Error fetching waiting matches:', error);
+      }
 
-            const waitingData = await waitingResponse.json();
-            const ongoingData = await ongoingResponse.json();
+      try {
+          const ongoingResponse = await fetch('https://f2farena.com/api/matches/ongoing');
+          if (ongoingResponse.ok) {
+              ongoingData = await ongoingResponse.json();
+          } else {
+              // This is the key change. We log the warning but don't throw an error.
+              console.warn(`Warning: API /matches/ongoing returned status ${ongoingResponse.status}`);
+          }
+      } catch (error) {
+          console.error('Error fetching ongoing matches:', error);
+      }
 
-            setWaitingMatches(waitingData);
-            setLiveMatches(ongoingData);
+      setWaitingMatches(waitingData);
+      setLiveMatches(ongoingData);
 
-            sessionStorage.setItem('waiting_matches', JSON.stringify(waitingData));
-            sessionStorage.setItem('ongoing_matches', JSON.stringify(ongoingData));
+      // Update cache
+      sessionStorage.setItem('waiting_matches', JSON.stringify(waitingData));
+      sessionStorage.setItem('ongoing_matches', JSON.stringify(ongoingData));
 
-            console.log('Fetched all matches. Waiting:', waitingData.length, 'Live:', ongoingData.length);
-        } catch (error) {
-            console.error('Error fetching all matches:', error);
-            // Đảm bảo state được reset để tránh render lỗi
-            setWaitingMatches([]);
-            setLiveMatches([]);
-        }
-    };
-
+      console.log('Fetched all matches successfully. Waiting:', waitingData.length, 'Live:', ongoingData.length);
+  };
 
     const fetchBrokersForArena = async () => {
         let brokers = [];
