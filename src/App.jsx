@@ -1632,11 +1632,9 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
             });
             const data = await response.json();
             if (data.id) {
-                const updatedLinkedBrokers = [...new Set([...(user.linkedBrokers || []), match.broker_id])]; // Đảm bảo unique
-                const updatedUser = { ...user, linkedBrokers: updatedLinkedBrokers };
-                onUserUpdate(updatedUser);
-                alert('Tài khoản đã được liên kết thành công!');
-                onClose(); // Đóng modal sau khi liên kết thành công
+                alert('Tài khoản đã được liên kết thành công! Đang cập nhật thông tin của bạn...');
+                await onUserUpdate(); // Gọi hàm onUserUpdate mới, nó sẽ tự fetch lại user
+                onClose();
             } else {
                 alert(data.detail || 'Liên kết tài khoản thất bại.');
             }
@@ -1891,7 +1889,8 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     };
 
     const handleJoinChallenge = (match) => {
-      if (!user) {
+      const cachedUserData = sessionStorage.getItem('user_data');
+      if (!cachedUserData) {
           alert('Thông tin người dùng chưa được tải. Vui lòng thử lại.');
           return;
       }
@@ -1901,7 +1900,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
       const hasEmail = currentUserData?.email && currentUserData.email.trim() !== '';
       const linkedBrokers = currentUserData?.linkedBrokers || [];
       const hasBrokerAccount = linkedBrokers.includes(match.broker_id);
-      const isPlayer1 = currentUserData.telegram_id === match.player1.id; // Chỉnh sửa để lấy id của player1
+      const isPlayer1 = currentUserData.telegram_id === match.player1.id;
 
       if (isPlayer1) {
         alert("Bạn không thể tham gia trận đấu của chính mình!");
@@ -2604,74 +2603,66 @@ const AppContent = () => {
       };
   }, [user, navigate]);
 
-  const handleUserUpdate = (updatedUserData) => {
-    setUser(updatedUserData);
-    sessionStorage.setItem('user_data', JSON.stringify(updatedUserData)); // Cập nhật cache
-  };
+  const fetchAndSetUser = async () => {
+    let telegramId = null;
 
-  const [walletData, setWalletData] = useState({
-    currentBalance: '1500.50 USDT',
-    totalDeposits: '5000.00 USDT',
-    totalWithdrawals: '3000.00 USDT',
-  });
-
-  useEffect(() => {
-    const loadUser = async () => {
-      const cachedUser = sessionStorage.getItem('user_data');
-      if (cachedUser) {
-        console.log('Loaded user from sessionStorage:', cachedUser);
-        setUser(JSON.parse(cachedUser));
-        return;
-      }
-
-      let telegramId = null;
-
-      if (window.Telegram && window.Telegram.WebApp) {
+    if (window.Telegram && window.Telegram.WebApp) {
         const tg = window.Telegram.WebApp;
         tg.ready();
-        
         if (tg.initData) {
             const params = new URLSearchParams(tg.initData);
             const userParam = params.get('user');
             if (userParam) {
                 const userData = JSON.parse(userParam);
                 telegramId = userData.id;
-                console.log('Successfully got user ID from Telegram:', telegramId);
             }
         }
-      }
+    }
 
-      if (!telegramId) {
+    if (!telegramId) {
         const params = new URLSearchParams(location.search);
         telegramId = params.get('userid');
-        if (telegramId) {
-          console.log('Got user ID from URL param:', telegramId);
+    }
+
+    if (!telegramId) {
+        telegramId = 6461541179; // ID mặc định cho development
+    }
+
+    try {
+        const response = await fetch(`https://f2farena.com/api/users/${telegramId}`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Fetch user failed for ID ${telegramId}:`, response.status, errorText);
+            return;
         }
-      }
+        const data = await response.json();
+        console.log('Fetched FRESH user data from API:', data);
+        setUser(data);
+        sessionStorage.setItem('user_data', JSON.stringify(data));
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+    }
+};
 
-      if (!telegramId) {
-        telegramId = 6461541179;
-        console.log('No user ID found, using default ID for development:', telegramId);
-      }
-      
-      try {
-        const response = await fetch(`https://f2farena.com/api/users/${telegramId}`);
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Fetch user failed for ID ${telegramId}:`, response.status, errorText);
-          return;
-        }
-        const data = await response.json();
-        console.log('Fetched user data from API:', data);
-        setUser(data);
-        sessionStorage.setItem('user_data', JSON.stringify(data));
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    };
+// Hàm onUserUpdate mới sẽ luôn gọi fetchAndSetUser để lấy dữ liệu mới nhất
+const handleUserUpdate = async () => {
+    console.log("Updating user data by re-fetching from server...");
+    await fetchAndSetUser();
+};
 
-    loadUser();
-  }, [location.search]);
+// useEffect ban đầu giờ chỉ dùng để load user lần đầu (từ cache hoặc fetch mới)
+useEffect(() => {
+    const loadUserFromCacheOrFetch = async () => {
+        const cachedUser = sessionStorage.getItem('user_data');
+        if (cachedUser) {
+            console.log('Loaded user from sessionStorage:', cachedUser);
+            setUser(JSON.parse(cachedUser));
+        } else {
+            await fetchAndSetUser();
+        }
+    };
+    loadUserFromCacheOrFetch();
+}, [location.search]);
 
   useEffect(() => {
     const mainContent = document.getElementById('main-content');
