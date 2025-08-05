@@ -234,221 +234,199 @@ const EventBanner = ({ items }) => {
   );
 };
 
+// HomePage sử dụng hook riêng để fetch dữ liệu thay vì lặp lại logic
 const HomePage = () => {
   const navigate = useNavigate();
-
   const [bannerItems, setBannerItems] = useState([]);
   const [ongoingMatches, setOngoingMatches] = useState([]);
   const [tournaments, setTournaments] = useState([]);
 
   useEffect(() => {
-    const fetchBanner = async () => {
-      console.log('Checking sessionStorage for banner_data');  // Log: Kiểm tra trước khi fetch
-      const cachedBanner = sessionStorage.getItem('banner_data');
-      if (cachedBanner) {
-        console.log('Using cached banner data from sessionStorage');
-        const parsedData = JSON.parse(cachedBanner);
-        setBannerItems(parsedData);
-        return;
-      }
-      try {
-        const response = await fetch('https://f2farena.com/api/events/banner');
-        const data = await response.json();
-        console.log('Fetched banner data:', data);
-        if (data && data.length > 0) {
-          console.log('Thumbnail URL to load:', data[0].thumbnail);
-        }
-        // Thêm map để prepend full URL cho thumbnail
-        const updatedData = data.map(item => ({
-          ...item,
-          thumbnail: `https://f2farena.com/${item.thumbnail}` // Prepend backend base URL
-        }));
-        setBannerItems(updatedData);
-        sessionStorage.setItem('banner_data', JSON.stringify(updatedData));  // Lưu cache
-        console.log('Stored banner data to sessionStorage');
-      } catch (error) {
-        console.error('Error fetching banner:', error);
-      }
-    };
-    const fetchOngoing = async () => {
-      console.log('Checking sessionStorage for ongoing_matches');
-      const cachedOngoing = sessionStorage.getItem('ongoing_matches');
-      if (cachedOngoing) {
-        console.log('Using cached ongoing matches from sessionStorage');
-        const parsedData = JSON.parse(cachedOngoing);
-        setOngoingMatches(parsedData);
-        return;
-      }
-      try {
-        const response = await fetch('https://f2farena.com/api/matches/ongoing');
-        // SỬA: Thêm check response.ok
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log('Fetched ongoing matches for home:', data);
+      const fetchBanner = async () => {
+          const cachedBanner = sessionStorage.getItem('banner_data');
+          if (cachedBanner) {
+              const parsedData = JSON.parse(cachedBanner);
+              setBannerItems(parsedData);
+              return;
+          }
+          try {
+              const response = await fetch('https://f2farena.com/api/events/banner');
+              const data = await response.json();
+              const updatedData = data.map(item => ({
+                  ...item,
+                  thumbnail: `https://f2farena.com/${item.thumbnail}`
+              }));
+              setBannerItems(updatedData);
+              sessionStorage.setItem('banner_data', JSON.stringify(updatedData));
+          } catch (error) {
+              console.error('Error fetching banner:', error);
+          }
+      };
 
-        // SỬA: Kiểm tra data có phải là một mảng không trước khi map
-        if (!Array.isArray(data)) {
-          console.error('API response is not an array:', data);
-          setOngoingMatches([]); // Set về mảng rỗng để tránh lỗi
-          return;
-        }
+      const fetchOngoing = async () => {
+          const cachedOngoing = sessionStorage.getItem('ongoing_matches_home');
+          if (cachedOngoing) {
+              const parsedData = JSON.parse(cachedOngoing);
+              setOngoingMatches(parsedData);
+              return;
+          }
+          try {
+              const response = await fetch('https://f2farena.com/api/matches/ongoing');
+              if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              const data = await response.json();
+              if (!Array.isArray(data)) {
+                  console.error('API response for ongoing matches is not an array:', data);
+                  setOngoingMatches([]);
+                  return;
+              }
+              const limitedData = data.slice(0, 5);
+              setOngoingMatches(limitedData);
+              sessionStorage.setItem('ongoing_matches_home', JSON.stringify(limitedData));
+          } catch (error) {
+              console.error('Error fetching ongoing matches for home:', error);
+              setOngoingMatches([]);
+          }
+      };
 
-        const updatedData = data.map(item => ({
-          ...item,
-          thumbnail: `https://f2farena.com/${item.thumbnail}`
-        }));
-        const limitedData = updatedData.slice(0, 5);
-        setOngoingMatches(limitedData);
-        sessionStorage.setItem('ongoing_matches', JSON.stringify(limitedData));
-        console.log('Stored ongoing matches to sessionStorage');
-      } catch (error) {
-        console.error('Error fetching ongoing matches:', error);
-        setOngoingMatches([]); // Set về mảng rỗng khi có lỗi
-      }
-    };
-    const fetchTournaments = async () => {
-      console.log('Checking sessionStorage for tournaments_home');  // Log: Kiểm tra trước khi fetch
-      const cachedTournaments = sessionStorage.getItem('tournaments_home');
-      if (cachedTournaments) {
-        console.log('Using cached tournaments for home from sessionStorage');
-        const parsedData = JSON.parse(cachedTournaments);
-        setTournaments(parsedData);
-        return;
-      }
-      try {
-        const response = await fetch('https://f2farena.com/api/tournaments/?offset=0');
-        const data = await response.json();
-        console.log('Fetched tournaments for home:', data);
-        const updatedData = data.map(item => ({
-          ...item,
-          thumbnail: `https://f2farena.com/${item.thumbnail}`  // Thêm prepend full URL cho thumbnail, đồng bộ với banner
-        }));
-        const limitedData = updatedData.slice(0, 5);
-        setTournaments(limitedData);
-        console.log('Set tournaments state:', limitedData.length, limitedData);
-        sessionStorage.setItem('tournaments_home', JSON.stringify(limitedData));
-        console.log('Stored tournaments for home to sessionStorage');
-      } catch (error) {
-        console.error('Error fetching tournaments for home:', error);
-      }
-    };
-    fetchBanner();
-    fetchOngoing();
-    fetchTournaments();
+      const fetchTournaments = async () => {
+          const cachedTournaments = sessionStorage.getItem('tournaments_home');
+          if (cachedTournaments) {
+              const parsedData = JSON.parse(cachedTournaments);
+              setTournaments(parsedData);
+              return;
+          }
+          try {
+              const response = await fetch('https://f2farena.com/api/tournaments/?offset=0');
+              const data = await response.json();
+              const updatedData = data.map(item => ({
+                  ...item,
+                  thumbnail: `https://f2farena.com/${item.thumbnail}`
+              }));
+              const limitedData = updatedData.slice(0, 5);
+              setTournaments(limitedData);
+              sessionStorage.setItem('tournaments_home', JSON.stringify(limitedData));
+          } catch (error) {
+              console.error('Error fetching tournaments for home:', error);
+          }
+      };
+
+      fetchBanner();
+      fetchOngoing();
+      fetchTournaments();
   }, []);
 
   return (
-    <div>
-      <EventBanner items={bannerItems} />
-      <div className="page-padding">
-        <h2 className="section-title">⚔️ Matching</h2>
-        {ongoingMatches.map((match) => {
-          const player1Width = (match.player1.score / (match.player1.score + match.player2.score)) * 100;
-          const player2Width = (match.player2.score / (match.player1.score + match.player2.score)) * 100;
+      <div>
+          <EventBanner items={bannerItems} />
+          <div className="page-padding">
+              <h2 className="section-title">⚔️ Live Matches</h2>
+              {ongoingMatches.map((match) => {
+                  const player1Width = (match.player1.score / (match.player1.score + match.player2.score)) * 100;
+                  const player2Width = (match.player2.score / (match.player1.score + match.player2.score)) * 100;
 
-          return (
-            <div key={match.id} className="card match-card" onClick={() => navigate(`/match/${match.id}`)} style={{ cursor: 'pointer' }}>
-              <div className="top-section">
-                <div className="player-info">
-                  <LazyLoad height={48} offset={100}>
-                    <img src={match.player1.avatar} alt={match.player1.name} className="player-avatar" loading="lazy" />
-                  </LazyLoad>
-                  <span className="player-name">{match.player1.name}</span>
-                  <span className="player-odds">{match.player1.odds}</span>
-                </div>
-                <div className="center-details">
-                  <div className="time-remaining">{match.timeRemaining}</div>
-                  <div className="vs-text">VS</div>
-                </div>
-                <div className="player-info">
-                  <LazyLoad height={48} offset={100}>
-                    <img src={match.player2.avatar} alt={match.player2.name} className="player-avatar" loading="lazy" />
-                  </LazyLoad>
-                  <span className="player-name">{match.player2.name}</span>
-                  <span className="player-odds">{match.player2.odds}</span>
-                </div>
-              </div>
-              <div className="score-bar-container">
-                <div className="score-bar">
-                  <div className="score-bar-player1" style={{ width: `${player1Width}%` }}></div>
-                  <div className="score-bar-player2" style={{ width: `${player2Width}%` }}></div>
-                </div>
-                <div className="score-text">
-                  <span>Score: {match.player1.score}</span>
-                  <span>Score: {match.player2.score}</span>
-                </div>
-              </div>
-              <div className="bottom-section">
-                <div className="info-group">
-                  <div className="info-item"><p className="primary-p">{match.symbol}</p></div>
-                  <div className="info-item"><p className="accent-p">{match.betAmount} USDT</p></div>
-                </div>
-                <div className="info-group">
-                  <div className="info-item icon-info">
-                    <svg fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                      <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                    </svg>
-                    <span>{match.views}</span>
+                  return (
+                      <div key={match.id} className="card match-card" onClick={() => navigate(`/match/${match.id}`)} style={{ cursor: 'pointer' }}>
+                          <div className="top-section">
+                              <div className="player-info">
+                                  <LazyLoad height={48} offset={100}>
+                                      <img src={match.player1.avatar} alt={match.player1.name} className="player-avatar" loading="lazy" />
+                                  </LazyLoad>
+                                  <span className="player-name">{match.player1.name}</span>
+                                  <span className="player-odds">{match.player1.odds}</span>
+                              </div>
+                              <div className="center-details">
+                                  <div className="time-remaining">{match.timeRemaining}</div>
+                                  <div className="vs-text">VS</div>
+                              </div>
+                              <div className="player-info">
+                                  <LazyLoad height={48} offset={100}>
+                                      <img src={match.player2.avatar} alt={match.player2.name} className="player-avatar" loading="lazy" />
+                                  </LazyLoad>
+                                  <span className="player-name">{match.player2.name}</span>
+                                  <span className="player-odds">{match.player2.odds}</span>
+                              </div>
+                          </div>
+                          <div className="score-bar-container">
+                              <div className="score-bar">
+                                  <div className="score-bar-player1" style={{ width: `${player1Width}%` }}></div>
+                                  <div className="score-bar-player2" style={{ width: `${player2Width}%` }}></div>
+                              </div>
+                              <div className="score-text">
+                                  <span>Score: {match.player1.score}</span>
+                                  <span>Score: {match.player2.score}</span>
+                              </div>
+                          </div>
+                          <div className="bottom-section">
+                              <div className="info-group">
+                                  <div className="info-item"><p className="primary-p">{match.symbol}</p></div>
+                                  <div className="info-item"><p className="accent-p">{match.betAmount} USDT</p></div>
+                              </div>
+                              <div className="info-group">
+                                  <div className="info-item icon-info">
+                                      <svg fill="currentColor" viewBox="0 0 20 20">
+                                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                      </svg>
+                                      <span>{match.views}</span>
+                                  </div>
+                                  <div className="info-item icon-info">
+                                      <svg fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                                      </svg>
+                                      <span>{match.outsideBetsTotal} USDT</span>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  );
+              })}
+              <h2 className="section-title">🏆 Tournaments</h2>
+              {tournaments.map(item => (
+                  <div key={item.id} className="card tournament-card">
+                      <div className="tournament-thumbnail-wrapper thumbnail-skeleton">
+                          <img
+                              src={item.thumbnail}
+                              alt={item.title}
+                              className="tournament-thumbnail"
+                              loading="lazy"
+                              onError={(e) => {
+                                  console.error(`Failed to load image: ${item.thumbnail}`);
+                                  e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
+                              }}
+                              onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }}
+                          />
+                          <TournamentStatus startTime={item.event_time} />
+                      </div>
+                      <div className="tournament-content">
+                          <h3 className="tournament-title">{item.title}</h3>
+                          <div className="tournament-details-grid">
+                              <div className="detail-item">
+                                  <span>Prize Pool</span>
+                                  <p className="detail-value accent">{item.prize_pool} USDT</p>
+                              </div>
+                              <div className="detail-item">
+                                  <span>Participants</span>
+                                  <p className="detail-value">{item.participants}</p>
+                              </div>
+                              <div className="detail-item">
+                                  <span>Symbol</span>
+                                  <p className="detail-value primary">{item.symbol}</p>
+                              </div>
+                          </div>
+                          <button
+                              className="btn btn-primary"
+                              style={{ width: '100%', marginTop: '1rem' }}
+                              onClick={() => navigate(`/tournament/${item.id}`)}
+                          >
+                              Detail
+                          </button>
+                      </div>
                   </div>
-                  <div className="info-item icon-info">
-                    <svg fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-                    </svg>
-                    <span>{match.outsideBetsTotal} USDT</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-        <h2 className="section-title">🏆 Tournaments</h2>
-        {tournaments.map(item => (
-          <div key={item.id} className="card tournament-card">
-            <div className="tournament-thumbnail-wrapper thumbnail-skeleton">
-              <img
-                src={item.thumbnail}
-                alt={item.title}
-                className="tournament-thumbnail"
-                loading="lazy"
-                onError={(e) => {
-                  console.error(`Failed to load image: ${item.thumbnail}`);
-                  e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
-                }}
-                onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }}
-              />
-              <TournamentStatus startTime={item.event_time} />
-            </div>
-            <div className="tournament-content">
-              <h3 className="tournament-title">{item.title}</h3>
-              <div className="tournament-details-grid">
-                <div className="detail-item">
-                  <span>Prize Pool</span>
-                  <p className="detail-value accent">{item.prize_pool} USDT</p>
-                </div>
-                <div className="detail-item">
-                  <span>Participants</span>
-                  <p className="detail-value">{item.participants}</p>
-                </div>
-                <div className="detail-item">
-                  <span>Symbol</span>
-                  <p className="detail-value primary">{item.symbol}</p>
-                </div>
-              </div>
-              <button
-                className="btn btn-primary"
-                style={{ width: '100%', marginTop: '1rem' }}
-                onClick={() => navigate(`/tournament/${item.id}`)}
-              >
-                Detail
-              </button>
-            </div>
+              ))}
           </div>
-        ))}
       </div>
-    </div>
   );
 };
 
@@ -1842,481 +1820,339 @@ const TournamentStatus = ({ startTime }) => {
 };
 
 const ArenaPage = ({ user, onUserUpdate }) => {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('tournament');
-  const [tournamentFilter, setTournamentFilter] = useState('all');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [filterAmount, setFilterAmount] = useState('');
-  const [filterCountry, setFilterCountry] = useState('');
-  const [filterSymbol, setFilterSymbol] = useState('');
-  const [showDepositModal, setShowDepositModal] = useState(false);
-  const [showJoinConfirm, setShowJoinConfirm] = useState(false);
-  const [selectedMatch, setSelectedMatch] = useState(null);
-  const [brokersList, setBrokersList] = useState([]);
-  const [filterPanelHeight, setFilterPanelHeight] = useState(0);
-  const filterContentRef = useRef(null);
-  const [tournamentItems, setTournamentItems] = useState([]);
-  const [waitingMatches, setWaitingMatches] = useState([]);
-  const [liveMatches, setLiveMatches] = useState([]);
-  const [showJoinMatchConditionModal, setShowJoinMatchConditionModal] = useState(false);
+    const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('tournament');
+    const [tournamentFilter, setTournamentFilter] = useState('all');
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [showFilters, setShowFilters] = useState(false);
+    const [filterAmount, setFilterAmount] = useState('');
+    const [filterCountry, setFilterCountry] = useState('');
+    const [filterSymbol, setFilterSymbol] = useState('');
+    const [showDepositModal, setShowDepositModal] = useState(false);
+    const [showJoinConfirm, setShowJoinConfirm] = useState(false);
+    const [selectedMatch, setSelectedMatch] = useState(null);
+    const [brokersList, setBrokersList] = useState([]);
+    const [filterPanelHeight, setFilterPanelHeight] = useState(0);
+    const filterContentRef = useRef(null);
+    const [tournamentItems, setTournamentItems] = useState([]);
+    const [waitingMatches, setWaitingMatches] = useState([]);
+    const [liveMatches, setLiveMatches] = useState([]); // Khai báo state để lưu danh sách live
+    const [showJoinMatchConditionModal, setShowJoinMatchConditionModal] = useState(false);
 
-  const handleJoinChallenge = (match) => {
-    if (!user) {
-        alert('Thông tin người dùng chưa được tải. Vui lòng thử lại.');
-        return;
-    }
+    const handleJoinChallenge = (match) => {
+        if (!user) {
+            alert('Thông tin người dùng chưa được tải. Vui lòng thử lại.');
+            return;
+        }
 
-    // Tạo một đối tượng user tạm thời để sử dụng nhất quán (vì user prop có thể bị delay cập nhật)
-    const currentUserData = user; // Giả sử user prop đã được cập nhật hoặc lấy từ sessionStorage
+        const currentUserData = user;
+        const betWallet = parseFloat(currentUserData?.bet_wallet || 0);
+        const hasEmail = currentUserData?.email && currentUserData.email.trim() !== '';
+        const linkedBrokers = currentUserData?.linkedBrokers || [];
+        const hasBrokerAccount = linkedBrokers.includes(match.broker_id);
+        const isPlayer1 = currentUserData.telegram_id === match.player1.id; // Chỉnh sửa để lấy id của player1
 
-    const betWallet = parseFloat(currentUserData?.bet_wallet || 0);
-    const hasEmail = currentUserData?.email && currentUserData.email.trim() !== '';
-    const linkedBrokers = currentUserData?.linkedBrokers || [];
-    const hasBrokerAccount = linkedBrokers.includes(match.broker_id);
-    const isPlayer1 = currentUserData.telegram_id === match.player1_id;
+        if (isPlayer1) {
+            alert("Bạn không thể tham gia trận đấu của chính mình!");
+            return;
+        }
+        if (!hasEmail) {
+            setSelectedMatch(match);
+            setShowJoinMatchConditionModal(true);
+            return;
+        }
+        if (!hasBrokerAccount) {
+            setSelectedMatch(match);
+            setShowJoinMatchConditionModal(true);
+            return;
+        }
+        if (betWallet < match.betAmount) {
+            setSelectedMatch(match);
+            setShowJoinMatchConditionModal(true);
+            return;
+        }
 
-    // Ưu tiên kiểm tra người chơi không thể thách đấu chính mình
-    if (isPlayer1) {
-        alert("Bạn không thể tham gia trận đấu của chính mình!");
-        return;
-    }
-
-    // Kiểm tra email
-    if (!hasEmail) {
         setSelectedMatch(match);
-        setShowJoinMatchConditionModal(true); // Hiển thị modal với thông báo thiếu email
-        return;
+        setShowJoinConfirm(true);
+    };
+
+    const handleConfirmJoin = async () => {
+        if (!selectedMatch || !user) return;
+
+        try {
+            const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    player2_id: user.telegram_id,
+                    status: "pending_confirmation",
+                    player2_username: user.username || user.telegram_id.toString(),
+                    bet_amount: selectedMatch.betAmount
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Update match (join) failed:', response.status, errorData.detail);
+                alert('Tham gia thất bại: ' + (errorData.detail || 'Lỗi không xác định.'));
+                return;
+            }
+
+            const data = await response.json();
+            console.log('Update match success:', data);
+            alert("Yêu cầu tham gia của bạn đã được gửi đến người tạo ván. Vui lòng chờ xác nhận!");
+
+            fetchAllMatches(true); // Gọi hàm mới để fetch lại toàn bộ danh sách
+            setShowJoinConfirm(false);
+            setSelectedMatch(null);
+
+        } catch (error) {
+            console.error('Error updating match (join):', error);
+            alert('Lỗi khi gửi yêu cầu tham gia trận đấu. Vui lòng thử lại.');
+        } finally {
+            setShowJoinConfirm(false);
+            setSelectedMatch(null);
+        }
+    };
+
+    const fetchTournaments = async () => {
+        const cachedTournaments = sessionStorage.getItem('tournaments_data');
+        if (cachedTournaments) {
+            setTournamentItems(JSON.parse(cachedTournaments));
+            return;
+        }
+        try {
+            const response = await fetch(`https://f2farena.com/api/tournaments/`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            const mappedData = data.map(t => ({
+                ...t,
+                thumbnail: `https://f2farena.com/${t.thumbnail}`,
+                prizePool: `${t.prize_pool} USDT`
+            }));
+            setTournamentItems(mappedData);
+            sessionStorage.setItem('tournaments_data', JSON.stringify(mappedData));
+        } catch (error) {
+            console.error('Error fetching tournaments:', error.message);
+        }
+    };
+
+    const fetchAllMatches = async () => {
+        try {
+            // Fetch cả hai danh sách đồng thời
+            const [waitingResponse, ongoingResponse] = await Promise.all([
+                fetch('https://f2farena.com/api/matches/waiting'),
+                fetch('https://f2farena.com/api/matches/ongoing')
+            ]);
+
+            if (!waitingResponse.ok || !ongoingResponse.ok) {
+                throw new Error('Failed to fetch one or more match lists.');
+            }
+
+            const waitingData = await waitingResponse.json();
+            const ongoingData = await ongoingResponse.json();
+
+            setWaitingMatches(waitingData);
+            setLiveMatches(ongoingData);
+
+            sessionStorage.setItem('waiting_matches', JSON.stringify(waitingData));
+            sessionStorage.setItem('ongoing_matches', JSON.stringify(ongoingData));
+
+            console.log('Fetched all matches. Waiting:', waitingData.length, 'Live:', ongoingData.length);
+        } catch (error) {
+            console.error('Error fetching all matches:', error);
+            // Đảm bảo state được reset để tránh render lỗi
+            setWaitingMatches([]);
+            setLiveMatches([]);
+        }
+    };
+
+
+    const fetchBrokersForArena = async () => {
+        let brokers = [];
+        const cached = sessionStorage.getItem('brokers_data');
+        if (cached) {
+            brokers = JSON.parse(cached).brokers || [];
+        }
+        if (brokers.length === 0) {
+            try {
+                const response = await fetch('https://f2farena.com/api/brokers/list');
+                if (!response.ok) throw new Error('Fetch failed');
+                const data = await response.json();
+                brokers = data.brokers.map(b => ({ id: b.id, name: b.broker_name, registration_url: b.registration_url }));
+                sessionStorage.setItem('brokers_data', JSON.stringify({ brokers }));
+            } catch (error) {
+                console.error('Error fetching brokers for Arena:', error);
+            }
+        }
+        setBrokersList(brokers);
+    };
+
+    useEffect(() => {
+        fetchTournaments();
+        fetchAllMatches(); // Gọi hàm mới ở đây
+        fetchBrokersForArena();
+    }, []);
+
+    // Logic để gộp và lọc danh sách trận đấu
+    const allPersonalMatches = [...liveMatches, ...waitingMatches];
+
+    const filteredMatches = allPersonalMatches.filter(match => {
+        const amountCondition = !filterAmount || match.betAmount <= parseFloat(filterAmount);
+        const countryCondition = !filterCountry || (match.country && match.country.toLowerCase().includes(filterCountry.toLowerCase()));
+        const symbolCondition = !filterSymbol || (match.symbol && match.symbol.toLowerCase().includes(filterSymbol.toLowerCase()));
+        return amountCondition && countryCondition && symbolCondition;
+    });
+
+    useEffect(() => {
+        setFilterPanelHeight(showFilters && filterContentRef.current ? filterContentRef.current.scrollHeight : 0);
+    }, [showFilters]);
+
+    if (showCreateForm) {
+        return <CreateNewMatchForm onClose={() => setShowCreateForm(false)} brokersList={brokersList} onCreateSuccess={() => fetchAllMatches()} user={user} />;
     }
 
-    // Kiểm tra tài khoản sàn liên kết
-    if (!hasBrokerAccount) {
-        setSelectedMatch(match);
-        setShowJoinMatchConditionModal(true); // Hiển thị modal với thông báo thiếu tài khoản sàn
-        return;
-    }
+    return (
+        <div className="page-padding">
+            <div className="wallet-tabs">
+                <button className={`wallet-tab-button ${activeTab === 'tournament' ? 'active' : ''}`} onClick={() => setActiveTab('tournament')}>
+                    Tournament
+                </button>
+                <button className={`wallet-tab-button ${activeTab === 'personal' ? 'active' : ''}`} onClick={() => setActiveTab('personal')}>
+                    1 vs 1 Match
+                </button>
+            </div>
 
-    // Kiểm tra số dư
-    if (betWallet < match.betAmount) {
-        setSelectedMatch(match);
-        setShowJoinMatchConditionModal(true); // Hiển thị modal với thông báo thiếu số dư
-        return;
-    }
+            {activeTab === 'tournament' && (
+                <>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.5rem' }}>
+                        <button className={`btn ${tournamentFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTournamentFilter('all')} style={{ fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>
+                            All
+                        </button>
+                        <button className={`btn ${tournamentFilter === 'live' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTournamentFilter('live')} style={{ fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>
+                            Live
+                        </button>
+                        <button className={`btn ${tournamentFilter === 'demo' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTournamentFilter('demo')} style={{ fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>
+                            Demo
+                        </button>
+                    </div>
+                    <div className="tournament-list">
+                        {tournamentItems.filter(item => (tournamentFilter === 'all' || item.type === tournamentFilter)).map(item => (
+                            <div key={item.id} className="card tournament-card">
+                                <div className="tournament-thumbnail-wrapper">
+                                    <img src={item.thumbnail} alt={item.title} className="tournament-thumbnail" loading="lazy" onError={(e) => {
+                                        console.error(`Failed to load image: ${item.thumbnail}`);
+                                        e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
+                                    }} onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }} />
+                                    <TournamentStatus startTime={item.startTime} />
+                                </div>
+                                <div className="tournament-content">
+                                    <h3 className="tournament-title">{item.title}</h3>
+                                    <div className="tournament-details-grid">
+                                        <div className="detail-item"><span>Prize Pool</span><p className="detail-value accent">{item.prizePool}</p></div>
+                                        <div className="detail-item"><span>Participants</span><p className="detail-value">{item.participants}</p></div>
+                                        <div className="detail-item"><span>Symbol</span><p className="detail-value primary">{item.symbol}</p></div>
+                                    </div>
+                                    <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} onClick={() => navigate(`/tournament/${item.id}`)}>
+                                        Detail
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
 
-    // Nếu tất cả điều kiện đều thỏa mãn, hiển thị xác nhận tham gia
-    setSelectedMatch(match);
-    setShowJoinConfirm(true);
-  };
+            {activeTab === 'personal' && (
+                <>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.5rem' }}>
+                        <button className="btn btn-primary" onClick={() => setShowFilters(!showFilters)}>
+                            Filters
+                            <svg className={`filter-arrow ${showFilters ? 'open' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                        <button className="btn btn-accent" onClick={() => setShowCreateForm(true)}>+ New Match</button>
+                    </div>
 
-  const handleConfirmJoin = async () => {
-      if (!selectedMatch || !user) return;
-      
-      console.log('Confirm join for match:', selectedMatch.id, 'by user:', user.telegram_id);
-      
-      try {
-          const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                  player2_id: user.telegram_id, 
-                  status: "pending_confirmation", // Gửi trạng thái chờ xác nhận
-                  player2_username: user.username || user.telegram_id.toString(), // Truyền username của player2
-                  bet_amount: selectedMatch.betAmount // Truyền số tiền cược
-              })
-          });
-          
-          if (!response.ok) {
-              const errorData = await response.json();
-              console.error('Update match (join) failed:', response.status, errorData.detail);
-              alert('Tham gia thất bại: ' + (errorData.detail || 'Lỗi không xác định.'));
-              return;
-          }
-          
-          const data = await response.json();
-          console.log('Update match success:', data);
-          
-          // Sau khi gửi request PATCH thành công, không điều hướng ngay
-          // mà thông báo cho user rằng yêu cầu đã được gửi đến Player 1
-          alert("Yêu cầu tham gia của bạn đã được gửi đến người tạo ván. Vui lòng chờ xác nhận!");
-          
-          fetchAllMatches(); 
-          
-          // Không navigate ngay lập tức, chỉ đóng modal
-          setShowJoinConfirm(false);
-          setSelectedMatch(null);
+                    <div className="filters-panel" style={{ maxHeight: `${filterPanelHeight}px`, marginBottom: filterPanelHeight > 0 ? '1rem' : '0' }}>
+                        <div className="card" ref={filterContentRef} style={{ overflow: 'hidden' }}>
+                            <div className="form-group">
+                                <label className="form-label">Max Bet Amount</label>
+                                <input type="number" className="form-input" value={filterAmount} onChange={e => setFilterAmount(e.target.value)} placeholder="e.g., 200" />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Country</label>
+                                <input type="text" className="form-input" value={filterCountry} onChange={e => setFilterCountry(e.target.value)} placeholder="e.g., Vietnam" />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Symbol</label>
+                                <input type="text" className="form-input" value={filterSymbol} onChange={e => setFilterSymbol(e.target.value)} placeholder="e.g., BTC, GOLD" />
+                            </div>
+                        </div>
+                    </div>
 
-      } catch (error) {
-          console.error('Error updating match (join):', error);
-          alert('Lỗi khi gửi yêu cầu tham gia trận đấu. Vui lòng thử lại.');
-      } finally {
-          // Dù thành công hay thất bại, đóng modal xác nhận
-          setShowJoinConfirm(false);
-          setSelectedMatch(null);
-      }
-  };
-
-  const fetchTournaments = async () => {
-    console.log('Checking sessionStorage for tournaments_data');
-    const cachedTournaments = sessionStorage.getItem('tournaments_data');
-    if (cachedTournaments) {
-      console.log('Using cached tournaments from sessionStorage');
-      const parsedData = JSON.parse(cachedTournaments);
-      setTournamentItems(parsedData.map(t => ({
-        id: t.id,
-        title: t.title,
-        thumbnail: t.thumbnail.startsWith('http') ? t.thumbnail : `https://f2farena.com/${t.thumbnail}`,
-        prizePool: t.prize_pool + ' USDT',
-        participants: t.participants,
-        symbol: t.symbol,
-        startTime: t.event_time,
-        type: t.type || 'live'
-      })));
-      return;
-    }
-    try {
-      const homeCached = sessionStorage.getItem('tournaments_home');
-      let homeTournaments = [];
-      if (homeCached) {
-        homeTournaments = JSON.parse(homeCached);
-        console.log('Loaded home tournaments (5) from session:', homeTournaments.length);
-      } else {
-        console.log('No home tournaments in session, fetching full from offset=0');
-      }
-      const offset = homeTournaments.length > 0 ? 5 : 0;
-      const limit = homeTournaments.length > 0 ? 5 : 10;
-      const response = await fetch(`https://f2farena.com/api/tournaments/?offset=${offset}&limit=${limit}`);
-      console.log('Fetch tournaments response status:', response.status);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      console.log('Fetched tournaments (raw):', data);
-      const mappedData = data.map(t => ({
-        id: t.id,
-        title: t.title,
-        thumbnail: `https://f2farena.com/${t.thumbnail}`,
-        prizePool: t.prize_pool + ' USDT',
-        participants: t.participants,
-        symbol: t.symbol,
-        startTime: t.event_time,
-        type: t.type || 'live'
-      }));
-      const fullData = homeTournaments.length > 0 ? [...homeTournaments, ...mappedData] : mappedData;
-      const normalizedData = fullData.map(t => {
-          if (t.prizePool) return t;
-          return {
-              ...t,
-              prizePool: t.prize_pool ? `${t.prize_pool} USDT` : '0 USDT'
-          };
-      });
-      setTournamentItems(normalizedData);
-      sessionStorage.setItem('tournaments_data', JSON.stringify(normalizedData));
-      console.log('Stored full tournaments to sessionStorage, count:', fullData.length);
-    } catch (error) {
-      console.error('Error fetching tournaments:', error.message);
-    }
-  };
-
-  const fetchAllMatches = async () => {
-    try {
-      const waitingResponse = await fetch('https://f2farena.com/api/matches/waiting');
-      const ongoingResponse = await fetch('https://f2farena.com/api/matches/ongoing');
-
-      if (!waitingResponse.ok || !ongoingResponse.ok) {
-          throw new Error('Failed to fetch one or more match lists.');
-      }
-
-      const waitingData = await waitingResponse.json();
-      const ongoingData = await ongoingResponse.json();
-
-      // Cập nhật state cho cả hai loại trận đấu
-      setWaitingMatches(waitingData);
-      setLiveMatches(ongoingData);
-
-      // Optional: clear và set lại cache nếu cần thiết
-      sessionStorage.removeItem('waiting_matches');
-      sessionStorage.removeItem('ongoing_matches');
-      sessionStorage.setItem('waiting_matches', JSON.stringify(waitingData));
-      sessionStorage.setItem('ongoing_matches', JSON.stringify(ongoingData));
-
-      console.log('Fetched all matches. Waiting:', waitingData.length, 'Live:', ongoingData.length);
-    } catch (error) {
-      console.error('Error fetching all matches:', error);
-      setWaitingMatches([]);
-      setLiveMatches([]);
-    }
-  };
-
-  const fetchBrokersForArena = async () => {
-    console.log('fetchBrokersForArena called - checking sessionStorage');
-    let brokers = [];
-    const cached = sessionStorage.getItem('brokers_data');
-    if (cached) {
-      brokers = JSON.parse(cached).brokers || [];
-      console.log('Loaded', brokers.length, 'brokers from cache');
-    }
-    if (brokers.length === 0) {
-      try {
-        const response = await fetch('https://f2farena.com/api/brokers/list');
-        if (!response.ok) throw new Error('Fetch failed');
-        const data = await response.json();
-        brokers = data.brokers.map(b => ({ id: b.id, name: b.broker_name, registration_url: b.registration_url }));
-        sessionStorage.setItem('brokers_data', JSON.stringify({ brokers }));
-        console.log('Fetched and stored full brokers:', brokers.length);
-      } catch (error) {
-        console.error('Error fetching brokers for Arena:', error);
-      }
-    } else {
-      try {
-        const response = await fetch('https://f2farena.com/api/brokers/list');
-        if (!response.ok) throw new Error('Fetch failed');
-        const data = await response.json();
-        const allBrokers = data.brokers;
-        const existingIds = brokers.map(b => b.id);
-        const missingBrokers = allBrokers.filter(b => !existingIds.includes(b.id));
-        if (missingBrokers.length > 0) {
-          brokers = [...brokers, ...missingBrokers.map(b => ({ id: b.id, name: b.broker_name }))];
-          sessionStorage.setItem('brokers_data', JSON.stringify({ brokers }));
-          console.log('Fetched and merged missing brokers:', missingBrokers.length);
-        } else {
-          console.log('No missing brokers, using cache');
-        }
-      } catch (error) {
-        console.error('Error checking missing brokers:', error);
-      }
-    }
-    setBrokersList(brokers);
-  };
-
-  useEffect(() => {
-    fetchTournaments();
-    fetchAllMatches();
-    fetchBrokersForArena();
-  }, []);
-
-  const allPersonalMatches = [...liveMatches, ...waitingMatches];
-
-  const filteredMatches = allPersonalMatches.map(match => {
-      const player1_name = match.player1.name || 'Anonymous';
-      const player1_avatar = match.player1.avatar || generateAvatarUrl(player1_name);
-
-      // Lấy thông tin player2
-      let player2_name = match.player2?.name || 'Waiting for opponent';
-      let player2_avatar = match.player2?.avatar || 'https://placehold.co/50x50/cccccc/ffffff?text=?';
-
-      // ... (các trường khác)
-      return {
-          ...match,
-          betAmount: match.bet,
-          // ... (các trường khác)
-          challenger: {
-              name: player1_name,
-              avatar: player1_avatar
-          }
-      };
-  }).filter(match => {
-      const amountCondition = !filterAmount || match.betAmount <= parseInt(filterAmount);
-      const countryCondition = !filterCountry || match.country.toLowerCase().includes(filterCountry.toLowerCase());
-      const symbolCondition = !filterSymbol || match.symbol.toLowerCase().includes(filterSymbol.toLowerCase());
-      return amountCondition && countryCondition && symbolCondition;
-  });
-
-  useEffect(() => {
-    setFilterPanelHeight(showFilters && filterContentRef.current ? filterContentRef.current.scrollHeight : 0);
-  }, [showFilters]);
-
-  if (showCreateForm) {
-    return <CreateNewMatchForm onClose={() => setShowCreateForm(false)} brokersList={brokersList} onCreateSuccess={() => fetchAllMatches()} user={user} />;
-  }
-
-  return (
-    <div className="page-padding">
-      <div className="wallet-tabs">
-        <button
-          className={`wallet-tab-button ${activeTab === 'tournament' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tournament')}
-        >
-          Tournament
-        </button>
-        <button
-          className={`wallet-tab-button ${activeTab === 'personal' ? 'active' : ''}`}
-          onClick={() => setActiveTab('personal')}
-        >
-          1 vs 1 Match
-        </button>
-      </div>
-
-      {activeTab === 'tournament' && (() => {
-        const filteredTournaments = tournamentItems.filter(item => {
-          if (tournamentFilter === 'all') return true;
-          return item.type === tournamentFilter;
-        });
-        
-        // [SỬA] Bỏ hoàn toàn việc định nghĩa component con ở đây
-        return (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.5rem' }}>
-              <button
-                className={`btn ${tournamentFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setTournamentFilter('all')}
-                style={{fontSize: '0.9rem', padding: '0.4rem 0.8rem'}}
-              >
-                All
-              </button>
-              <button
-                className={`btn ${tournamentFilter === 'live' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setTournamentFilter('live')}
-                style={{fontSize: '0.9rem', padding: '0.4rem 0.8rem'}}
-              >
-                Live
-              </button>
-              <button
-                className={`btn ${tournamentFilter === 'demo' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setTournamentFilter('demo')}
-                style={{fontSize: '0.9rem', padding: '0.4rem 0.8rem'}}
-              >
-                Demo
-              </button>
-            </div>
-            
-            <div className="tournament-list">
-              {filteredTournaments.map(item => (
-                <div key={item.id} className="card tournament-card">
-                  <div className="tournament-thumbnail-wrapper">
-                    <img
-                      src={item.thumbnail}
-                      alt={item.title}
-                      className="tournament-thumbnail"
-                      loading="lazy"
-                      onError={(e) => {
-                        console.error(`Failed to load image: ${item.thumbnail}`);
-                        e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
-                      }}
-                      onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }}
-                    />
-                    <TournamentStatus startTime={item.startTime} />
-                  </div>
-                  <div className="tournament-content">
-                    <h3 className="tournament-title">{item.title}</h3>
-                    <div className="tournament-details-grid">
-                      <div className="detail-item">
-                        <span>Prize Pool</span>
-                        <p className="detail-value accent">{item.prizePool}</p>
-                      </div>
-                      <div className="detail-item">
-                        <span>Participants</span>
-                        <p className="detail-value">{item.participants}</p>
-                      </div>
-                      <div className="detail-item">
-                        <span>Symbol</span>
-                        <p className="detail-value primary">{item.symbol}</p>
-                      </div>
-                    </div>
-                    <button
-                      className="btn btn-primary"
-                      style={{ width: '100%', marginTop: '1rem' }}
-                      onClick={() => navigate(`/tournament/${item.id}`)}
-                    >
-                      Detail
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        );
-      })()}
-
-      {activeTab === 'personal' && (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '0.5rem' }}>
-            <button className="btn btn-primary" onClick={() => setShowFilters(!showFilters)}>
-              Filters
-              <svg className={`filter-arrow ${showFilters ? 'open' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-            <button className="btn btn-accent" onClick={() => setShowCreateForm(true)}>+ New Match</button>
-          </div>
-          
-          <div className="filters-panel" style={{ maxHeight: `${filterPanelHeight}px`, marginBottom: filterPanelHeight > 0 ? '1rem' : '0' }}>
-            <div className="card" ref={filterContentRef} style={{ overflow: 'hidden' }}>
-              <div className="form-group">
-                <label className="form-label">Max Bet Amount</label>
-                <input type="number" className="form-input" value={filterAmount} onChange={e => setFilterAmount(e.target.value)} placeholder="e.g., 200" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Country</label>
-                <input type="text" className="form-input" value={filterCountry} onChange={e => setFilterCountry(e.target.value)} placeholder="e.g., Vietnam" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Symbol</label>
-                <input type="text" className="form-input" value={filterSymbol} onChange={e => setFilterSymbol(e.target.value)} placeholder="e.g., BTC, GOLD" />
-              </div>
-            </div>
-          </div>
-
-          {filteredMatches.map(match => (
-            <div key={match.id} className="card arena-match-card">
-              <div className="challenger-info">
-                <img src={match.challenger.avatar} alt={match.challenger.name} className="challenger-avatar" />
-                <div>
-                  <p className="challenger-name">{match.challenger.name}</p>
-                  <p className="challenger-country">{match.country}</p>
-                </div>
-              </div>
-              <div className="details-section">
-                <div className="detail-item">
-                  <span>Time</span>
-                  <p className="detail-value">{match.duration_time} hours</p>
-                </div>
-                <div className="detail-item">
-                  <span>Symbol</span>
-                  <p className="detail-value primary">{match.symbol}</p>
-                </div>
-                <div className="detail-item">
-                  <span>Bet</span>
-                  <p className="detail-value accent">{match.betAmount} USDT</p>
-                </div>
-              </div>
-              <button
-                className="btn btn-primary"
-                style={{ width: '100%', marginTop: '1rem' }}
-                onClick={() => {
-                  if (match.status === "waiting") {
-                    handleJoinChallenge(match);
-                  } else {
-                    navigate(`/match/${match.id}`);
-                  }
-                }}
-              >
-                {match.status === "waiting" ? "Join Challenge" : "View Live Match"}
-              </button>
-            </div>
-          ))}
-        </>
-      )}
-      {showJoinMatchConditionModal && (
-        <JoinMatchConditionModal
-          onClose={() => setShowJoinMatchConditionModal(false)}
-          match={selectedMatch}
-          user={user}
-          onUserUpdate={onUserUpdate}
-          brokersList={brokersList} // Truyền brokersList để lấy thông tin broker
-        />
-      )}
-      {showDepositModal && (
-        <DepositForm onClose={() => setShowDepositModal(false)} user={user} onUserUpdate={onUserUpdate} />
-      )}
-      {showJoinConfirm && (
-        <JoinConfirmModal
-          onClose={() => setShowJoinConfirm(false)}
-          onConfirm={handleConfirmJoin}
-          match={selectedMatch}
-        />
-      )}
-    </div>
-  );
+                    {filteredMatches.map(match => (
+                        <div key={match.id} className="card arena-match-card">
+                            <div className="challenger-info">
+                                <img src={match.player1.avatar || generateAvatarUrl(match.player1.name)} alt={match.player1.name} className="challenger-avatar" />
+                                <div>
+                                    <p className="challenger-name">{match.player1.name}</p>
+                                    <p className="challenger-country">{match.country}</p>
+                                </div>
+                            </div>
+                            <div className="details-section">
+                                <div className="detail-item">
+                                    <span>Time</span>
+                                    <p className="detail-value">{match.duration_time} hours</p>
+                                </div>
+                                <div className="detail-item">
+                                    <span>Symbol</span>
+                                    <p className="detail-value primary">{match.symbol}</p>
+                                </div>
+                                <div className="detail-item">
+                                    <span>Bet</span>
+                                    <p className="detail-value accent">{match.betAmount} USDT</p>
+                                </div>
+                            </div>
+                            <button
+                                className="btn btn-primary"
+                                style={{ width: '100%', marginTop: '1rem' }}
+                                onClick={() => {
+                                    if (match.status === "waiting") {
+                                        handleJoinChallenge(match);
+                                    } else {
+                                        navigate(`/match/${match.id}`);
+                                    }
+                                }}
+                            >
+                                {match.status === "waiting" ? "Join Challenge" : "View Live Match"}
+                            </button>
+                        </div>
+                    ))}
+                </>
+            )}
+            {showJoinMatchConditionModal && (
+                <JoinMatchConditionModal
+                    onClose={() => setShowJoinMatchConditionModal(false)}
+                    match={selectedMatch}
+                    user={user}
+                    onUserUpdate={onUserUpdate}
+                    brokersList={brokersList}
+                />
+            )}
+            {showDepositModal && (
+                <DepositForm onClose={() => setShowDepositModal(false)} user={user} onUserUpdate={onUserUpdate} />
+            )}
+            {showJoinConfirm && (
+                <JoinConfirmModal
+                    onClose={() => setShowJoinConfirm(false)}
+                    onConfirm={handleConfirmJoin}
+                    match={selectedMatch}
+                />
+            )}
+        </div>
+    );
 };
 
 const SettingsSidebar = ({ show, onClose, user }) => {
