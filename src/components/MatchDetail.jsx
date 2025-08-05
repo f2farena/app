@@ -4,12 +4,6 @@ import './MatchDetail.css';
 
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n => n[0]).join('') || 'NN').toUpperCase()}`;
 
-// Mock data ban đầu, sẽ được thay thế bởi dữ liệu từ API
-const initialTrades = [
-  { id: 1, player: 'CryptoKing', type: 'BUY', amount: 0.1, price: 60000, timestamp: '2025-06-11T14:00:00Z' },
-  { id: 2, player: 'TradeMaster', type: 'SELL', amount: 0.05, price: 59950, timestamp: '2025-06-11T14:02:00Z' },
-];
-
 const initialComments = [
   { id: 1, user: 'TraderX', comment: 'CryptoKing is dominating this match!', timestamp: '2025-06-11T14:01:00Z' },
   { id: 2, user: 'MarketGuru', comment: 'TradeMaster needs to step up!', timestamp: '2025-06-11T14:03:00Z' },
@@ -28,6 +22,11 @@ const MatchDetail = ({ user }) => {
     const widgetRef = useRef(null);
     const tradesEndRef = useRef(null);
     const commentsEndRef = useRef(null);
+
+    const [views, setViews] = useState(0);
+    const [outsideBetsTotal, setOutsideBetsTotal] = useState(0);
+    const [showResultModal, setShowResultModal] = useState(false);
+    const [matchResult, setMatchResult] = useState(null);
     
     // Thay đổi useState để khởi tạo giá trị ban đầu tránh lỗi
     const [matchData, setMatchData] = useState(null);
@@ -38,6 +37,13 @@ const MatchDetail = ({ user }) => {
     const [oddsTrend, setOddsTrend] = useState({ player1: 'up', player2: 'down' });
     const [commentInput, setCommentInput] = useState('');
     const [activeTab, setActiveTab] = useState('matching');
+
+    useEffect(() => {
+        if (matchData) {
+            setViews(matchData.views || 0);
+            setOutsideBetsTotal(matchData.outsideBetsTotal || 0);
+        }
+    }, [matchData]);
 
     // useEffect để fetch dữ liệu từ backend
     useEffect(() => {
@@ -136,6 +142,12 @@ const MatchDetail = ({ user }) => {
 
             ws.onopen = () => {
                 console.log('MatchDetail: WebSocket connected successfully.');
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        action: "join",
+                        match_id: parseInt(id)
+                    }));
+                }
                 if (reconnectInterval) {
                     clearInterval(reconnectInterval);
                     reconnectInterval = null;
@@ -143,33 +155,54 @@ const MatchDetail = ({ user }) => {
             };
 
             ws.onmessage = (event) => {
-                try {
-                    const message = JSON.parse(event.data);
-                    if (message.match_id !== parseInt(id)) {
-                        console.log(`MatchDetail: Ignoring message for other match ID: ${message.match_id}`);
-                        return;
-                    }
-                    console.log('MatchDetail: WebSocket message received:', message);
-                    switch (message.type) {
-                        case "NEW_TRADE":
-                            setTrades(prev => [...prev, { id: prev.length + 1, ...message.data }].slice(-50));
-                            break;
-                        case "NEW_COMMENT":
-                            setComments(prev => [...prev, { id: prev.length + 1, ...message.data }].slice(-50));
-                            break;
-                        case "SCORE_UPDATE":
-                            setMatchData(prev => ({
-                                ...prev,
-                                player1: { ...prev.player1, score: message.data.player1_score },
-                                player2: { ...prev.player2, score: message.data.player2_score }
-                            }));
-                            break;
-                        default:
-                            console.log("Unknown message type:", message.type);
-                    }
-                } catch (e) {
-                    console.error("Failed to parse WebSocket message or handle:", e, event.data);
-                }
+                try {
+                    const message = JSON.parse(event.data);
+                    // Đảm bảo message là cho match hiện tại
+                    if (message.match_id !== parseInt(id)) {
+                        console.log(`MatchDetail: Ignoring message for other match ID: ${message.match_id}`);
+                        return;
+                    }
+                    console.log('MatchDetail: WebSocket message received:', message);
+                    switch (message.type) {
+                        case "NEW_TRADE":
+                            // Dữ liệu từ WS đã đủ, chỉ cần thêm tên player vào
+                            const newTrade = {
+                                ...message.data,
+                                player: message.data.player_id === matchData.player1.id ? matchData.player1.name : matchData.player2.name
+                            };
+                            setTrades(prev => [...prev, newTrade]);
+                            break;
+                        case "NEW_COMMENT":
+                            setComments(prev => [...prev, { id: prev.length + 1, ...message.data }].slice(-50));
+                            break;
+                         case "SCORE_UPDATE":
+                            // Cập nhật lại state matchData để re-render score bar và text
+                            setMatchData(prevData => {
+                                if (!prevData) return null;
+                                return {
+                                    ...prevData,
+                                    player1: { ...prevData.player1, score: message.data.player1_score },
+                                    player2: { ...prevData.player2, score: message.data.player2_score }
+                                };
+                            });
+                            break;
+                        case "VIEWS_UPDATE":
+                            setViews(message.data.new_views_count); // Cập nhật state views
+                            break;
+                        case "OUTSIDE_BET_UPDATE":
+                            setOutsideBetsTotal(message.data.outside_bets_total); // Cập nhật state total bet
+                            break;
+                        case "MATCH_DONE":
+                            console.log('Match ended. Showing results modal.');
+                            setMatchResult(message.data);
+                            setShowResultModal(true);
+                            break;
+                        default:
+                            console.log("Unknown message type:", message.type);
+                    }
+                } catch (e) {
+                    console.error("Failed to parse WebSocket message or handle:", e, event.data);
+                }
             };
             ws.onclose = (event) => {
                 console.log('MatchDetail: WebSocket closed:', event.code, event.reason);
@@ -194,7 +227,61 @@ const MatchDetail = ({ user }) => {
                 clearInterval(reconnectInterval);
             }
         };
-    }, [id, user]);
+    }, [id, user, matchData]);
+
+    const ResultModal = ({ result, onClose }) => {
+        const isWinner = user?.telegram_id === result.winner_id;
+        const isDraw = result.winner_id === "draw";
+
+        return (
+            <div className="modal-overlay">
+                <div className="modal-content card">
+                    <div className="form-header">
+                        <h2>Match Result: #{id}</h2>
+                        <button onClick={onClose} className="icon-button close-button">×</button>
+                    </div>
+                    {isDraw ? (
+                        <p>It's a **DRAW**! Both players' scores were equal.</p>
+                    ) : (
+                        <>
+                            <h4 style={{ color: isWinner ? 'var(--color-win)' : 'var(--color-loss)' }}>
+                                {isWinner ? "🎉 Congratulations, you won!" : "Better luck next time."}
+                            </h4>
+                            <p>The winner is: **{result.winner_name}**</p>
+                            <p>Your score: **{matchData.player1.id === user.telegram_id ? result.player1_score : result.player2_score}**</p>
+                            <p>Opponent's score: **{matchData.player1.id === user.telegram_id ? result.player2_score : result.player1_score}**</p>
+                            {isWinner && <p>You won **{result.winning_amount.toFixed(2)} USDT**!</p>}
+                        </>
+                    )}
+                    <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                        <button className="btn btn-primary" onClick={onClose}>Close</button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    useEffect(() => {
+        const updateUserViews = async () => {
+            if (!user || !matchData) return;
+            try {
+                const response = await fetch(`https://f2farena.com/api/matches/${id}/view`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: user.telegram_id }) // Giả định backend có endpoint để đếm view
+                });
+                if (!response.ok) throw new Error('Failed to update views');
+                const data = await response.json();
+                // Backend có thể trả về views mới nhất để cập nhật UI
+                if (data.new_views_count) {
+                    setViews(data.new_views_count);
+                }
+            } catch (error) {
+                console.error('Error updating views:', error);
+            }
+        };
+        updateUserViews();
+    }, [id, user, matchData]);
 
     // useEffect để xử lý scroll đến trade mới nhất
     useEffect(() => {
@@ -209,6 +296,33 @@ const MatchDetail = ({ user }) => {
             commentsEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [comments, activeTab]);
+
+    useEffect(() => {
+        const fetchTradeHistory = async () => {
+            if (!id) return;
+            try {
+                const response = await fetch(`https://f2farena.com/api/matches/${id}/trades`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch trade history');
+                }
+                const data = await response.json();
+                
+                // Map dữ liệu để tương thích với hiển thị (thêm tên player)
+                const tradesWithPlayerNames = data.map(trade => ({
+                    ...trade,
+                    player: trade.player_id === matchData?.player1?.id ? matchData?.player1?.name : matchData?.player2?.name
+                }));
+
+                setTrades(tradesWithPlayerNames);
+            } catch (error) {
+                console.error("Error fetching trade history:", error);
+            }
+        };
+        // Chỉ fetch khi đã có matchData để lấy tên người chơi
+        if (matchData) {
+            fetchTradeHistory();
+        }
+    }, [id, matchData]);
 
     // useEffect để tải TradingView widget
     useEffect(() => {
@@ -467,7 +581,8 @@ const MatchDetail = ({ user }) => {
                       ))}
                   </div>
               </div>
-          )}
+            )}
+            {showResultModal && <ResultModal result={matchResult} onClose={() => { setShowResultModal(false); navigate('/home'); }} />}
       </div>
     );
 };

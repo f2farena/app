@@ -1857,7 +1857,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     const filterContentRef = useRef(null);
     const [tournamentItems, setTournamentItems] = useState([]);
     const [waitingMatches, setWaitingMatches] = useState([]);
-    const [liveMatches, setLiveMatches] = useState([]); // Khai báo state để lưu danh sách live
+    const [liveMatches, setLiveMatches] = useState([]);
     const [showJoinMatchConditionModal, setShowJoinMatchConditionModal] = useState(false);
 
     const [allActiveMatches, setAllActiveMatches] = useState([]);
@@ -1870,15 +1870,23 @@ const ArenaPage = ({ user, onUserUpdate }) => {
           const data = await response.json();
           if (!Array.isArray(data)) {
               console.error('API response for active matches is not an array:', data);
-              setAllActiveMatches([]);
+              setWaitingMatches([]);
+              setLiveMatches([]);
               return;
           }
-          setAllActiveMatches(data);
-          // Lưu cache chung để các component khác có thể sử dụng
-          sessionStorage.setItem('active_matches', JSON.stringify(data));
+
+          // Lọc và cập nhật chính xác 2 state cũ
+          const waitingData = data.filter(match => match.status === 'waiting');
+          const liveData = data.filter(match => match.status === 'live');
+          
+          setWaitingMatches(waitingData);
+          setLiveMatches(liveData);
+          
+          sessionStorage.setItem('active_matches', JSON.stringify(data)); // Vẫn lưu cache chung
       } catch (error) {
           console.error('Error fetching all active matches:', error);
-          setAllActiveMatches([]);
+          setWaitingMatches([]);
+          setLiveMatches([]);
       }
     };
 
@@ -2007,7 +2015,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     }, []);
 
     // Logic để gộp và lọc danh sách trận đấu
-    const allPersonalMatches = [...liveMatches, ...waitingMatches];
+    const allPersonalMatches = [...waitingMatches, ...liveMatches];
 
     const filteredMatches = allPersonalMatches.filter(match => {
         const amountCondition = !filterAmount || match.betAmount <= parseFloat(filterAmount);
