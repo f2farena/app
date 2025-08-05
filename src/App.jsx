@@ -271,30 +271,43 @@ const HomePage = () => {
       }
     };
     const fetchOngoing = async () => {
-      console.log('Checking sessionStorage for ongoing_matches');  // Log: Kiểm tra trước khi fetch
-      const cachedOngoing = sessionStorage.getItem('ongoing_matches');
-      if (cachedOngoing) {
-        console.log('Using cached ongoing matches from sessionStorage');
-        const parsedData = JSON.parse(cachedOngoing);
-        setOngoingMatches(parsedData);
-        return;
-      }
-      try {
-        const response = await fetch('https://f2farena.com/api/matches/ongoing');
-        const data = await response.json();
-        console.log('Fetched ongoing matches for home:', data);
-        const updatedData = data.map(item => ({
-          ...item,
-          thumbnail: `https://f2farena.com/${item.thumbnail}`  // Prepend đồng bộ banner
-        }));
-        const limitedData = updatedData.slice(0, 5);
-        setOngoingMatches(limitedData);  // Sửa: setOngoingMatches thay vì setTournaments
-        sessionStorage.setItem('ongoing_matches', JSON.stringify(limitedData));  // Sửa: 'ongoing_matches' thay 'tournaments_home'
-        console.log('Stored ongoing matches to sessionStorage');
-      } catch (error) {
-        console.error('Error:', error);
-      }
-    };
+      console.log('Checking sessionStorage for ongoing_matches');
+      const cachedOngoing = sessionStorage.getItem('ongoing_matches');
+      if (cachedOngoing) {
+        console.log('Using cached ongoing matches from sessionStorage');
+        const parsedData = JSON.parse(cachedOngoing);
+        setOngoingMatches(parsedData);
+        return;
+      }
+      try {
+        const response = await fetch('https://f2farena.com/api/matches/ongoing');
+        // SỬA: Thêm check response.ok
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Fetched ongoing matches for home:', data);
+
+        // SỬA: Kiểm tra data có phải là một mảng không trước khi map
+        if (!Array.isArray(data)) {
+          console.error('API response is not an array:', data);
+          setOngoingMatches([]); // Set về mảng rỗng để tránh lỗi
+          return;
+        }
+
+        const updatedData = data.map(item => ({
+          ...item,
+          thumbnail: `https://f2farena.com/${item.thumbnail}`
+        }));
+        const limitedData = updatedData.slice(0, 5);
+        setOngoingMatches(limitedData);
+        sessionStorage.setItem('ongoing_matches', JSON.stringify(limitedData));
+        console.log('Stored ongoing matches to sessionStorage');
+      } catch (error) {
+        console.error('Error fetching ongoing matches:', error);
+        setOngoingMatches([]); // Set về mảng rỗng khi có lỗi
+      }
+    };
     const fetchTournaments = async () => {
       console.log('Checking sessionStorage for tournaments_home');  // Log: Kiểm tra trước khi fetch
       const cachedTournaments = sessionStorage.getItem('tournaments_home');
@@ -2019,24 +2032,25 @@ const ArenaPage = ({ user, onUserUpdate }) => {
       console.log('Full URL before fetch waiting matches:', waitingUrl);
       const response = await fetch(waitingUrl);
       console.log('Fetch waiting matches status:', response.status);
+
       let data = [];
+      // SỬA: Kiểm tra response.ok trước khi xử lý
       if (response.ok) {
         data = await response.json();
         console.log('Fetched waiting matches:', data);
       } else {
-        let errorDetail = 'No detail available';
-        try {
-          const errorData = await response.json();
-          errorDetail = errorData.detail || errorData;
-        } catch (jsonErr) {
-          errorDetail = await response.text();
-        }
-        console.error('Fetch waiting matches failed, status:', response.status, 'detail:', errorDetail);
+        // Log lỗi chi tiết nếu có
+        const errorData = await response.json();
+        console.error('Fetch waiting matches failed, status:', response.status, 'detail:', errorData.detail || 'No detail available');
+        setWaitingMatches([]); // Set về mảng rỗng để tránh lỗi map
+        return;
       }
+
       setWaitingMatches(data);
       sessionStorage.setItem('waiting_matches', JSON.stringify(data));
     } catch (error) {
       console.error('Error fetching waiting matches:', error);
+      setWaitingMatches([]); // Set về mảng rỗng khi có lỗi
     }
   };
 
