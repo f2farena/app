@@ -1858,6 +1858,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
   const filterContentRef = useRef(null);
   const [tournamentItems, setTournamentItems] = useState([]);
   const [waitingMatches, setWaitingMatches] = useState([]);
+  const [liveMatches, setLiveMatches] = useState([]);
   const [showJoinMatchConditionModal, setShowJoinMatchConditionModal] = useState(false);
 
   const handleJoinChallenge = (match) => {
@@ -1938,8 +1939,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
           // mà thông báo cho user rằng yêu cầu đã được gửi đến Player 1
           alert("Yêu cầu tham gia của bạn đã được gửi đến người tạo ván. Vui lòng chờ xác nhận!");
           
-          // Cập nhật lại danh sách trận chờ để ẩn trận này (hoặc thay đổi trạng thái nếu bạn có state cho nó)
-          fetchWaitingMatches(true); // Clear cache và fetch lại để cập nhật UI
+          fetchAllMatches(); 
           
           // Không navigate ngay lập tức, chỉ đóng modal
           setShowJoinConfirm(false);
@@ -2017,42 +2017,35 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     }
   };
 
-  const fetchWaitingMatches = async (clearCache = false) => {
-    if (clearCache) sessionStorage.removeItem('waiting_matches');
-    console.log('Checking sessionStorage for waiting_matches');
-    const cachedWaiting = sessionStorage.getItem('waiting_matches');
-    if (cachedWaiting) {
-      console.log('Using cached waiting matches from sessionStorage');
-      const parsedData = JSON.parse(cachedWaiting);
-      setWaitingMatches(parsedData);
-      return;
-    }
-    try {
-      const waitingUrl = 'https://f2farena.com/api/matches/waiting';
-      console.log('Full URL before fetch waiting matches:', waitingUrl);
-      const response = await fetch(waitingUrl);
-      console.log('Fetch waiting matches status:', response.status);
+  const fetchAllMatches = async () => {
+    try {
+      const waitingResponse = await fetch('https://f2farena.com/api/matches/waiting');
+      const ongoingResponse = await fetch('https://f2farena.com/api/matches/ongoing');
 
-      let data = [];
-      // SỬA: Kiểm tra response.ok trước khi xử lý
-      if (response.ok) {
-        data = await response.json();
-        console.log('Fetched waiting matches:', data);
-      } else {
-        // Log lỗi chi tiết nếu có
-        const errorData = await response.json();
-        console.error('Fetch waiting matches failed, status:', response.status, 'detail:', errorData.detail || 'No detail available');
-        setWaitingMatches([]); // Set về mảng rỗng để tránh lỗi map
-        return;
-      }
+      if (!waitingResponse.ok || !ongoingResponse.ok) {
+          throw new Error('Failed to fetch one or more match lists.');
+      }
 
-      setWaitingMatches(data);
-      sessionStorage.setItem('waiting_matches', JSON.stringify(data));
-    } catch (error) {
-      console.error('Error fetching waiting matches:', error);
-      setWaitingMatches([]); // Set về mảng rỗng khi có lỗi
-    }
-  };
+      const waitingData = await waitingResponse.json();
+      const ongoingData = await ongoingResponse.json();
+
+      // Cập nhật state cho cả hai loại trận đấu
+      setWaitingMatches(waitingData);
+      setLiveMatches(ongoingData);
+
+      // Optional: clear và set lại cache nếu cần thiết
+      sessionStorage.removeItem('waiting_matches');
+      sessionStorage.removeItem('ongoing_matches');
+      sessionStorage.setItem('waiting_matches', JSON.stringify(waitingData));
+      sessionStorage.setItem('ongoing_matches', JSON.stringify(ongoingData));
+
+      console.log('Fetched all matches. Waiting:', waitingData.length, 'Live:', ongoingData.length);
+    } catch (error) {
+      console.error('Error fetching all matches:', error);
+      setWaitingMatches([]);
+      setLiveMatches([]);
+    }
+  };
 
   const fetchBrokersForArena = async () => {
     console.log('fetchBrokersForArena called - checking sessionStorage');
@@ -2097,39 +2090,44 @@ const ArenaPage = ({ user, onUserUpdate }) => {
 
   useEffect(() => {
     fetchTournaments();
-    fetchWaitingMatches();
+    fetchAllMatches();
     fetchBrokersForArena();
   }, []);
 
-  const filteredMatches = waitingMatches.map(match => {
-        const player1_name = match.player1_name || 'Anonymous';
-        const player1_avatar = match.player1_avatar || generateAvatarUrl(player1_name);
-        
-        return {
-            ...match,
-            betAmount: match.bet,
-            symbol: match.symbol,
-            waitingTime: 'It is the waiting time',
-            country: 'Vietnam',
-            challenger: {
-                name: player1_name,
-                avatar: player1_avatar
-            }
-        };
-    }).filter(match => {
-    const amountCondition = !filterAmount || match.betAmount <= parseInt(filterAmount);
-    const countryCondition = !filterCountry || match.country.toLowerCase().includes(filterCountry.toLowerCase());
-    const symbolCondition = !filterSymbol || match.symbol.toLowerCase().includes(filterSymbol.toLowerCase());
-    return amountCondition && countryCondition && symbolCondition;
-  });
+  const allPersonalMatches = [...liveMatches, ...waitingMatches];
+
+  const filteredMatches = allPersonalMatches.map(match => {
+      const player1_name = match.player1.name || 'Anonymous';
+      const player1_avatar = match.player1.avatar || generateAvatarUrl(player1_name);
+
+      // Lấy thông tin player2
+      let player2_name = match.player2?.name || 'Waiting for opponent';
+      let player2_avatar = match.player2?.avatar || 'https://placehold.co/50x50/cccccc/ffffff?text=?';
+
+      // ... (các trường khác)
+      return {
+          ...match,
+          betAmount: match.bet,
+          // ... (các trường khác)
+          challenger: {
+              name: player1_name,
+              avatar: player1_avatar
+          }
+      };
+  }).filter(match => {
+      const amountCondition = !filterAmount || match.betAmount <= parseInt(filterAmount);
+      const countryCondition = !filterCountry || match.country.toLowerCase().includes(filterCountry.toLowerCase());
+      const symbolCondition = !filterSymbol || match.symbol.toLowerCase().includes(filterSymbol.toLowerCase());
+      return amountCondition && countryCondition && symbolCondition;
+  });
 
   useEffect(() => {
     setFilterPanelHeight(showFilters && filterContentRef.current ? filterContentRef.current.scrollHeight : 0);
   }, [showFilters]);
 
   if (showCreateForm) {
-    return <CreateNewMatchForm onClose={() => setShowCreateForm(false)} brokersList={brokersList} onCreateSuccess={() => fetchWaitingMatches(true)} user={user} />;
-  }
+    return <CreateNewMatchForm onClose={() => setShowCreateForm(false)} brokersList={brokersList} onCreateSuccess={() => fetchAllMatches()} user={user} />;
+  }
 
   return (
     <div className="page-padding">
@@ -2292,7 +2290,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                   }
                 }}
               >
-                {match.status === "waiting" ? "Join Challenge" : "Detail"}
+                {match.status === "waiting" ? "Join Challenge" : "View Live Match"}
               </button>
             </div>
           ))}
