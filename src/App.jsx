@@ -7,6 +7,7 @@ import TournamentDetail from './components/TournamentDetail';
 import LazyLoad from 'react-lazyload';
 import { FixedSizeList } from 'react-window';
 import { notifyAdminOfDeposit, requestWithdrawal } from './services/telegramService';
+import { WebSocketProvider } from './contexts/WebSocketContext';
 
 import settingIcon from './assets/setting.png';
 import chatboxIcon from './assets/chatbox.png';
@@ -336,6 +337,35 @@ const HomePage = () => {
       fetchBanner();
       fetchLiveMatchesFromActive();
       fetchTournaments();
+  }, []);
+
+  useEffect(() => {
+      const handleWebSocketMessage = (event) => {
+          const message = event.detail;
+
+          if (message.type === "SCORE_UPDATE") {
+              setOngoingMatches(prevMatches => 
+                  prevMatches.map(match => {
+                      if (match.id === message.match_id) {
+                          console.log(`[HomePage] Updating score for match ${match.id}`);
+                          return {
+                              ...match,
+                              player1: { ...match.player1, score: message.data.player1_score },
+                              player2: { ...match.player2, score: message.data.player2_score }
+                          };
+                      }
+                      return match;
+                  })
+              );
+          }
+          // Thêm các case khác nếu cần (ví dụ: một trận đấu mới chuyển sang 'live')
+      };
+
+      window.addEventListener('websocket-message', handleWebSocketMessage);
+
+      return () => {
+          window.removeEventListener('websocket-message', handleWebSocketMessage);
+      };
   }, []);
 
   return (
@@ -2536,81 +2566,6 @@ const AppContent = () => {
         totalWithdrawals: '0.00 USDT',
     });
 
-  const wsRef = useRef(null);
-
-  useEffect(() => {
-      if (!user || !user.telegram_id) {
-          console.log("Waiting for user data to establish WebSocket connection.");
-          return;
-      }
-
-      const wsUrl = `wss://f2farena.com/ws/${user.telegram_id}`; // Thay thế bằng URL WebSocket thật của bạn
-      let ws = null;
-      let reconnectInterval = null;
-
-      const connectWebSocket = () => {
-          console.log(`Attempting to connect WebSocket to ${wsUrl}`);
-          ws = new WebSocket(wsUrl);
-          wsRef.current = ws;
-
-          ws.onopen = () => {
-              console.log('WebSocket connected successfully.');
-              if (reconnectInterval) {
-                  clearInterval(reconnectInterval);
-                  reconnectInterval = null;
-              }
-          };
-
-          ws.onmessage = (event) => {
-            console.log('WebSocket message received:', event.data);
-            try {
-                // Logic cũ cho tin nhắn dạng string
-                if (event.data.startsWith("MATCH_STARTED:")) {
-                    const matchId = event.data.split(":")[1];
-                    alert(`Trận đấu ${matchId} đã bắt đầu!`);
-                    navigate(`/match/${matchId}`);
-                    return;
-                }
-
-                // Logic mới cho tin nhắn dạng JSON
-                const message = JSON.parse(event.data);
-                const matchUpdateEvent = new CustomEvent('match-update', { detail: message });
-                window.dispatchEvent(matchUpdateEvent);
-
-            } catch (e) {
-                console.error("Failed to parse or handle WebSocket message:", e, event.data);
-            }
-          };
-
-          ws.onclose = (event) => {
-              console.log('WebSocket closed:', event.code, event.reason);
-              if (!reconnectInterval) { // Prevent multiple intervals
-                  reconnectInterval = setInterval(connectWebSocket, 5000); // Thử kết nối lại sau 5 giây
-              }
-          };
-
-          ws.onerror = (error) => {
-              console.error('WebSocket error:', error);
-              if (ws && ws.readyState === WebSocket.OPEN) {
-                  ws.close(); // Close to trigger onclose and reconnect logic
-              }
-          };
-      };
-
-      connectWebSocket();
-
-       return () => {
-        console.log('Cleaning up WebSocket connection...');
-        if (reconnectInterval) {
-            clearInterval(reconnectInterval);
-        }
-        if (wsRef.current) {
-            wsRef.current.onclose = null; 
-            wsRef.current.close();
-        }
-    };
-  }, [user, navigate]);
-
   const fetchAndSetUser = async () => {
     let telegramId = null;
 
@@ -2726,7 +2681,8 @@ useEffect(() => {
   }, [location]);
 
   return (
-    <div className="app-container">
+    <WebSocketProvider user={user}>
+        <div className="app-container">
       <Header 
         onSettingsClick={() => setShowSettingsSidebar(true)} 
         onChatbotClick={() => setActivePage('chatbot')}
@@ -2746,7 +2702,7 @@ useEffect(() => {
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/wallet" element={<WalletPage user={user} onUserUpdate={handleUserUpdate} />} />
           <Route path="/chatbot" element={<ChatbotPage />} />
-          <Route path="/match/:id" element={<MatchDetail user={user} ws={wsRef.current} />} />
+          <Route path="/match/:id" element={<MatchDetail user={user} />} />
           <Route path="/" element={<HomePage />} />
           <Route path="*" element={
             <div className="page-padding">
@@ -2767,6 +2723,7 @@ useEffect(() => {
         onClose={() => setShowSettingsSidebar(false)} 
       />
     </div>
+    </WebSocketProvider> 
   );
 };
 

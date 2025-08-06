@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './MatchDetail.css';
+import { useWebSocket } from '../contexts/WebSocketContext';
 
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n => n[0]).join('') || 'NN').toUpperCase()}`;
 
@@ -14,9 +15,10 @@ const initialBets = [
   { id: 2, user: 'RiskTaker', amount: 30, player: 'TradeMaster', timestamp: '2025-06-11T14:02:30Z' },
 ];
 
-const MatchDetail = ({ user, ws }) => {
+const MatchDetail = ({ user }) => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { sendMessage, isConnected } = useWebSocket();
 
     // TẤT CẢ CÁC HOOKS PHẢI ĐƯỢC KHAI BÁO TRÊN CÙNG
     const widgetRef = useRef(null);
@@ -28,7 +30,6 @@ const MatchDetail = ({ user, ws }) => {
     const [showResultModal, setShowResultModal] = useState(false);
     const [matchResult, setMatchResult] = useState(null);
     
-    // Thay đổi useState để khởi tạo giá trị ban đầu tránh lỗi
     const [matchData, setMatchData] = useState(null);
     const [timeRemaining, setTimeRemaining] = useState("00:00:00");
     const [trades, setTrades] = useState([]);
@@ -37,38 +38,41 @@ const MatchDetail = ({ user, ws }) => {
     const [oddsTrend, setOddsTrend] = useState({ player1: 'up', player2: 'down' });
     const [commentInput, setCommentInput] = useState('');
     const [activeTab, setActiveTab] = useState('matching');
-
+ 
     useEffect(() => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            console.log(`Joining match room for match ID: ${id}`);
-            ws.send(JSON.stringify({
+        // Chỉ gửi yêu cầu join KHI websocket đã kết nối
+        if (isConnected) {
+            console.log(`[MatchDetail] WebSocket is connected. Sending join request for match ${id}.`);
+            sendMessage({
                 action: "join",
                 match_id: parseInt(id)
-            }));
-        } else {
-            console.log("WebSocket is not ready, will try to join room on next open.");
+            });
         }
-    }, [ws, id]);
+    }, [id, isConnected, sendMessage]);
 
     useEffect(() => {
-        const handleMatchUpdate = (event) => {
+         const handleWebSocketMessage = (event) => {
             const message = event.detail;
 
-            // Đảm bảo message này là cho trận đấu hiện tại
+            // Chỉ xử lý tin nhắn cho trận đấu này
             if (message.match_id !== parseInt(id)) {
                 return;
             }
 
-            console.log('MatchDetail received update from global WebSocket:', message);
+            console.log('[MatchDetail] Received relevant WebSocket message:', message);
 
-            // Xử lý các loại tin nhắn giống hệt như logic đã xóa
             switch (message.type) {
                 case "NEW_TRADE":
-                    const newTrade = {
-                        ...message.data,
-                        player: message.data.player_id === matchData.player1.id ? matchData.player1.name : matchData.player2.name
-                    };
-                    setTrades(prev => [...prev, newTrade]);
+                    // Cập nhật danh sách trade
+                    setTrades(prevTrades => {
+                        // Dùng matchData từ state để lấy tên người chơi, đảm bảo an toàn
+                        const playerName = matchData
+                            ? (message.data.player_id === matchData.player1.id ? matchData.player1.name : matchData.player2.name)
+                            : 'Unknown Player';
+                        
+                        const newTrade = { ...message.data, player: playerName };
+                        return [...prevTrades, newTrade];
+                    });
                     break;
                 case "NEW_COMMENT":
                     setComments(prev => [...prev, { id: prev.length + 1, ...message.data }].slice(-50));
@@ -79,7 +83,7 @@ const MatchDetail = ({ user, ws }) => {
                         return {
                             ...prevData,
                             player1: { ...prevData.player1, score: message.data.player1_score },
-                            player2: { ...prevData.player2, score: message.data.player2_score }
+                            player2: { ...prevData.player2, score: message.data.player2_score },
                         };
                     });
                     break;
@@ -91,11 +95,11 @@ const MatchDetail = ({ user, ws }) => {
             }
         };
 
-        window.addEventListener('match-update', handleMatchUpdate);
-
-        // Cleanup: gỡ bỏ listener khi component unmount
+        window.addEventListener('websocket-message', handleWebSocketMessage);
+        
+        // Cleanup listener
         return () => {
-            window.removeEventListener('match-update', handleMatchUpdate);
+            window.removeEventListener('websocket-message', handleWebSocketMessage);
         };
     }, [id, matchData]);
 
@@ -217,27 +221,27 @@ const MatchDetail = ({ user, ws }) => {
         );
     };
 
-    useEffect(() => {
-        const updateUserViews = async () => {
-            if (!user || !matchData) return;
-            try {
-                const response = await fetch(`https://f2farena.com/api/matches/${id}/view`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: user.telegram_id }) // Giả định backend có endpoint để đếm view
-                });
-                if (!response.ok) throw new Error('Failed to update views');
-                const data = await response.json();
-                // Backend có thể trả về views mới nhất để cập nhật UI
-                if (data.new_views_count) {
-                    setViews(data.new_views_count);
-                }
-            } catch (error) {
-                console.error('Error updating views:', error);
-            }
-        };
-        updateUserViews();
-    }, [id, user, matchData]);
+    // useEffect(() => {
+    //     const updateUserViews = async () => {
+    //         if (!user || !matchData) return;
+    //         try {
+    //             const response = await fetch(`https://f2farena.com/api/matches/${id}/view`, {
+    //                 method: 'POST',
+    //                 headers: { 'Content-Type': 'application/json' },
+    //                 body: JSON.stringify({ user_id: user.telegram_id }) // Giả định backend có endpoint để đếm view
+    //             });
+    //             if (!response.ok) throw new Error('Failed to update views');
+    //             const data = await response.json();
+    //             // Backend có thể trả về views mới nhất để cập nhật UI
+    //             if (data.new_views_count) {
+    //                 setViews(data.new_views_count);
+    //             }
+    //         } catch (error) {
+    //             console.error('Error updating views:', error);
+    //         }
+    //     };
+    //     updateUserViews();
+    // }, [id, user, matchData]);
 
     // useEffect để xử lý scroll đến trade mới nhất
     useEffect(() => {
