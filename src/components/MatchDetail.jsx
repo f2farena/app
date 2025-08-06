@@ -55,6 +55,57 @@ const MatchStatusBanner = ({ matchData, user }) => {
     );
 };
 
+const MatchResultDisplay = ({ matchData, user }) => {
+    const { result } = matchData;
+    if (!result) return null; // An toàn nếu không có dữ liệu kết quả
+
+    const isPlayer1 = user?.telegram_id === matchData.player1.id;
+    const isWinner = user?.telegram_id === result.winner_id;
+    const isDraw = result.winner_id === 'draw';
+
+    // Xác định ai là người thắng, ai là người thua
+    const winner = result.winner_id === matchData.player1.id ? matchData.player1 : matchData.player2;
+    const loser = result.winner_id === matchData.player1.id ? matchData.player2 : matchData.player1;
+
+    return (
+        <div className="card match-result-card">
+            <h3 className="result-title">Match Result</h3>
+            
+            {isDraw ? (
+                <div className="result-draw">
+                    <p className="result-status-text">DRAW</p>
+                    <p>Both players had the same score. The bet amount has been refunded.</p>
+                </div>
+            ) : (
+                <div className="result-winner">
+                    <img src={winner.avatar} alt={winner.name} className="winner-avatar" />
+                    <p className="winner-label">Winner</p>
+                    <h4 className="winner-name">{winner.name}</h4>
+                    {user?.telegram_id === result.winner_id && (
+                         <p className="winnings-text">You Won: {result.winning_amount.toFixed(2)} USDT</p>
+                    )}
+                </div>
+            )}
+            
+            <div className="result-scores">
+                <div className="result-player-score">
+                    <p>{matchData.player1.name}</p>
+                    <p className={`score-value ${result.winner_id === matchData.player1.id ? 'win' : (isDraw ? '' : 'loss')}`}>
+                        {matchData.player1.score}
+                    </p>
+                </div>
+                <div className="result-vs">VS</div>
+                <div className="result-player-score">
+                    <p>{matchData.player2.name}</p>
+                    <p className={`score-value ${result.winner_id === matchData.player2.id ? 'win' : (isDraw ? '' : 'loss')}`}>
+                        {matchData.player2.score}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const MatchDetail = ({ user }) => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -439,183 +490,211 @@ const MatchDetail = ({ user }) => {
     const totalOutsideBets = bets.reduce((sum, bet) => sum + parseFloat(bet.amount), 0);
 
     return (
-        <div className="match-detail-container">
-            <MatchStatusBanner matchData={matchData} user={user} />
-            <div className="match-detail-header">
-                <button className="icon-button back-button" onClick={() => navigate('/home')}>&lt;</button>
-                <div className="player-info">
-                    <img src={matchData.player1.avatar} alt={matchData.player1.name} className="player-avatar" />
-                    <span className="player-name">{matchData.player1.name}</span>
-                    <span className="player-odds">{matchData.player1.odds}</span>
-                </div>
-                <div className="center-details">
-                    <div className="time-remaining">{timeRemaining}</div>
-                    <div className="vs-text">VS</div>
-                </div>
-                <div className="player-info">
-                    <img src={matchData.player2.avatar} alt={matchData.player2.name} className="player-avatar" />
-                    <span className="player-name">{matchData.player2.name}</span>
-                    <span className="player-odds">{matchData.player2.odds}</span>
-                </div>
-            </div>
-            <div className="score-bar-container">
-                <div className="score-bar">
-                    <div style={{ width: `${(matchData.player1.score / (matchData.player1.score + matchData.player2.score)) * 100}%` }}></div>
-                    <div style={{ width: `${(matchData.player2.score / (matchData.player1.score + matchData.player2.score)) * 100}%` }}></div>
-                </div>
-                <div className="score-text">
-                    <span>Score: {matchData.player1.score}</span>
-                    <span>Score: {matchData.player2.score}</span>
-                </div>
-            </div>
-            <div className="header-bottom-section">
-                <div className="info-group">
-                    <div className="info-item"><p className="primary-p">{matchData.symbol}</p></div>
-                    <div className="info-item"><p className="accent-p">{matchData.betAmount} USDT</p></div>
-                </div>
-                <div className="info-group">
-                    <div className="info-item icon-info">
-                        <svg fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>
-                        <span>{matchData.views}</span>
-                    </div>
-                    <div className="info-item icon-info">
-                        <svg fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" /></svg>
-                        <span>{totalOutsideBets.toFixed(2)} USDT</span>
-                  </div>
-                </div>
-            </div>
-            <div className="tab-buttons">
-                <button
-                    className={`tab-button ${activeTab === 'matching' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('matching')}
-                >
-                    Matching
-                </button>
-                <button
-                    className={`tab-button ${activeTab === 'discussion' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('discussion')}
-                >
-                    Discussion
-                </button>
-                <button
-                    className={`tab-button ${activeTab === 'bet-outside' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('bet-outside')}
-                >
-                    Bet Outside
-                </button>
-            </div>
-            {activeTab === 'matching' && (
-                <>
-                    <div className="trading-view-container">
-                        <div id="tradingview_widget"></div>
-                    </div>
-                    <div className="timeline-container">
-                        <div className="timeline">
-                            {trades.map((trade) => (
-                                <div
-                                    key={trade.id}
-                                    className={`trade-box ${trade.player === matchData.player1.name ? 'left' : 'right'}`}
-                                >
-                                    <div className="trade-info">
-                                        <span className="trade-type">{trade.type}</span>
-                                        <span className="trade-amount">{trade.amount} {matchData.symbol?.split('/')[0] || matchData.symbol}</span>
-                                        <span className="trade-price">${trade.price}</span>
-                                        <span className="trade-time">{new Date(trade.timestamp).toLocaleTimeString()}</span>
-                                    </div>
-                                </div>
-                            ))}
-                            <div ref={tradesEndRef} />
-                        </div>
-                    </div>
-                </>
-            )}
-            {activeTab === 'discussion' && (
-                <div className="discussion-container">
-                    <div className="discussion-messages">
-                        {comments.map((comment) => (
-                            <div
-                                key={comment.id}
-                                className={`discussion-bubble-row ${comment.user === 'CurrentUser' ? 'user' : 'other'}`}
-                            >
-                                <div className="discussion-bubble-container">
-                                    {comment.user !== 'CurrentUser' && (
-                                        <img
-                                            src={generateAvatarUrl(comment.user)}
-                                            alt={comment.user}
-                                            className="discussion-avatar"
-                                        />
-                                    )}
-                                    <div className={`discussion-bubble ${comment.user === 'CurrentUser' ? 'user' : 'other'}`}>
-                                        {comment.user !== 'CurrentUser' && (
-                                            <span className="discussion-user">{comment.user}</span>
-                                        )}
-                                        <span className="discussion-text">{comment.comment}</span>
-                                        <span className="discussion-time">{new Date(comment.timestamp).toLocaleTimeString()}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        <div ref={commentsEndRef} />
-                  </div>
-                  <form
-                      className="discussion-input-area"
-                      onSubmit={handleSendComment}
-                  >
-                      <input
-                          type="text"
-                          className="discussion-input form-input"
-                          placeholder="Type your comment..."
-                          value={commentInput}
-                          onChange={(e) => setCommentInput(e.target.value)}
-                      />
-                      <button type="submit" className="discussion-send-btn btn btn-primary">
-                          Send
-                      </button>
-                </form>
-            </div>
-          )}
-          {activeTab === 'bet-outside' && (
-              <div className="bet-outside-container">
-                  <div className="bet-outside-buttons">
-                      <button className="bet-outside-button-green">
-                          {matchData.player1.odds}
-                          <span className={`bet-outside-trend ${oddsTrend.player1}`}>
-                              {oddsTrend.player1 === 'up' ? '↑' : '↓'}
-                          </span>
-                      </button>
-                      <button className="bet-outside-button-red">
-                          {matchData.player2.odds}
-                          <span className={`bet-outside-trend ${oddsTrend.player2}`}>
-                              {oddsTrend.player2 === 'up' ? '↑' : '↓'}
-                          </span>
-                      </button>
-                  </div>
-                  <div className="bet-outside-table">
-                      <div className="bet-outside-total">
-                          Total Outside Bets: {totalOutsideBets.toFixed(2)} USDT
-                      </div>
-                      {bets.map((bet, index) => (
-                          <div key={bet.id} className="bet-outside-row">
-                              <img
-                                  src={generateAvatarUrl(bet.user)}
-                                  alt={bet.user}
-                                  className="bet-outside-avatar"
-                              />
-                              <span className="bet-outside-nickname">{bet.user}</span>
-                              <span className={`bet-outside-odds bet-outside-odds-${bet.player === matchData.player1.name ? 'green' : 'red'}`}>
-                                  {bet.player === matchData.player1.name ? matchData.player1.odds : matchData.player2.odds}
-                              </span>
-                              <span className="bet-outside-amount">{bet.amount} USDT</span>
-                              <span className="bet-outside-time">{new Date(bet.timestamp).toLocaleTimeString()}</span>
-                              {index < bets.length - 1 && <hr className="bet-outside-divider" />}
-                          </div>
-                      ))}
-                  </div>
-              </div>
-            )}
+        <div className="match-detail-container">
+            {/* ================================================================= */}
+            {/* PHẦN 1: HEADER CHUNG - LUÔN HIỂN THỊ */}
+            {/* ================================================================= */}
+            <div className="match-detail-header">
+                <button className="icon-button back-button" onClick={() => navigate(-1)}>&lt;</button>
+                
+                <div className="player-info">
+                    <img src={matchData.player1.avatar} alt={matchData.player1.name} className="player-avatar" />
+                    <span className="player-name">{matchData.player1.name}</span>
+                    {matchData.player1.odds && <span className="player-odds">{matchData.player1.odds}</span>}
+                </div>
+
+                <div className="center-details">
+                    <div className="time-remaining">
+                        {matchData.status === 'done' ? 'Finished' : timeRemaining}
+                    </div>
+                    <div className="vs-text">VS</div>
+                </div>
+
+                <div className="player-info">
+                    <img src={matchData.player2.avatar} alt={matchData.player2.name} className="player-avatar" />
+                    <span className="player-name">{matchData.player2.name}</span>
+                    {matchData.player2.odds && <span className="player-odds">{matchData.player2.odds}</span>}
+                </div>
+            </div>
+
+            <div className="score-bar-container">
+                <div className="score-bar">
+                    <div className="score-bar-player1" style={{ width: `${player1Width}%` }}></div>
+                    <div className="score-bar-player2" style={{ width: `${player2Width}%` }}></div>
+                </div>
+                <div className="score-text">
+                    <span>Score: {matchData.player1.score}</span>
+                    <span>Score: {matchData.player2.score}</span>
+                </div>
+            </div>
+            
+            <div className="header-bottom-section">
+                <div className="info-group">
+                    <div className="info-item"><p className="primary-p">{matchData.symbol}</p></div>
+                    <div className="info-item"><p className="accent-p">{matchData.betAmount} USDT</p></div>
+                </div>
+                <div className="info-group">
+                    <div className="info-item icon-info">
+                        <svg fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>
+                        <span>{views}</span>
+                    </div>
+                    <div className="info-item icon-info">
+                        <svg fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" /></svg>
+                        <span>{outsideBetsTotal.toFixed(2)} USDT</span>
+                    </div>
+                </div>
+            </div>
+            
+            {/* ================================================================= */}
+            {/* PHẦN 2: NỘI DUNG THAY ĐỔI THEO TRẠNG THÁI */}
+            {/* ================================================================= */}
+            {matchData.status === 'done' ? (
+                // Nếu trận đấu ĐÃ KẾT THÚC (done), hiển thị component kết quả
+                <MatchResultDisplay matchData={matchData} user={user} />
+            ) : (
+                // Ngược lại (live, pending_confirmation), hiển thị giao diện thi đấu
+                <>
+                    <MatchStatusBanner matchData={matchData} user={user} />
+                    
+                    <div className="tab-buttons">
+                        <button
+                            className={`tab-button ${activeTab === 'matching' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('matching')}
+                        >
+                            Matching
+                        </button>
+                        <button
+                            className={`tab-button ${activeTab === 'discussion' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('discussion')}
+                        >
+                            Discussion
+                        </button>
+                        <button
+                            className={`tab-button ${activeTab === 'bet-outside' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('bet-outside')}
+                        >
+                            Bet Outside
+                        </button>
+                    </div>
+
+                    {activeTab === 'matching' && (
+                        <>
+                            <div className="trading-view-container">
+                                <div id="tradingview_widget"></div>
+                            </div>
+                            <div className="timeline-container">
+                                <div className="timeline">
+                                    {trades.map((trade) => (
+                                        <div
+                                            key={trade.id}
+                                            className={`trade-box ${trade.player === matchData.player1.name ? 'left' : 'right'}`}
+                                        >
+                                            <div className="trade-info">
+                                                <span className="trade-type">{trade.type}</span>
+                                                <span className="trade-amount">{trade.amount} {matchData.symbol?.split('/')[0] || matchData.symbol}</span>
+                                                <span className="trade-price">${trade.price}</span>
+                                                <span className="trade-time">{new Date(trade.timestamp).toLocaleTimeString()}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div ref={tradesEndRef} />
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {activeTab === 'discussion' && (
+                        <div className="discussion-container">
+                            <div className="discussion-messages">
+                                {comments.map((comment) => (
+                                    <div
+                                        key={comment.id}
+                                        className={`discussion-bubble-row ${comment.user === 'CurrentUser' ? 'user' : 'other'}`}
+                                    >
+                                        <div className="discussion-bubble-container">
+                                            {comment.user !== 'CurrentUser' && (
+                                                <img
+                                                    src={generateAvatarUrl(comment.user)}
+                                                    alt={comment.user}
+                                                    className="discussion-avatar"
+                                                />
+                                            )}
+                                            <div className={`discussion-bubble ${comment.user === 'CurrentUser' ? 'user' : 'other'}`}>
+                                                {comment.user !== 'CurrentUser' && (
+                                                    <span className="discussion-user">{comment.user}</span>
+                                                )}
+                                                <span className="discussion-text">{comment.comment}</span>
+                                                <span className="discussion-time">{new Date(comment.timestamp).toLocaleTimeString()}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                <div ref={commentsEndRef} />
+                            </div>
+                            <form
+                                className="discussion-input-area"
+                                onSubmit={handleSendComment}
+                            >
+                                <input
+                                    type="text"
+                                    className="discussion-input form-input"
+                                    placeholder="Type your comment..."
+                                    value={commentInput}
+                                    onChange={(e) => setCommentInput(e.target.value)}
+                                />
+                                <button type="submit" className="discussion-send-btn btn btn-primary">
+                                    Send
+                                </button>
+                            </form>
+                        </div>
+                    )}
+                    
+                    {activeTab === 'bet-outside' && (
+                        <div className="bet-outside-container">
+                            <div className="bet-outside-buttons">
+                                <button className="bet-outside-button-green">
+                                    {matchData.player1.odds}
+                                    <span className={`bet-outside-trend ${oddsTrend.player1}`}>
+                                        {oddsTrend.player1 === 'up' ? '↑' : '↓'}
+                                    </span>
+                                </button>
+                                <button className="bet-outside-button-red">
+                                    {matchData.player2.odds}
+                                    <span className={`bet-outside-trend ${oddsTrend.player2}`}>
+                                        {oddsTrend.player2 === 'up' ? '↑' : '↓'}
+                                    </span>
+                                </button>
+                            </div>
+                            <div className="bet-outside-table">
+                                <div className="bet-outside-total">
+                                    Total Outside Bets: {totalOutsideBets.toFixed(2)} USDT
+                                </div>
+                                {bets.map((bet, index) => (
+                                    <div key={bet.id} className="bet-outside-row">
+                                        <img
+                                            src={generateAvatarUrl(bet.user)}
+                                            alt={bet.user}
+                                            className="bet-outside-avatar"
+                                        />
+                                        <span className="bet-outside-nickname">{bet.user}</span>
+                                        <span className={`bet-outside-odds bet-outside-odds-${bet.player === matchData.player1.name ? 'green' : 'red'}`}>
+                                            {bet.player === matchData.player1.name ? matchData.player1.odds : matchData.player2.odds}
+                                        </span>
+                                        <span className="bet-outside-amount">{bet.amount} USDT</span>
+                                        <span className="bet-outside-time">{new Date(bet.timestamp).toLocaleTimeString()}</span>
+                                        {index < bets.length - 1 && <hr className="bet-outside-divider" />}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* Modal kết quả vẫn giữ nguyên để hiển thị pop-up khi trận đấu vừa kết thúc */}
             {showResultModal && <ResultModal result={matchResult} onClose={() => { setShowResultModal(false); navigate('/home'); }} />}
-      </div>
-    );
+        </div>
+    );
 };
 
 export default MatchDetail;
