@@ -15,6 +15,46 @@ const initialBets = [
   { id: 2, user: 'RiskTaker', amount: 30, player: 'TradeMaster', timestamp: '2025-06-11T14:02:30Z' },
 ];
 
+const MatchStatusBanner = ({ matchData, user }) => {
+    if (matchData.status !== 'pending_confirmation') {
+        return null; // Chỉ hiển thị khi đang chờ xác nhận
+    }
+
+    const isPlayer1 = user?.telegram_id === matchData.player1.id;
+    const isPlayer2 = user?.telegram_id === matchData.player2.id;
+    const isParticipant = isPlayer1 || isPlayer2;
+    
+    // Kiểm tra trạng thái sẵn sàng từ dữ liệu (cần API trả về)
+    const player1Ready = matchData.player1.ready || false;
+    const player2Ready = matchData.player2.ready || false;
+
+    let message = "Players are preparing to start the match...";
+
+    if (isParticipant) {
+        const myReadyStatus = isPlayer1 ? player1Ready : player2Ready;
+        if (myReadyStatus) {
+            message = "✅ You are ready! Waiting for the opponent.";
+        } else {
+            message = "🚨 Please log in to your trading account to start the match!";
+        }
+    } else {
+        // Tin nhắn cho người xem
+        message = `Waiting for ${matchData.player1.name} ${player1Ready ? '✅' : '...'} and ${matchData.player2.name} ${player2Ready ? '✅' : '...'} to log in.`;
+    }
+
+    return (
+        <div className="card" style={{ 
+            margin: '1rem', 
+            padding: '1rem', 
+            textAlign: 'center', 
+            backgroundColor: 'var(--color-primary-dark)', 
+            border: '1px solid var(--color-accent)' 
+        }}>
+            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>{message}</p>
+        </div>
+    );
+};
+
 const MatchDetail = ({ user }) => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -393,46 +433,6 @@ const MatchDetail = ({ user }) => {
         : 50;
     const player2Width = 100 - player1Width;
     const totalOutsideBets = bets.reduce((sum, bet) => sum + parseFloat(bet.amount), 0);
-
-    const MatchStatusBanner = ({ matchData, user }) => {
-        if (matchData.status !== 'pending_confirmation') {
-            return null; // Chỉ hiển thị khi đang chờ xác nhận
-        }
-
-        const isPlayer1 = user?.telegram_id === matchData.player1.id;
-        const isPlayer2 = user?.telegram_id === matchData.player2.id;
-        const isParticipant = isPlayer1 || isPlayer2;
-        
-        // Kiểm tra trạng thái sẵn sàng từ dữ liệu (cần API trả về)
-        const player1Ready = matchData.player1.ready || false;
-        const player2Ready = matchData.player2.ready || false;
-
-        let message = "Players are preparing to start the match...";
-
-        if (isParticipant) {
-            const myReadyStatus = isPlayer1 ? player1Ready : player2Ready;
-            if (myReadyStatus) {
-                message = "✅ You are ready! Waiting for the opponent.";
-            } else {
-                message = "🚨 Please log in to your trading account to start the match!";
-            }
-        } else {
-            // Tin nhắn cho người xem
-            message = `Waiting for ${matchData.player1.name} ${player1Ready ? '✅' : '...'} and ${matchData.player2.name} ${player2Ready ? '✅' : '...'} to log in.`;
-        }
-
-        return (
-            <div className="card" style={{ 
-                margin: '1rem', 
-                padding: '1rem', 
-                textAlign: 'center', 
-                backgroundColor: 'var(--color-primary-dark)', 
-                border: '1px solid var(--color-accent)' 
-            }}>
-                <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>{message}</p>
-            </div>
-        );
-    };
 
     return (
         <div className="match-detail-container">
