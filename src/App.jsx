@@ -1874,9 +1874,6 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     const [tournamentFilter, setTournamentFilter] = useState('all');
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
-    const [filterAmount, setFilterAmount] = useState('');
-    const [filterCountry, setFilterCountry] = useState('');
-    const [filterSymbol, setFilterSymbol] = useState('');
     const [showDepositModal, setShowDepositModal] = useState(false);
     const [showJoinConfirm, setShowJoinConfirm] = useState(false);
     const [selectedMatch, setSelectedMatch] = useState(null);
@@ -1888,7 +1885,27 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     const [liveMatches, setLiveMatches] = useState([]);
     const [showJoinMatchConditionModal, setShowJoinMatchConditionModal] = useState(false);
 
-    const [allActiveMatches, setAllActiveMatches] = useState([]);
+    const [statusFilters, setStatusFilters] = useState({
+        live: true,
+        waiting: true,
+        done: false, // Mặc định không hiển thị lịch sử
+    });
+    const [doneMatches, setDoneMatches] = useState([]);
+
+    const fetchMatchHistory = async () => {
+        if (!user || !user.telegram_id) return; // Dừng nếu chưa có thông tin user
+        try {
+            const response = await fetch(`https://f2farena.com/api/matches/history/${user.telegram_id}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            setDoneMatches(data); // Lưu kết quả vào state doneMatches
+        } catch (error) {
+            console.error('Error fetching match history:', error);
+            setDoneMatches([]); // Set mảng rỗng nếu có lỗi
+        }
+    };
     
     const fetchAllMatches = async () => {
       try {
@@ -2067,13 +2084,31 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     }, []);
 
     // Logic để gộp và lọc danh sách trận đấu
-    const allPersonalMatches = [...waitingMatches, ...liveMatches];
+     const handleFilterChange = (event) => {
+        const { name, checked } = event.target;
+        setStatusFilters(prevFilters => {
+            const newFilters = { ...prevFilters, [name]: checked };
 
-    const filteredMatches = allPersonalMatches.filter(match => {
-        const amountCondition = !filterAmount || match.betAmount <= parseFloat(filterAmount);
-        const countryCondition = !filterCountry || (match.country && match.country.toLowerCase().includes(filterCountry.toLowerCase()));
-        const symbolCondition = !filterSymbol || (match.symbol && match.symbol.toLowerCase().includes(filterSymbol.toLowerCase()));
-        return amountCondition && countryCondition && symbolCondition;
+            // Nếu người dùng tick vào "Done", gọi API để lấy dữ liệu.
+            // Nếu bỏ tick, không cần làm gì vì dữ liệu đã có hoặc sẽ bị ẩn đi.
+            if (name === 'done' && checked) {
+                fetchMatchHistory();
+            }
+            return newFilters;
+        });
+    };
+    
+    // Logic lọc và gộp danh sách trận đấu mới dựa trên checkbox
+    const filteredMatches = [
+        ...(statusFilters.live ? liveMatches : []),
+        ...(statusFilters.waiting ? waitingMatches : []),
+        ...(statusFilters.done ? doneMatches : [])
+    ].sort((a, b) => { // Sắp xếp để trận mới nhất lên đầu
+        const statusOrder = { live: 3, waiting: 2, done: 1 };
+        if (statusOrder[a.status] !== statusOrder[b.status]) {
+            return statusOrder[b.status] - statusOrder[a.status];
+        }
+        return b.id - a.id;
     });
 
     useEffect(() => {
@@ -2148,20 +2183,23 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                     </div>
 
                     <div className="filters-panel" style={{ maxHeight: `${filterPanelHeight}px`, marginBottom: filterPanelHeight > 0 ? '1rem' : '0' }}>
-                        <div className="card" ref={filterContentRef} style={{ overflow: 'hidden' }}>
-                            <div className="form-group">
-                                <label className="form-label">Max Bet Amount</label>
-                                <input type="number" className="form-input" value={filterAmount} onChange={e => setFilterAmount(e.target.value)} placeholder="e.g., 200" />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Country</label>
-                                <input type="text" className="form-input" value={filterCountry} onChange={e => setFilterCountry(e.target.value)} placeholder="e.g., Vietnam" />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Symbol</label>
-                                <input type="text" className="form-input" value={filterSymbol} onChange={e => setFilterSymbol(e.target.value)} placeholder="e.g., BTC, GOLD" />
-                            </div>
-                        </div>
+                      <div className="card" ref={filterContentRef} style={{ padding: '1rem', overflow: 'hidden' }}>
+                          <label className="form-label" style={{ marginBottom: '0.75rem', display: 'block' }}>Filter by Status</label>
+                          <div className="form-checkbox-group">
+                              {Object.keys(statusFilters).map((key) => (
+                                  <label key={key} className="form-checkbox-label">
+                                      <input
+                                          type="checkbox"
+                                          name={key}
+                                          checked={statusFilters[key]}
+                                          onChange={handleFilterChange}
+                                      />
+                                      {/* Viết hoa chữ cái đầu */}
+                                      <span>{key.charAt(0).toUpperCase() + key.slice(1)}</span>
+                                  </label>
+                              ))}
+                          </div>
+                      </div>
                     </div>
 
                     {filteredMatches.map(match => (
@@ -2188,17 +2226,17 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                                 </div>
                             </div>
                             <button
-                                className="btn btn-primary"
+                                className={`btn ${match.status === 'done' ? 'btn-secondary' : 'btn-primary'}`}
                                 style={{ width: '100%', marginTop: '1rem' }}
                                 onClick={() => {
-                                    if (match.status === "waiting") {
+                                    if (match.status === 'waiting') {
                                         handleJoinChallenge(match);
                                     } else {
                                         navigate(`/match/${match.id}`);
                                     }
                                 }}
                             >
-                                {match.status === "waiting" ? "Join Challenge" : "View Live Match"}
+                                {match.status === 'waiting' ? 'Join Challenge' : 'View Match'}
                             </button>
                         </div>
                     ))}
