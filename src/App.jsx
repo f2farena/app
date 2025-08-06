@@ -2536,6 +2536,8 @@ const AppContent = () => {
         totalWithdrawals: '0.00 USDT',
     });
 
+  const wsRef = useRef(null);
+
   useEffect(() => {
       if (!user || !user.telegram_id) {
           console.log("Waiting for user data to establish WebSocket connection.");
@@ -2543,7 +2545,8 @@ const AppContent = () => {
       }
 
       const wsUrl = `wss://f2farena.com/ws/${user.telegram_id}`; // Thay thế bằng URL WebSocket thật của bạn
-      let ws = null;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws; 
       let reconnectInterval = null;
 
       const connectWebSocket = () => {
@@ -2600,6 +2603,9 @@ const AppContent = () => {
 
       return () => {
           console.log('Cleaning up WebSocket connection...');
+          if (wsRef.current) {
+              wsRef.current.close();
+          }
           if (ws) {
               ws.close();
           }
@@ -2744,7 +2750,7 @@ useEffect(() => {
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/wallet" element={<WalletPage user={user} onUserUpdate={handleUserUpdate} />} />
           <Route path="/chatbot" element={<ChatbotPage />} />
-          <Route path="/match/:id" element={<MatchDetail user={user} />} />
+          <Route path="/match/:id" element={<MatchDetail user={user} ws={wsRef.current} />} />
           <Route path="/" element={<HomePage />} />
           <Route path="*" element={
             <div className="page-padding">

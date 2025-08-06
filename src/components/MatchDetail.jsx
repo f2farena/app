@@ -14,7 +14,7 @@ const initialBets = [
   { id: 2, user: 'RiskTaker', amount: 30, player: 'TradeMaster', timestamp: '2025-06-11T14:02:30Z' },
 ];
 
-const MatchDetail = ({ user }) => {
+const MatchDetail = ({ user, ws }) => {
     const { id } = useParams();
     const navigate = useNavigate();
 
@@ -37,6 +37,18 @@ const MatchDetail = ({ user }) => {
     const [oddsTrend, setOddsTrend] = useState({ player1: 'up', player2: 'down' });
     const [commentInput, setCommentInput] = useState('');
     const [activeTab, setActiveTab] = useState('matching');
+
+    useEffect(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            console.log(`Joining match room for match ID: ${id}`);
+            ws.send(JSON.stringify({
+                action: "join",
+                match_id: parseInt(id)
+            }));
+        } else {
+            console.log("WebSocket is not ready, will try to join room on next open.");
+        }
+    }, [ws, id]);
 
     useEffect(() => {
         const handleMatchUpdate = (event) => {
