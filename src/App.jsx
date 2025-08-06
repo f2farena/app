@@ -1960,38 +1960,32 @@ const ArenaPage = ({ user, onUserUpdate }) => {
       if (!selectedMatch || !user) return;
 
       try {
-          const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  player2_id: user.telegram_id,
-                  status: "pending_confirmation",
-                  player2_username: user.username || user.telegram_id.toString(),
-                  bet_amount: selectedMatch.betAmount
-              })
-          });
+        const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            player2_id: user.telegram_id,
+            // Bỏ hoàn toàn trường status ở đây
+            player2_username: user.username || user.telegram_id.toString(),
+            bet_amount: selectedMatch.betAmount
+          })
+        });
 
-          if (!response.ok) {
-              const errorData = await response.json();
-              console.error('Update match (join) failed:', response.status, errorData.detail);
-              alert('Tham gia thất bại: ' + (errorData.detail || 'Lỗi không xác định.'));
-              return;
-          }
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Failed to join match.');
+        }
 
-          const data = await response.json();
-          console.log('Update match success:', data);
-          alert("Yêu cầu tham gia của bạn đã được gửi đến người tạo ván. Vui lòng chờ xác nhận!");
+        // Thay đổi alert để phản ánh đúng luồng mới
+        alert("Yêu cầu tham gia đã được gửi. Vui lòng chờ người tạo trận xác nhận!");
 
-          fetchAllMatches(true); // Gọi hàm mới để fetch lại toàn bộ danh sách
-          setShowJoinConfirm(false);
-          setSelectedMatch(null);
-
+        fetchAllMatches(); // Cập nhật lại danh sách trận đấu
       } catch (error) {
-          console.error('Error updating match (join):', error);
-          alert('Lỗi khi gửi yêu cầu tham gia trận đấu. Vui lòng thử lại.');
+        console.error('Error updating match (join):', error);
+        alert(`Lỗi khi tham gia trận đấu: ${error.message}`);
       } finally {
-          setShowJoinConfirm(false);
-          setSelectedMatch(null);
+        setShowJoinConfirm(false);
+        setSelectedMatch(null);
       }
     };
 

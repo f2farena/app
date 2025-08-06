@@ -114,6 +114,10 @@ const MatchDetail = ({ user }) => {
             console.log('[MatchDetail] Received relevant WebSocket message:', message);
 
             switch (message.type) {
+                case "MATCH_CONFIRMED":
+                alert(message.message);
+                fetchMatchDetail(); 
+                break;
                 case "LOGIN_SUCCESS":
                     alert(message.message);
                     setMatchData(prevData => {
