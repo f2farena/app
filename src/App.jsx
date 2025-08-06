@@ -1889,6 +1889,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     const [showJoinMatchConditionModal, setShowJoinMatchConditionModal] = useState(false);
 
     const [allActiveMatches, setAllActiveMatches] = useState([]);
+    
     const fetchAllMatches = async () => {
       try {
           const response = await fetch('https://f2farena.com/api/matches/active');
@@ -2046,6 +2047,23 @@ const ArenaPage = ({ user, onUserUpdate }) => {
         fetchTournaments();
         fetchAllMatches();
         fetchBrokersForArena();
+    }, []);
+
+    useEffect(() => {
+        const handleMatchStateChange = (event) => {
+            const message = event.detail;
+            if (message.type === 'MATCH_STATE_CHANGE') {
+                console.log(`[ArenaPage] Detected match state change for match ${message.data.match_id}. Refetching matches...`);
+                // Khi có trận đấu thay đổi trạng thái, gọi lại hàm fetch để cập nhật danh sách
+                fetchAllMatches();
+            }
+        };
+
+        window.addEventListener('websocket-message', handleMatchStateChange);
+
+        return () => {
+            window.removeEventListener('websocket-message', handleMatchStateChange);
+        };
     }, []);
 
     // Logic để gộp và lọc danh sách trận đấu
@@ -2673,6 +2691,26 @@ useEffect(() => {
       setActivePage(path.replace('/', '') || 'home');
     }
   }, [location]);
+
+  useEffect(() => {
+    const handleGlobalWebSocketMessage = (event) => {
+        const message = event.detail; // Dữ liệu được gửi từ WebSocketProvider
+        
+        // Xử lý tự động chuyển hướng cho người chơi
+        if (message.type === "REDIRECT_TO_MATCH") {
+            console.log(`[AppContent] Received redirect request for match ${message.match_id}`);
+            // User object đã có sẵn trong AppContent, không cần kiểm tra lại
+            // Backend đã đảm bảo chỉ gửi tin nhắn này cho người chơi liên quan
+            navigate(`/match/${message.match_id}`);
+        }
+    };
+
+    window.addEventListener('websocket-message', handleGlobalWebSocketMessage);
+
+    return () => {
+        window.removeEventListener('websocket-message', handleGlobalWebSocketMessage);
+    };
+  }, [navigate, user]);
 
   return (
     <WebSocketProvider user={user}>
