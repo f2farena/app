@@ -31,9 +31,9 @@ const MatchDetail = ({ user }) => {
     // Thay đổi useState để khởi tạo giá trị ban đầu tránh lỗi
     const [matchData, setMatchData] = useState(null);
     const [timeRemaining, setTimeRemaining] = useState("00:00:00");
-    const [trades, setTrades] = useState(initialTrades);
-    const [comments, setComments] = useState(initialComments);
-    const [bets, setBets] = useState(initialBets);
+    const [trades, setTrades] = useState([]);
+    const [comments, setComments] = useState([]);
+    const [bets, setBets] = useState([]); 
     const [oddsTrend, setOddsTrend] = useState({ player1: 'up', player2: 'down' });
     const [commentInput, setCommentInput] = useState('');
     const [activeTab, setActiveTab] = useState('matching');
