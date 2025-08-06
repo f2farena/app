@@ -2545,13 +2545,13 @@ const AppContent = () => {
       }
 
       const wsUrl = `wss://f2farena.com/ws/${user.telegram_id}`; // Thay thế bằng URL WebSocket thật của bạn
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws; 
+      let ws = null;
       let reconnectInterval = null;
 
       const connectWebSocket = () => {
           console.log(`Attempting to connect WebSocket to ${wsUrl}`);
           ws = new WebSocket(wsUrl);
+          wsRef.current = ws;
 
           ws.onopen = () => {
               console.log('WebSocket connected successfully.');
@@ -2574,8 +2574,6 @@ const AppContent = () => {
 
                 // Logic mới cho tin nhắn dạng JSON
                 const message = JSON.parse(event.data);
-                // Bạn có thể tạo một Event Bus hoặc dùng Context API để truyền dữ liệu xuống MatchDetail
-                // Hoặc đơn giản là tạo một custom event để component con lắng nghe
                 const matchUpdateEvent = new CustomEvent('match-update', { detail: message });
                 window.dispatchEvent(matchUpdateEvent);
 
@@ -2601,18 +2599,16 @@ const AppContent = () => {
 
       connectWebSocket();
 
-      return () => {
-          console.log('Cleaning up WebSocket connection...');
-          if (wsRef.current) {
-              wsRef.current.close();
-          }
-          if (ws) {
-              ws.close();
-          }
-          if (reconnectInterval) {
-              clearInterval(reconnectInterval);
-          }
-      };
+       return () => {
+        console.log('Cleaning up WebSocket connection...');
+        if (reconnectInterval) {
+            clearInterval(reconnectInterval);
+        }
+        if (wsRef.current) {
+            wsRef.current.onclose = null; 
+            wsRef.current.close();
+        }
+    };
   }, [user, navigate]);
 
   const fetchAndSetUser = async () => {
