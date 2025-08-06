@@ -22,6 +22,8 @@ export const WebSocketProvider = ({ user, children }) => {
         ws.onopen = () => {
             console.log('[WebSocketProvider] Connected successfully.');
             setIsConnected(true);
+            // Bắn một sự kiện báo hiệu kết nối đã thực sự mở
+            window.dispatchEvent(new Event('websocket-open'));
         };
 
         ws.onmessage = (event) => {

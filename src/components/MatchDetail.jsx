@@ -40,14 +40,26 @@ const MatchDetail = ({ user }) => {
     const [activeTab, setActiveTab] = useState('matching');
  
     useEffect(() => {
-        // Chỉ gửi yêu cầu join KHI websocket đã kết nối
-        if (isConnected) {
-            console.log(`[MatchDetail] WebSocket is connected. Sending join request for match ${id}.`);
+        const handleWebSocketOpen = () => {
+            console.log(`[MatchDetail] WebSocket is confirmed open. Sending join request for match ${id}.`);
             sendMessage({
                 action: "join",
                 match_id: parseInt(id)
             });
+        };
+
+        // Nếu đã kết nối sẵn, gửi ngay lập tức
+        if (isConnected) {
+            handleWebSocketOpen();
         }
+
+        // Luôn lắng nghe sự kiện 'websocket-open' để xử lý các lần kết nối lại
+        window.addEventListener('websocket-open', handleWebSocketOpen);
+
+        // Dọn dẹp listener khi component unmount
+        return () => {
+            window.removeEventListener('websocket-open', handleWebSocketOpen);
+        };
     }, [id, isConnected, sendMessage]);
 
     useEffect(() => {
