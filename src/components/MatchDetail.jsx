@@ -74,10 +74,24 @@ const MatchDetail = ({ user }) => {
             console.log('[MatchDetail] Received relevant WebSocket message:', message);
 
             switch (message.type) {
+                case "LOGIN_SUCCESS":
+                    alert(message.message);
+                    setMatchData(prevData => {
+                        if (!prevData) return null;
+                        const isPlayer1 = prevData.player1.id === user?.telegram_id;
+                        if (isPlayer1) {
+                            return { ...prevData, player1: { ...prevData.player1, ready: true } };
+                        } else {
+                            return { ...prevData, player2: { ...prevData.player2, ready: true } };
+                        }
+                    });
+                    break;
+                case "MATCH_STARTED":
+                    alert("Match started! Good luck!");
+                    fetchMatchDetail();
+                    break;
                 case "NEW_TRADE":
-                    // Cập nhật danh sách trade
                     setTrades(prevTrades => {
-                        // Dùng matchData từ state để lấy tên người chơi, đảm bảo an toàn
                         const playerName = matchData
                             ? (message.data.player_id === matchData.player1.id ? matchData.player1.name : matchData.player2.name)
                             : 'Unknown Player';
@@ -380,8 +394,49 @@ const MatchDetail = ({ user }) => {
     const player2Width = 100 - player1Width;
     const totalOutsideBets = bets.reduce((sum, bet) => sum + parseFloat(bet.amount), 0);
 
+    const MatchStatusBanner = ({ matchData, user }) => {
+        if (matchData.status !== 'pending_confirmation') {
+            return null; // Chỉ hiển thị khi đang chờ xác nhận
+        }
+
+        const isPlayer1 = user?.telegram_id === matchData.player1.id;
+        const isPlayer2 = user?.telegram_id === matchData.player2.id;
+        const isParticipant = isPlayer1 || isPlayer2;
+        
+        // Kiểm tra trạng thái sẵn sàng từ dữ liệu (cần API trả về)
+        const player1Ready = matchData.player1.ready || false;
+        const player2Ready = matchData.player2.ready || false;
+
+        let message = "Players are preparing to start the match...";
+
+        if (isParticipant) {
+            const myReadyStatus = isPlayer1 ? player1Ready : player2Ready;
+            if (myReadyStatus) {
+                message = "✅ You are ready! Waiting for the opponent.";
+            } else {
+                message = "🚨 Please log in to your trading account to start the match!";
+            }
+        } else {
+            // Tin nhắn cho người xem
+            message = `Waiting for ${matchData.player1.name} ${player1Ready ? '✅' : '...'} and ${matchData.player2.name} ${player2Ready ? '✅' : '...'} to log in.`;
+        }
+
+        return (
+            <div className="card" style={{ 
+                margin: '1rem', 
+                padding: '1rem', 
+                textAlign: 'center', 
+                backgroundColor: 'var(--color-primary-dark)', 
+                border: '1px solid var(--color-accent)' 
+            }}>
+                <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>{message}</p>
+            </div>
+        );
+    };
+
     return (
         <div className="match-detail-container">
+            <MatchStatusBanner matchData={matchData} user={user} />
             <div className="match-detail-header">
                 <button className="icon-button back-button" onClick={() => navigate('/home')}>&lt;</button>
                 <div className="player-info">
