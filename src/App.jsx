@@ -1899,7 +1899,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
       const betWallet = parseFloat(currentUserData?.bet_wallet || 0);
       const hasEmail = currentUserData?.email && currentUserData.email.trim() !== '';
       const linkedBrokers = currentUserData?.linkedBrokers || [];
-      const hasBrokerAccount = linkedBrokers.includes(match.broker_id);
+      const hasBrokerAccount = linkedBrokers.includes(Number(match.broker_id));
       const isPlayer1 = currentUserData.telegram_id === match.player1.id;
 
       if (isPlayer1) {
