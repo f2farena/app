@@ -603,12 +603,12 @@ const MatchDetail = ({ user }) => {
                         >
                             Discussion
                         </button>
-                        <button
+                        {/* <button
                             className={`tab-button ${activeTab === 'bet-outside' ? 'active' : ''}`}
                             onClick={() => setActiveTab('bet-outside')}
                         >
                             Bet Outside
-                        </button>
+                        </button> */}
                     </div>
 
                     {activeTab === 'matching' && (
@@ -683,7 +683,7 @@ const MatchDetail = ({ user }) => {
                         </div>
                     )}
                     
-                    {activeTab === 'bet-outside' && (
+                    {/* {activeTab === 'bet-outside' && (
                         <div className="bet-outside-container">
                             <div className="bet-outside-buttons">
                                 <button className="bet-outside-button-green">
@@ -721,7 +721,7 @@ const MatchDetail = ({ user }) => {
                                 ))}
                             </div>
                         </div>
-                    )}
+                    )} */}
                 </>
             )}
 
