@@ -121,6 +121,48 @@ const MatchResultDisplay = ({ matchData, user }) => {
     );
 };
 
+const LoginConfirmationModal = ({ matchData, user }) => {
+    // Lấy trạng thái sẵn sàng của từng người chơi
+    const player1Ready = matchData.player1.ready;
+    const player2Ready = matchData.player2.ready;
+
+    // Component nhỏ để hiển thị trạng thái
+    const StatusIndicator = ({ isReady }) => (
+        <div className={`status-indicator ${isReady ? 'ready' : 'waiting'}`}>
+            {isReady ? '✅ Ready' : 'Waiting...'}
+        </div>
+    );
+
+    return (
+        <div className="login-modal-overlay">
+            <div className="login-modal-content card">
+                <h3 className="login-modal-title">Awaiting Players</h3>
+                <p className="login-modal-instructions">
+                    Please log in to your trading account. The match will begin automatically once both players are ready.
+                </p>
+                <div className="player-status-list">
+                    {/* Hàng cho Player 1 */}
+                    <div className="player-status-row">
+                        <div className="player-info-modal">
+                            <img src={matchData.player1.avatar} alt={matchData.player1.name} className="player-avatar-modal" />
+                            <span>{matchData.player1.name}</span>
+                        </div>
+                        <StatusIndicator isReady={player1Ready} />
+                    </div>
+                    {/* Hàng cho Player 2 */}
+                    <div className="player-status-row">
+                        <div className="player-info-modal">
+                            <img src={matchData.player2.avatar} alt={matchData.player2.name} className="player-avatar-modal" />
+                            <span>{matchData.player2.name}</span>
+                        </div>
+                        <StatusIndicator isReady={player2Ready} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const MatchDetail = ({ user }) => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -525,6 +567,7 @@ const MatchDetail = ({ user }) => {
 
     return (
         <div className="match-detail-container">
+            {matchData.status === 'pending_confirmation' && <LoginConfirmationModal matchData={matchData} user={user} />}
             {/* ================================================================= */}
             {/* PHẦN 1: HEADER CHUNG - LUÔN HIỂN THỊ */}
             {/* ================================================================= */}
