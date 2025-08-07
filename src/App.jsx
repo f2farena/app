@@ -1885,6 +1885,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     const [liveMatches, setLiveMatches] = useState([]);
     const [showJoinMatchConditionModal, setShowJoinMatchConditionModal] = useState(false);
 
+    const [allMatches, setAllMatches] = useState([]);
     const [statusFilters, setStatusFilters] = useState({
         live: true,
         waiting: true,

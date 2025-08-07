@@ -1073,3 +1073,148 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
   cursor: pointer;
   font-size: 0.8rem;
 }
+
+/* =================================================== */
+/* === Match Detail: Winner Showcase                 === */
+/* =================================================== */
+
+.winner-showcase {
+    position: relative;
+    padding: 2.5rem 1.5rem;
+    margin-top: 1rem;
+    background-image: linear-gradient(to bottom, #1d329d, #0a175d); /* Dark blue gradient */
+    border-radius: 1rem;
+    text-align: center;
+    overflow: hidden; /* Quan trọng để pseudo-element không tràn ra ngoài */
+    border: 2px solid transparent; /* Border dự phòng */
+}
+
+/* Glowing Effect Animation */
+@keyframes pulsing-glow {
+    0% {
+        box-shadow: 0 0 10px 0px rgba(255, 215, 0, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 25px 8px rgba(255, 215, 0, 0.7); /* Glow effect brightens and expands */
+    }
+    100% {
+        box-shadow: 0 0 10px 0px rgba(255, 215, 0, 0.4);
+    }
+}
+
+/* Update .winner-showcase to use the new animation */
+.winner-showcase {
+    position: relative;
+    padding: 2.5rem 1.5rem;
+    margin-top: 1rem;
+    background-image: linear-gradient(to bottom, #1d329d, #0a175d);
+    border-radius: 1rem;
+    text-align: center;
+    overflow: hidden;
+    /* Apply the new glowing effect */
+    border: 2px solid var(--color-accent);
+    animation: pulsing-glow 2.5s ease-in-out infinite;
+}
+
+.winner-stars {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.winner-star-icon {
+    width: 2rem;
+    height: 2rem;
+    color: var(--color-accent);
+    filter: drop-shadow(0 0 5px var(--color-accent));
+    animation: star-pulse 2s ease-in-out infinite;
+}
+
+@keyframes star-pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+}
+
+.winner-showcase-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 4px solid var(--color-accent);
+    margin-bottom: 1rem;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); /* Tỏa sáng màu vàng */
+}
+
+.winner-showcase-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin: 0;
+}
+
+.winner-showcase-name {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--color-text);
+    margin: 0.5rem 0 1.5rem 0;
+}
+
+.winner-final-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    background-color: rgba(0,0,0,0.2);
+    padding: 1rem;
+    border-radius: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.winner-stat-item span {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--color-secondary-text);
+    margin-bottom: 0.25rem;
+}
+
+.winner-stat-item p {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-accent);
+}
+
+.congrats-message {
+    font-size: 0.9rem;
+    color: var(--color-secondary-text);
+    margin: 1rem 0 0 0;
+}
+
+/* CSS cho phần kết quả hòa (đã có từ trước nhưng đảm bảo) */
+.match-result-card {
+    padding: 1rem;
+}
+
+.result-title {
+    text-align: center;
+    color: var(--color-primary);
+    margin-bottom: 1.5rem;
+}
+
+.result-draw {
+    text-align: center;
+}
+
+.result-status-text {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--color-accent);
+}

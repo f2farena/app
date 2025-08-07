@@ -59,48 +59,63 @@ const MatchResultDisplay = ({ matchData, user }) => {
     const { result } = matchData;
     if (!result) return null; // An toàn nếu không có dữ liệu kết quả
 
-    const isPlayer1 = user?.telegram_id === matchData.player1.id;
-    const isWinner = user?.telegram_id === result.winner_id;
     const isDraw = result.winner_id === 'draw';
 
-    // Xác định ai là người thắng, ai là người thua
-    const winner = result.winner_id === matchData.player1.id ? matchData.player1 : matchData.player2;
-    const loser = result.winner_id === matchData.player1.id ? matchData.player2 : matchData.player1;
-
-    return (
-        <div className="card match-result-card">
-            <h3 className="result-title">Match Result</h3>
-            
-            {isDraw ? (
+    // Trường hợp HÒA
+    if (isDraw) {
+        return (
+            <div className="card match-result-card" style={{ textAlign: 'center', margin: '1rem' }}>
+                <h3 className="result-title">Match Result</h3>
                 <div className="result-draw">
                     <p className="result-status-text">DRAW</p>
                     <p>Both players had the same score. The bet amount has been refunded.</p>
                 </div>
-            ) : (
-                <div className="result-winner">
-                    <img src={winner.avatar} alt={winner.name} className="winner-avatar" />
-                    <p className="winner-label">Winner</p>
-                    <h4 className="winner-name">{winner.name}</h4>
-                    {user?.telegram_id === result.winner_id && (
-                         <p className="winnings-text">You Won: {result.winning_amount.toFixed(2)} USDT</p>
-                    )}
+            </div>
+        );
+    }
+
+    // Trường hợp có người thắng cuộc
+    const winner = result.winner_id === matchData.player1.id ? matchData.player1 : matchData.player2;
+    const isCurrentUserWinner = user?.telegram_id === result.winner_id;
+
+    // Component Icon ngôi sao
+    const StarIcon = (props) => (
+        <svg className="winner-star-icon" viewBox="0 0 24 24" fill="currentColor" {...props}>
+            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+        </svg>
+    );
+
+    return (
+        <div className="page-padding">
+            <div className="winner-showcase">
+                {/* Các ngôi sao trang trí */}
+                <div className="winner-stars">
+                    <StarIcon style={{ animationDelay: '0.2s' }} />
+                    <StarIcon style={{ transform: 'scale(1.3)', animationDelay: '0s' }} />
+                    <StarIcon style={{ animationDelay: '0.4s' }}/>
                 </div>
-            )}
-            
-            <div className="result-scores">
-                <div className="result-player-score">
-                    <p>{matchData.player1.name}</p>
-                    <p className={`score-value ${result.winner_id === matchData.player1.id ? 'win' : (isDraw ? '' : 'loss')}`}>
-                        {matchData.player1.score}
-                    </p>
+                
+                {/* Thông tin người chiến thắng */}
+                <img src={winner.avatar} alt={winner.name} className="winner-showcase-avatar" />
+                <h2 className="winner-showcase-label">VICTORIOUS</h2>
+                <h3 className="winner-showcase-name">{winner.name}</h3>
+                
+                {/* Các chỉ số cuối cùng */}
+                <div className="winner-final-stats">
+                    <div className="winner-stat-item">
+                        <span>Final Score</span>
+                        <p>{winner.score.toFixed(2)}</p>
+                    </div>
+                    <div className="winner-stat-item">
+                        <span>Winnings</span>
+                        <p>{result.winning_amount.toFixed(2)} USDT</p>
+                    </div>
                 </div>
-                <div className="result-vs">VS</div>
-                <div className="result-player-score">
-                    <p>{matchData.player2.name}</p>
-                    <p className={`score-value ${result.winner_id === matchData.player2.id ? 'win' : (isDraw ? '' : 'loss')}`}>
-                        {matchData.player2.score}
-                    </p>
-                </div>
+
+                {/* Tin nhắn chúc mừng nếu người dùng hiện tại thắng */}
+                {isCurrentUserWinner && (
+                    <p className="congrats-message">Congratulations! The winnings have been added to your wallet.</p>
+                )}
             </div>
         </div>
     );
@@ -308,6 +323,25 @@ const MatchDetail = ({ user }) => {
 
         return () => clearInterval(interval);
     }, [matchData]); // Dependency chỉ vào matchData để khởi động lại timer khi dữ liệu mới được fetch
+
+    // useEffect để fetch lịch sử bình luận khi có matchData
+    useEffect(() => {
+        const fetchComments = async () => {
+            if (!matchData) return;
+            try {
+                const response = await fetch(`https://f2farena.com/api/matches/${id}/comments`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch comments');
+                }
+                const data = await response.json();
+                setComments(data); // Cập nhật state với lịch sử bình luận
+            } catch (error) {
+                console.error("Error fetching comments history:", error);
+            }
+        };
+
+        fetchComments();
+    }, [id, matchData]); 
 
     // CÁC useEffect KHÁC
     const ResultModal = ({ result, onClose }) => {
