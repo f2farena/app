@@ -15,42 +15,44 @@ const initialBets = [
   { id: 2, user: 'RiskTaker', amount: 30, player: 'TradeMaster', timestamp: '2025-06-11T14:02:30Z' },
 ];
 
-const MatchStatusBanner = ({ matchData, user }) => {
-    if (matchData.status !== 'pending_confirmation') {
-        return null; // Chỉ hiển thị khi đang chờ xác nhận
-    }
+const LoginConfirmationModal = ({ matchData, user }) => {
+    // Lấy trạng thái sẵn sàng của từng người chơi
+    const player1Ready = matchData.player1.ready;
+    const player2Ready = matchData.player2.ready;
 
-    const isPlayer1 = user?.telegram_id === matchData.player1.id;
-    const isPlayer2 = user?.telegram_id === matchData.player2.id;
-    const isParticipant = isPlayer1 || isPlayer2;
-    
-    // Kiểm tra trạng thái sẵn sàng từ dữ liệu (cần API trả về)
-    const player1Ready = matchData.player1.ready || false;
-    const player2Ready = matchData.player2.ready || false;
-
-    let message = "Players are preparing to start the match...";
-
-    if (isParticipant) {
-        const myReadyStatus = isPlayer1 ? player1Ready : player2Ready;
-        if (myReadyStatus) {
-            message = "✅ You are ready! Waiting for the opponent.";
-        } else {
-            message = "🚨 Please log in to your trading account to start the match!";
-        }
-    } else {
-        // Tin nhắn cho người xem
-        message = `Waiting for ${matchData.player1.name} ${player1Ready ? '✅' : '...'} and ${matchData.player2.name} ${player2Ready ? '✅' : '...'} to log in.`;
-    }
+    // Component nhỏ để hiển thị trạng thái
+    const StatusIndicator = ({ isReady }) => (
+        <div className={`status-indicator ${isReady ? 'ready' : 'waiting'}`}>
+            {isReady ? '✅ Ready' : 'Waiting...'}
+        </div>
+    );
 
     return (
-        <div className="card" style={{ 
-            margin: '1rem', 
-            padding: '1rem', 
-            textAlign: 'center', 
-            backgroundColor: 'var(--color-primary-dark)', 
-            border: '1px solid var(--color-accent)' 
-        }}>
-            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>{message}</p>
+        <div className="login-modal-overlay">
+            <div className="login-modal-content card">
+                <h3 className="login-modal-title">Awaiting Players</h3>
+                <p className="login-modal-instructions">
+                    Please log in to your trading account. The match will begin automatically once both players are ready.
+                </p>
+                <div className="player-status-list">
+                    {/* Hàng cho Player 1 */}
+                    <div className="player-status-row">
+                        <div className="player-info-modal">
+                            <img src={matchData.player1.avatar} alt={matchData.player1.name} className="player-avatar-modal" />
+                            <span>{matchData.player1.name}</span>
+                        </div>
+                        <StatusIndicator isReady={player1Ready} />
+                    </div>
+                    {/* Hàng cho Player 2 */}
+                    <div className="player-status-row">
+                        <div className="player-info-modal">
+                            <img src={matchData.player2.avatar} alt={matchData.player2.name} className="player-avatar-modal" />
+                            <span>{matchData.player2.name}</span>
+                        </div>
+                        <StatusIndicator isReady={player2Ready} />
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
@@ -121,48 +123,6 @@ const MatchResultDisplay = ({ matchData, user }) => {
     );
 };
 
-const LoginConfirmationModal = ({ matchData, user }) => {
-    // Lấy trạng thái sẵn sàng của từng người chơi
-    const player1Ready = matchData.player1.ready;
-    const player2Ready = matchData.player2.ready;
-
-    // Component nhỏ để hiển thị trạng thái
-    const StatusIndicator = ({ isReady }) => (
-        <div className={`status-indicator ${isReady ? 'ready' : 'waiting'}`}>
-            {isReady ? '✅ Ready' : 'Waiting...'}
-        </div>
-    );
-
-    return (
-        <div className="login-modal-overlay">
-            <div className="login-modal-content card">
-                <h3 className="login-modal-title">Awaiting Players</h3>
-                <p className="login-modal-instructions">
-                    Please log in to your trading account. The match will begin automatically once both players are ready.
-                </p>
-                <div className="player-status-list">
-                    {/* Hàng cho Player 1 */}
-                    <div className="player-status-row">
-                        <div className="player-info-modal">
-                            <img src={matchData.player1.avatar} alt={matchData.player1.name} className="player-avatar-modal" />
-                            <span>{matchData.player1.name}</span>
-                        </div>
-                        <StatusIndicator isReady={player1Ready} />
-                    </div>
-                    {/* Hàng cho Player 2 */}
-                    <div className="player-status-row">
-                        <div className="player-info-modal">
-                            <img src={matchData.player2.avatar} alt={matchData.player2.name} className="player-avatar-modal" />
-                            <span>{matchData.player2.name}</span>
-                        </div>
-                        <StatusIndicator isReady={player2Ready} />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
 const MatchDetail = ({ user }) => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -222,24 +182,18 @@ const MatchDetail = ({ user }) => {
             console.log('[MatchDetail] Received relevant WebSocket message:', message);
 
             switch (message.type) {
-                case "MATCH_CONFIRMED":
-                alert(message.message);
-                fetchMatchDetail(); 
-                break;
-                case "LOGIN_SUCCESS":
-                    alert(message.message);
-                    setMatchData(prevData => {
-                        if (!prevData) return null;
-                        const isPlayer1 = prevData.player1.id === user?.telegram_id;
-                        if (isPlayer1) {
-                            return { ...prevData, player1: { ...prevData.player1, ready: true } };
-                        } else {
-                            return { ...prevData, player2: { ...prevData.player2, ready: true } };
-                        }
-                    });
-                    break;
+                case "PLAYER_READY_UPDATE":
+                    // Đây là sự kiện mới từ backend, chứa trạng thái ready của cả 2 người chơi
+                    setMatchData(prevData => {
+                        if (!prevData) return null; // An toàn nếu prevData chưa có
+                        return {
+                            ...prevData,
+                            player1: { ...prevData.player1, ready: message.data.player1_ready },
+                            player2: { ...prevData.player2, ready: message.data.player2_ready },
+                        };
+                    });
+                    break;
                 case "MATCH_STARTED":
-                    alert("Match started! Good luck!");
                     fetchMatchDetail();
                     break;
                 case "NEW_TRADE":
@@ -567,7 +521,6 @@ const MatchDetail = ({ user }) => {
 
     return (
         <div className="match-detail-container">
-            {matchData.status === 'pending_confirmation' && <LoginConfirmationModal matchData={matchData} user={user} />}
             {/* ================================================================= */}
             {/* PHẦN 1: HEADER CHUNG - LUÔN HIỂN THỊ */}
             {/* ================================================================= */}
@@ -631,7 +584,7 @@ const MatchDetail = ({ user }) => {
             ) : (
                 // Ngược lại (live, pending_confirmation), hiển thị giao diện thi đấu
                 <>
-                    <MatchStatusBanner matchData={matchData} user={user} />
+                    {matchData && matchData.status === 'pending_confirmation' && <LoginConfirmationModal matchData={matchData} user={user} />}
                     
                     <div className="tab-buttons">
                         <button
