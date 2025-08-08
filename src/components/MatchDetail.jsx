@@ -263,59 +263,63 @@ const MatchDetail = ({ user }) => {
         };
     }, [id, isConnected, sendMessage]);
 
-    // useEffect để xác định vai trò của user và khởi tạo media
+    // useEffect để xác định vai trò của user
     useEffect(() => {
         if (user && matchData?.player1 && matchData?.player2) {
             const isUserPlayer = user.telegram_id === matchData.player1.id || user.telegram_id === matchData.player2.id;
             setIsPlayer(isUserPlayer);
-
-            // Chỉ khởi tạo media nếu là người chơi và trận đấu đang diễn ra
-            if (isUserPlayer && (matchData.status === 'live' || matchData.status === 'pending_confirmation')) {
-                const startMedia = async () => {
-                    setDebugMessage('Bắt đầu yêu cầu camera...');
-                    try {
-                        // 1. Kiểm tra môi trường HTTPS (quan trọng nhất)
-                        if (window.location.protocol !== 'https:') {
-                            setDebugMessage('LỖI: Cần HTTPS để dùng camera!');
-                            alert('Lỗi: Tính năng video yêu cầu kết nối HTTPS an toàn.');
-                            return;
-                        }
-
-                        // 2. Yêu cầu quyền truy cập media
-                        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                        setDebugMessage('Đã lấy được stream từ camera.');
-                        setLocalStream(stream);
-                        
-                        // 3. Thiết lập kết nối P2P
-                        setDebugMessage('Đang thiết lập kết nối Peer...');
-                        const opponent = user.telegram_id === matchData.player1.id ? matchData.player2 : matchData.player1;
-                        setupPeerConnection(stream, opponent);
-                        setDebugMessage('Thiết lập Peer thành công.');
-
-                        // 4. Tạo offer để bắt đầu phiên gọi
-                        if (user.telegram_id < opponent.id) {
-                             setDebugMessage('Đang tạo offer...');
-                             await createOffer(opponent);
-                             setDebugMessage('Đã gửi offer.');
-                        }
-                    } catch (error) {
-                        // 5. Bắt và hiển thị lỗi cụ thể
-                        console.error("Error accessing media devices.", error);
-                        setDebugMessage(`LỖI: ${error.name} - ${error.message}`);
-                    }
-                };
-                startMedia();
-            }
         }
-        // Dọn dẹp khi thoát
+    }, [user, matchData]);
+
+    // useEffect để khởi tạo media và WebRTC, tách biệt để tránh re-run không cần thiết
+    useEffect(() => {
+        // Chỉ chạy khi isPlayer là true và chưa có localStream
+        if (isPlayer && !localStream && (matchData?.status === 'live' || matchData?.status === 'pending_confirmation')) {
+            const startMedia = async () => {
+                setDebugMessage('Player detected. Bắt đầu yêu cầu camera...');
+                try {
+                    // Yêu cầu quyền truy cập media
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    setDebugMessage('Đã lấy được stream. Bắt đầu thiết lập kết nối...');
+                    setLocalStream(stream);
+
+                    // Lấy thông tin đối thủ MỘT LẦN DUY NHẤT
+                    const opponent = user.telegram_id === matchData.player1.id ? matchData.player2 : matchData.player1;
+                    if (!opponent || !opponent.id) {
+                        setDebugMessage('LỖI: Không tìm thấy thông tin đối thủ.');
+                        return;
+                    }
+                    
+                    // Thiết lập kết nối P2P
+                    setupPeerConnection(stream, opponent);
+                    setDebugMessage('Thiết lập Peer thành công.');
+
+                    // Người chơi có ID nhỏ hơn sẽ chủ động tạo offer
+                    if (user.telegram_id < opponent.id) {
+                         setDebugMessage('Đang tạo offer...');
+                         await createOffer(opponent);
+                         setDebugMessage('Đã gửi offer.');
+                    }
+                } catch (error) {
+                    console.error("Error accessing media devices.", error);
+                    setDebugMessage(`LỖI: ${error.name} - ${error.message}`);
+                }
+            };
+            startMedia();
+        }
+
+        // Hàm dọn dẹp
         return () => {
-            localStream?.getTracks().forEach(track => track.stop());
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                setLocalStream(null);
+            }
             if (peerConnection.current) {
                 peerConnection.current.close();
                 peerConnection.current = null;
             }
         };
-    }, [user, matchData]);
+    }, [isPlayer, matchData?.status]);
     
     // useEffect xử lý tin nhắn WebSocket
     useEffect(() => {
@@ -396,7 +400,7 @@ const MatchDetail = ({ user }) => {
         return () => {
             window.removeEventListener('websocket-message', handleWebSocketMessage);
         };
-    }, [id, fetchMatchDetail, matchData]); // Thêm matchData để logic NEW_TRADE lấy được tên
+    }, [id, fetchMatchDetail, user]);
 
     // useEffect để fetch dữ liệu lần đầu khi vào trang
     useEffect(() => {
@@ -614,7 +618,7 @@ const MatchDetail = ({ user }) => {
                 </div>
             )}
             {/* --- KẾT THÚC KHUNG DEBUG --- */}
-            
+
             {/* --- BỔ SUNG HIỂN THỊ VIDEO --- */}
             {isPlayer && localStream && (
                 <DraggableWebcam
