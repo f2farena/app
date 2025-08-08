@@ -281,7 +281,10 @@ const MatchDetail = ({ user }) => {
                 const startRtcFlow = async () => {
                     setDebugMessage('Player detected. Bắt đầu yêu cầu camera...');
                     try {
+                        alert('BƯỚC 1: Bắt đầu `startMedia`');
+                        setDebugMessage('Player detected. Bắt đầu yêu cầu camera...');
                         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                        alert('BƯỚC 2: Đã `getUserMedia` thành công, có stream.');
                         setDebugMessage('Đã lấy được stream.');
                         
                         // Cập nhật state để component DraggableWebcam nhận stream và re-render
@@ -289,20 +292,25 @@ const MatchDetail = ({ user }) => {
 
                         const opponent = user.telegram_id === matchData.player1.id ? matchData.player2 : matchData.player1;
                         if (!opponent || !opponent.id) {
+                            alert('LỖI: Không tìm thấy thông tin đối thủ.');
                             setDebugMessage('LỖI: Không tìm thấy thông tin đối thủ.');
                             return;
                         }
                         
-                        setDebugMessage('Đang thiết lập kết nối Peer...');
+                        alert('BƯỚC 3: Sẵn sàng `setupPeerConnection`');
                         setupPeerConnection(stream, opponent);
+                        alert('BƯỚC 4: Đã `setupPeerConnection` xong.');
                         setDebugMessage('Thiết lập Peer thành công.');
 
                         if (user.telegram_id < opponent.id) {
+                             alert('BƯỚC 5: Sẵn sàng `createOffer`');
                              setDebugMessage('Đang tạo offer...');
                              await createOffer(opponent);
+                             alert('BƯỚC 6: Đã `createOffer` xong.');
                              setDebugMessage('Đã gửi offer.');
                         }
                     } catch (error) {
+                        alert(`LỖI Ở BƯỚC CUỐI: ${error.name} - ${error.message}`);
                         console.error("Lỗi khi khởi tạo WebRTC:", error);
                         setDebugMessage(`LỖI: ${error.name} - ${error.message}`);
                     }

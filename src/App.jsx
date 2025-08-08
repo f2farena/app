@@ -2611,6 +2611,39 @@ const AppContent = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
+  // --- BỘ BẮT LỖI TOÀN CỤC ---
+  useEffect(() => {
+    const handleError = (message, source, lineno, colno, error) => {
+      const errorData = {
+        message: message,
+        source: source,
+        lineno: lineno,
+        colno: colno,
+        error: error ? error.stack : 'No stack trace',
+        url: window.location.href // Thêm URL để biết lỗi ở trang nào
+      };
+      
+      const errorString = JSON.stringify(errorData, null, 2);
+
+      // Gửi lỗi về backend
+      navigator.sendBeacon('https://f2farena.com/api/log-client-error', JSON.stringify({ error: errorString }));
+
+      return true;
+    };
+
+    window.onerror = handleError;
+    
+    // Bắt lỗi từ Promise không được xử lý
+    window.addEventListener('unhandledrejection', event => {
+      handleError('Unhandled Promise Rejection', window.location.href, 0, 0, event.reason);
+    });
+
+    return () => {
+      window.onerror = null;
+      window.removeEventListener('unhandledrejection', event => handleError('Unhandled Promise Rejection', window.location.href, 0, 0, event.reason));
+    };
+  }, []);
+
   const [walletData, setWalletData] = useState({
         currentBalance: '0.00 USDT',
         totalDeposits: '0.00 USDT',
