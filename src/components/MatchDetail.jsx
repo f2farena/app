@@ -127,6 +127,7 @@ const MatchDetail = ({ user }) => {
     const [localStream, setLocalStream] = useState(null);
     const [remoteStream, setRemoteStream] = useState(null);
     const peerConnection = useRef(null);
+    const [debugMessage, setDebugMessage] = useState('');
 
     // --- LOGIC WEBRTC ---
     const stunServers = {
@@ -271,18 +272,36 @@ const MatchDetail = ({ user }) => {
             // Chỉ khởi tạo media nếu là người chơi và trận đấu đang diễn ra
             if (isUserPlayer && (matchData.status === 'live' || matchData.status === 'pending_confirmation')) {
                 const startMedia = async () => {
+                    setDebugMessage('Bắt đầu yêu cầu camera...');
                     try {
+                        // 1. Kiểm tra môi trường HTTPS (quan trọng nhất)
+                        if (window.location.protocol !== 'https:') {
+                            setDebugMessage('LỖI: Cần HTTPS để dùng camera!');
+                            alert('Lỗi: Tính năng video yêu cầu kết nối HTTPS an toàn.');
+                            return;
+                        }
+
+                        // 2. Yêu cầu quyền truy cập media
                         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                        setDebugMessage('Đã lấy được stream từ camera.');
                         setLocalStream(stream);
+                        
+                        // 3. Thiết lập kết nối P2P
+                        setDebugMessage('Đang thiết lập kết nối Peer...');
                         const opponent = user.telegram_id === matchData.player1.id ? matchData.player2 : matchData.player1;
                         setupPeerConnection(stream, opponent);
+                        setDebugMessage('Thiết lập Peer thành công.');
 
-                        // Người chơi có ID nhỏ hơn sẽ chủ động tạo offer
+                        // 4. Tạo offer để bắt đầu phiên gọi
                         if (user.telegram_id < opponent.id) {
-                            createOffer(opponent);
+                             setDebugMessage('Đang tạo offer...');
+                             await createOffer(opponent);
+                             setDebugMessage('Đã gửi offer.');
                         }
                     } catch (error) {
+                        // 5. Bắt và hiển thị lỗi cụ thể
                         console.error("Error accessing media devices.", error);
+                        setDebugMessage(`LỖI: ${error.name} - ${error.message}`);
                     }
                 };
                 startMedia();
@@ -576,6 +595,26 @@ const MatchDetail = ({ user }) => {
 
     return (
         <div className="match-detail-container">
+            {/* --- KHUNG DEBUG --- */}
+            {isPlayer && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '60px',
+                    left: '10px',
+                    right: '10px',
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    color: 'white',
+                    padding: '10px',
+                    zIndex: 9999,
+                    borderRadius: '5px',
+                    fontSize: '12px',
+                    fontFamily: 'monospace'
+                }}>
+                    <strong>DEBUG LOG:</strong> {debugMessage}
+                </div>
+            )}
+            {/* --- KẾT THÚC KHUNG DEBUG --- */}
+            
             {/* --- BỔ SUNG HIỂN THỊ VIDEO --- */}
             {isPlayer && localStream && (
                 <DraggableWebcam
