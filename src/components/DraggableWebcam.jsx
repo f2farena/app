@@ -9,43 +9,39 @@ const CamOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" vie
 const CollapseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0-3.75-3.75M17.25 21 21 17.25" /></svg>;
 const ExpandIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{transform: 'rotate(180deg)'}}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0-3.75-3.75M17.25 21 21 17.25" /></svg>;
 
-
-const DraggableWebcam = () => {
+const DraggableWebcam = ({ stream, isMuted, displayName, onToggleCam, onToggleMic, isRemote = false }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isCamOn, setIsCamOn] = useState(true);
     const [isMicOn, setIsMicOn] = useState(true);
-
-    const [isDragging, setIsDragging] = useState(false);
-    // position ban đầu là null, nghĩa là sẽ dùng vị trí mặc định trong CSS
-    const [position, setPosition] = useState(null); 
-    const dragOffset = useRef({ x: 0, y: 0 });
+    const videoRef = useRef(null);
     const dragNode = useRef(null);
+    const [position, setPosition] = useState(isRemote ? { x: 10, y: 150 } : null); // Remote cam có vị trí cố định ban đầu
+    const [isDragging, setIsDragging] = useState(false);
+    const dragOffset = useRef({ x: 0, y: 0 });
+
+    useEffect(() => {
+        if (videoRef.current && stream) {
+            videoRef.current.srcObject = stream;
+        }
+    }, [stream]);
 
     const handleDragStart = (e) => {
-        if (e.target.closest('button')) return;
-
+        if (isRemote || e.target.closest('button')) return;
         const node = dragNode.current;
         if (!node) return;
-        
         const eventX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
         const eventY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
-
-        // Nếu chưa kéo lần nào, lấy vị trí hiện tại từ getBoundingClientRect
         const rect = node.getBoundingClientRect();
         dragOffset.current.x = eventX - rect.left;
         dragOffset.current.y = eventY - rect.top;
-
         setIsDragging(true);
     };
 
     const handleDragMove = (e) => {
         if (!isDragging) return;
         e.preventDefault();
-
         const eventX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
         const eventY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-        
-        // Cập nhật state position, lúc này style inline sẽ được áp dụng
         setPosition({
             x: eventX - dragOffset.current.x,
             y: eventY - dragOffset.current.y
@@ -54,58 +50,53 @@ const DraggableWebcam = () => {
 
     const handleDragEnd = () => setIsDragging(false);
 
-    useEffect(() => { /* ... giữ nguyên logic event listener ... */ }, [isDragging]);
+    useEffect(() => {
+        if (isDragging) {
+            document.addEventListener('mousemove', handleDragMove);
+            document.addEventListener('mouseup', handleDragEnd);
+            document.addEventListener('touchmove', handleDragMove, { passive: false });
+            document.addEventListener('touchend', handleDragEnd);
+        }
+        return () => {
+            document.removeEventListener('mousemove', handleDragMove);
+            document.removeEventListener('mouseup', handleDragEnd);
+            document.removeEventListener('touchmove', handleDragMove);
+            document.removeEventListener('touchend', handleDragEnd);
+        };
+    }, [isDragging]);
 
-    const handleToggleCollapse = () => {
-        // Mỗi lần thu/mở, reset vị trí về mặc định (dùng CSS)
-        setPosition(null);
-        setIsCollapsed(!isCollapsed);
+    const handleToggleCollapse = () => setIsCollapsed(!isCollapsed);
+    const handleToggleCam = () => {
+        const newState = !isCamOn;
+        setIsCamOn(newState);
+        onToggleCam?.(newState);
+    };
+    const handleToggleMic = () => {
+        const newState = !isMicOn;
+        setIsMicOn(newState);
+        onToggleMic?.(newState);
     };
 
-    // Tạo style object: nếu đã có position từ state (sau khi kéo) thì dùng nó, nếu không thì dùng object rỗng (để CSS class quyết định)
-    const style = position ? { top: `${position.y}px`, left: `${position.x}px` } : {};
+    const style = position ? { top: `${position.y}px`, left: `${position.x}px`, right: 'auto', bottom: 'auto' } : {};
 
-
-    if (isCollapsed) {
-        return (
-            <div
-                ref={dragNode}
-                className="webcam-collapsed-button"
-                style={style} // Áp dụng style vị trí
-                onMouseDown={handleDragStart}
-                onTouchStart={handleDragStart}
-                onClick={handleToggleCollapse}
-            >
-                <ExpandIcon />
-            </div>
-        );
+    if (isCollapsed && !isRemote) {
+        return <div ref={dragNode} className="webcam-collapsed-button" style={style} onMouseDown={handleDragStart} onTouchStart={handleDragStart} onClick={handleToggleCollapse}><ExpandIcon /></div>;
     }
-    
+
     return (
-        <div
-            ref={dragNode}
-            className="webcam-container"
-            style={style} // Áp dụng style vị trí
-            onMouseDown={handleDragStart}
-            onTouchStart={handleDragStart}
-        >
-            <div className="webcam-header">
-                <span>Your Camera</span>
-            </div>
+        <div ref={dragNode} className={`webcam-container ${isRemote ? 'remote' : 'local'}`} style={style} onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
+            <div className="webcam-header"><span>{displayName}</span></div>
             <div className="webcam-video-placeholder">
-                {isCamOn ? <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRZAQvPe0jIE2OCqYg9ezRtpo1xf5u8qGJ1ZQ&s" alt="Webcam Feed" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>Webcam is OFF</span>}
+                <video ref={videoRef} autoPlay playsInline muted={isMuted}></video>
+                {!isCamOn && !isRemote && <div className="cam-off-overlay">Cam Off</div>}
             </div>
-            <div className="webcam-controls">
-                <button className={`webcam-button ${isCamOn ? 'on' : 'off'}`} onClick={() => setIsCamOn(!isCamOn)}>
-                    {isCamOn ? <CamOnIcon /> : <CamOffIcon />}
-                </button>
-                <button className={`webcam-button ${isMicOn ? 'on' : 'off'}`} onClick={() => setIsMicOn(!isMicOn)}>
-                    {isMicOn ? <MicOnIcon /> : <MicOffIcon />}
-                </button>
-                <button className="webcam-button neutral" onClick={handleToggleCollapse}>
-                    <CollapseIcon />
-                </button>
-            </div>
+            {!isRemote && (
+                <div className="webcam-controls">
+                    <button className={`webcam-button ${isCamOn ? 'on' : 'off'}`} onClick={handleToggleCam}>{isCamOn ? <CamOnIcon /> : <CamOffIcon />}</button>
+                    <button className={`webcam-button ${isMicOn ? 'on' : 'off'}`} onClick={handleToggleMic}>{isMicOn ? <MicOnIcon /> : <MicOffIcon />}</button>
+                    <button className="webcam-button neutral" onClick={handleToggleCollapse}><CollapseIcon /></button>
+                </div>
+            )}
         </div>
     );
 };

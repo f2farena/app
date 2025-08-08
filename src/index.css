@@ -18,6 +18,7 @@
 body {
   margin: 0;
   font-family: var(--font-main);
+  font-weight: 'normal';
   color: var(--color-text);
   background-color: #000;
   overflow: auto;
@@ -116,7 +117,7 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 .arena-match-card .challenger-country { font-size: 0.875rem; color: var(--color-secondary-text); margin: 0; }
 .arena-match-card .details-section { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--color-hover-bg); padding-top: 1rem; font-size: 0.9rem; color: var(--color-secondary-text); }
 .arena-match-card .detail-item { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.arena-match-card .detail-value { font-weight: 700; color: var(--color-text); }
+.arena-match-card .detail-value { font-weight: 600; color: var(--color-text); }
 .arena-match-card .detail-value.primary { color: var(--color-primary); }
 .arena-match-card .detail-value.accent { color: var(--color-accent); }
 
@@ -146,12 +147,12 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 /* --- Trang Leaderboard --- */
 .leaderboard-table { display: flex; flex-direction: column; }
 .leaderboard-header, .leaderboard-row { display: grid; grid-template-columns: 1fr 3fr 1fr 2fr; gap: 0.5rem; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--color-hover-bg); }
-.leaderboard-header { font-weight: 700; color: var(--color-secondary-text); }
+.leaderboard-header { font-weight: 600; color: var(--color-secondary-text); }
 .leaderboard-row:last-child { border-bottom: none; }
 .leaderboard-row .trader-info { display: flex; align-items: center; gap: 0.5rem; }
 .leaderboard-row .trader-avatar { width: 32px; height: 32px; border-radius: 50%; }
 .leaderboard-rank.top-rank { color: var(--color-accent); }
-.profit-text { font-weight: 600; color: var(--color-success); }
+.profit-text { font-weight: 500; color: var(--color-success); }
 
 /* --- Trang Wallet --- */
 .wallet-tabs { display: flex; margin-bottom: 1.5rem; background-color: var(--color-card-bg); border-radius: 0.75rem; padding: 0.25rem; border: 1px solid var(--color-secondary-text); }
@@ -161,8 +162,8 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 /* Quy tắc cho dòng bình thường (số dư, lịch sử giao dịch) */
 .wallet-info-row { display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid var(--color-hover-bg); }
 .wallet-info-row:last-child { border-bottom: none; }
-.wallet-info-row .label { font-weight: 600; }
-.wallet-info-row .value { font-weight: 700; }
+.wallet-info-row .label { font-weight: 500; }
+.wallet-info-row .value { font-weight: 600; }
 .wallet-info-row .value.accent { color: var(--color-accent); font-size: 1.25rem; }
 .wallet-info-row .value.win { color: var(--color-success); }
 .wallet-info-row .value.loss { color: var(--color-danger); }
