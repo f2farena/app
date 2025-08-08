@@ -122,7 +122,6 @@ const MatchDetail = ({ user }) => {
     const [outsideBetsTotal, setOutsideBetsTotal] = useState(0);
     const [showResultModal, setShowResultModal] = useState(false);
     const [matchResult, setMatchResult] = useState(null);
-    const [showLoginModal, setShowLoginModal] = useState(false);
 
     // =================================================================
     // BƯỚC 1: ĐỊNH NGHĨA fetchMatchDetail BẰNG useCallback
@@ -386,23 +385,6 @@ const MatchDetail = ({ user }) => {
         };
     }, [activeTab, matchData?.symbol]);
 
-    useEffect(() => {
-        if (matchData) {
-            const p1Ready = matchData.player1?.ready || false;
-            const p2Ready = matchData.player2?.ready || false;
-
-            // Hiển thị modal nếu status là pending VÀ CÓ ÍT NHẤT 1 người chưa sẵn sàng
-            if (matchData.status === 'pending_confirmation' && (!p1Ready || !p2Ready)) {
-                setShowLoginModal(true);
-            }
-
-            // Ẩn modal ngay khi cả 2 đã sẵn sàng, không cần chờ status 'live'
-            if (p1Ready && p2Ready) {
-                setShowLoginModal(false);
-            }
-        }
-    }, [matchData]);
-
     const handleSendComment = async (e) => {
         e.preventDefault();
         const trimmedInput = commentInput.trim();
@@ -500,13 +482,13 @@ const MatchDetail = ({ user }) => {
                     </div>
                 </div>
             </div>
-              
+            
             {/* Main Content */}
             {matchData.status === 'done' ? (
                 <MatchResultDisplay matchData={matchData} user={user} />
             ) : (
                 <>
-                    {showLoginModal && <LoginConfirmationModal matchData={matchData} />}
+                    {matchData.status === 'pending_confirmation' && <LoginConfirmationModal matchData={matchData} />}
                     
                     <div className="tab-buttons">
                         <button className={`tab-button ${activeTab === 'matching' ? 'active' : ''}`} onClick={() => setActiveTab('matching')}>
