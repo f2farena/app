@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './MatchDetail.css';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import VideoCallManager from './VideoCallManager';
 
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n => n[0]).join('') || 'NN').toUpperCase()}`;
 
@@ -123,82 +124,6 @@ const MatchDetail = ({ user }) => {
     const [showResultModal, setShowResultModal] = useState(false);
     const [matchResult, setMatchResult] = useState(null);
     const [showLoginModal, setShowLoginModal] = useState(false);
-    const [isPlayer, setIsPlayer] = useState(false);
-    const [localStream, setLocalStream] = useState(null);
-    const [remoteStream, setRemoteStream] = useState(null);
-    const peerConnection = useRef(null);
-
-    // --- LOGIC WEBRTC ---
-    const stunServers = {
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    };
-
-    const setupPeerConnection = (stream, opponent) => {
-        peerConnection.current = new RTCPeerConnection(stunServers);
-
-        // Thêm stream của bản thân vào connection để gửi đi
-        stream.getTracks().forEach(track => {
-            peerConnection.current.addTrack(track, stream);
-        });
-
-        // Lắng nghe stream từ đối phương
-        peerConnection.current.ontrack = (event) => {
-            setRemoteStream(event.streams[0]);
-        };
-
-        // Lắng nghe ICE candidates và gửi cho đối phương
-        peerConnection.current.onicecandidate = (event) => {
-            if (event.candidate) {
-                sendMessage({
-                    action: 'WEBRTC_ICE_CANDIDATE',
-                    target_id: opponent.id,
-                    payload: event.candidate,
-                });
-            }
-        };
-    };
-
-    const createOffer = async (opponent) => {
-        if (!peerConnection.current) return;
-        const offer = await peerConnection.current.createOffer();
-        await peerConnection.current.setLocalDescription(offer);
-        sendMessage({
-            action: 'WEBRTC_OFFER',
-            target_id: opponent.id,
-            payload: offer,
-        });
-    };
-
-    const handleReceiveOffer = async (offer, opponent) => {
-        if (!peerConnection.current) return;
-        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await peerConnection.current.createAnswer();
-        await peerConnection.current.setLocalDescription(answer);
-        sendMessage({
-            action: 'WEBRTC_ANSWER',
-            target_id: opponent.id,
-            payload: answer,
-        });
-    };
-
-    const handleReceiveAnswer = async (answer) => {
-        if (!peerConnection.current) return;
-        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
-    };
-
-    const handleNewIceCandidate = async (candidate) => {
-        if (!peerConnection.current) return;
-        await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
-    };
-
-    const toggleTrack = (kind, enabled) => {
-        localStream?.getTracks().forEach(track => {
-            if (track.kind === kind) {
-                track.enabled = enabled;
-            }
-        });
-    };
-    // --- KẾT THÚC LOGIC WEBRTC ---
 
     // =================================================================
     // BƯỚC 1: ĐỊNH NGHĨA fetchMatchDetail BẰNG useCallback
@@ -261,42 +186,6 @@ const MatchDetail = ({ user }) => {
             window.removeEventListener('websocket-open', handleWebSocketOpen);
         };
     }, [id, isConnected, sendMessage]);
-
-    // useEffect để xác định vai trò của user và khởi tạo media
-    useEffect(() => {
-        if (user && matchData?.player1 && matchData?.player2) {
-            const isUserPlayer = user.telegram_id === matchData.player1.id || user.telegram_id === matchData.player2.id;
-            setIsPlayer(isUserPlayer);
-
-            // Chỉ khởi tạo media nếu là người chơi và trận đấu đang diễn ra
-            if (isUserPlayer && (matchData.status === 'live' || matchData.status === 'pending_confirmation')) {
-                const startMedia = async () => {
-                    try {
-                        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                        setLocalStream(stream);
-                        const opponent = user.telegram_id === matchData.player1.id ? matchData.player2 : matchData.player1;
-                        setupPeerConnection(stream, opponent);
-
-                        // Người chơi có ID nhỏ hơn sẽ chủ động tạo offer
-                        if (user.telegram_id < opponent.id) {
-                            createOffer(opponent);
-                        }
-                    } catch (error) {
-                        console.error("Error accessing media devices.", error);
-                    }
-                };
-                startMedia();
-            }
-        }
-        // Dọn dẹp khi thoát
-        return () => {
-            localStream?.getTracks().forEach(track => track.stop());
-            if (peerConnection.current) {
-                peerConnection.current.close();
-                peerConnection.current = null;
-            }
-        };
-    }, [user, matchData]);
     
     // useEffect xử lý tin nhắn WebSocket
     useEffect(() => {
@@ -349,22 +238,6 @@ const MatchDetail = ({ user }) => {
                         };
                     });
                     break;
-                    case "WEBRTC_OFFER":
-                        if (message.sender_id !== user.telegram_id) {
-                            const opponent = user.telegram_id === matchData.player1.id ? matchData.player2 : matchData.player1;
-                            handleReceiveOffer(message.payload, opponent);
-                        }
-                        break;
-                    case "WEBRTC_ANSWER":
-                        if (message.sender_id !== user.telegram_id) {
-                            handleReceiveAnswer(message.payload);
-                        }
-                        break;
-                    case "WEBRTC_ICE_CANDIDATE":
-                        if (message.sender_id !== user.telegram_id) {
-                            handleNewIceCandidate(message.payload);
-                        }
-                        break;
                 case "MATCH_DONE":
                     setMatchResult(message.data);
                     setShowResultModal(true);
@@ -383,6 +256,8 @@ const MatchDetail = ({ user }) => {
     useEffect(() => {
         fetchMatchDetail();
     }, [id, fetchMatchDetail]); 
+
+    // Các useEffect khác giữ nguyên...
 
     useEffect(() => {
         if (matchData) {
@@ -576,24 +451,6 @@ const MatchDetail = ({ user }) => {
 
     return (
         <div className="match-detail-container">
-            {/* --- BỔ SUNG HIỂN THỊ VIDEO --- */}
-            {isPlayer && localStream && (
-                <DraggableWebcam
-                    stream={localStream}
-                    isMuted={true}
-                    displayName={user.username}
-                    onToggleCam={(enabled) => toggleTrack('video', enabled)}
-                    onToggleMic={(enabled) => toggleTrack('audio', enabled)}
-                />
-            )}
-            {isPlayer && remoteStream && (
-                <DraggableWebcam
-                    stream={remoteStream}
-                    isMuted={false}
-                    displayName={matchData.player1.id === user.telegram_id ? matchData.player2.name : matchData.player1.name}
-                    isRemote={true}
-                />
-            )}
             {/* Header */}
             <div className="match-detail-header">
                 <button className="icon-button back-button" onClick={() => navigate(-1)}>&lt;</button>
