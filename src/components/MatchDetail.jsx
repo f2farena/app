@@ -6,7 +6,7 @@ import { useWebSocket } from '../contexts/WebSocketContext';
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n => n[0]).join('') || 'NN').toUpperCase()}`;
 
 // Modal chờ đăng nhập
-const LoginConfirmationModal = ({ matchData, cancellationReason }) => {
+const LoginConfirmationModal = ({ matchData, cancellationReason, navigate }) => {
     // Nếu có lý do hủy trận, hiển thị thông báo hủy
     if (cancellationReason) {
         return (
@@ -511,7 +511,7 @@ const MatchDetail = ({ user }) => {
                 <MatchResultDisplay matchData={matchData} user={user} />
             ) : (
                 <>
-                    {matchData.status === 'pending_confirmation' && <LoginConfirmationModal matchData={matchData} cancellationReason={cancellationReason} />}
+                    {matchData.status === 'pending_confirmation' && <LoginConfirmationModal matchData={matchData} cancellationReason={cancellationReason} navigate={navigate} />}
                     
                     <div className="tab-buttons">
                         <button className={`tab-button ${activeTab === 'matching' ? 'active' : ''}`} onClick={() => setActiveTab('matching')}>
