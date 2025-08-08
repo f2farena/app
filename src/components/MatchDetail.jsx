@@ -124,10 +124,14 @@ const MatchDetail = ({ user }) => {
     const [matchResult, setMatchResult] = useState(null);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [isPlayer, setIsPlayer] = useState(false);
-    const [localStream, setLocalStream] = useState(null);
-    const [remoteStream, setRemoteStream] = useState(null);
-    const peerConnection = useRef(null);
-    const [debugMessage, setDebugMessage] = useState('');
+    const [debugMessage, setDebugMessage] = useState('');
+    // Dùng state để trigger re-render khi stream có sẵn
+    const [localStream, setLocalStream] = useState(null); 
+    const [remoteStream, setRemoteStream] = useState(null);
+    // Dùng ref cho các đối tượng không cần trigger re-render
+    const peerConnection = useRef(null);
+    // Ref để chống gọi lại logic khởi tạo
+    const rtcInitiated = useRef(false);
 
     // --- LOGIC WEBRTC ---
     const stunServers = {
@@ -263,63 +267,71 @@ const MatchDetail = ({ user }) => {
         };
     }, [id, isConnected, sendMessage]);
 
-    // useEffect để xác định vai trò của user
+    // useEffect TỔNG để xử lý logic WebRTC MỘT LẦN DUY NHẤT
     useEffect(() => {
-        if (user && matchData?.player1 && matchData?.player2) {
+        // Chỉ chạy khi có đủ thông tin và chưa được khởi tạo
+        if (user && matchData?.player1 && matchData?.player2 && !rtcInitiated.current) {
             const isUserPlayer = user.telegram_id === matchData.player1.id || user.telegram_id === matchData.player2.id;
             setIsPlayer(isUserPlayer);
-        }
-    }, [user, matchData]);
 
-    // useEffect để khởi tạo media và WebRTC, tách biệt để tránh re-run không cần thiết
-    useEffect(() => {
-        // Chỉ chạy khi isPlayer là true và chưa có localStream
-        if (isPlayer && !localStream && (matchData?.status === 'live' || matchData?.status === 'pending_confirmation')) {
-            const startMedia = async () => {
-                setDebugMessage('Player detected. Bắt đầu yêu cầu camera...');
-                try {
-                    // Yêu cầu quyền truy cập media
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                    setDebugMessage('Đã lấy được stream. Bắt đầu thiết lập kết nối...');
-                    setLocalStream(stream);
+            if (isUserPlayer && (matchData.status === 'live' || matchData.status === 'pending_confirmation')) {
+                // Đánh dấu đã khởi tạo để không chạy lại
+                rtcInitiated.current = true; 
+                
+                const startRtcFlow = async () => {
+                    setDebugMessage('Player detected. Bắt đầu yêu cầu camera...');
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                        setDebugMessage('Đã lấy được stream.');
+                        
+                        // Cập nhật state để component DraggableWebcam nhận stream và re-render
+                        setLocalStream(stream); 
 
-                    // Lấy thông tin đối thủ MỘT LẦN DUY NHẤT
-                    const opponent = user.telegram_id === matchData.player1.id ? matchData.player2 : matchData.player1;
-                    if (!opponent || !opponent.id) {
-                        setDebugMessage('LỖI: Không tìm thấy thông tin đối thủ.');
-                        return;
+                        const opponent = user.telegram_id === matchData.player1.id ? matchData.player2 : matchData.player1;
+                        if (!opponent || !opponent.id) {
+                            setDebugMessage('LỖI: Không tìm thấy thông tin đối thủ.');
+                            return;
+                        }
+                        
+                        setDebugMessage('Đang thiết lập kết nối Peer...');
+                        setupPeerConnection(stream, opponent);
+                        setDebugMessage('Thiết lập Peer thành công.');
+
+                        if (user.telegram_id < opponent.id) {
+                             setDebugMessage('Đang tạo offer...');
+                             await createOffer(opponent);
+                             setDebugMessage('Đã gửi offer.');
+                        }
+                    } catch (error) {
+                        console.error("Lỗi khi khởi tạo WebRTC:", error);
+                        setDebugMessage(`LỖI: ${error.name} - ${error.message}`);
                     }
-                    
-                    // Thiết lập kết nối P2P
-                    setupPeerConnection(stream, opponent);
-                    setDebugMessage('Thiết lập Peer thành công.');
+                };
 
-                    // Người chơi có ID nhỏ hơn sẽ chủ động tạo offer
-                    if (user.telegram_id < opponent.id) {
-                         setDebugMessage('Đang tạo offer...');
-                         await createOffer(opponent);
-                         setDebugMessage('Đã gửi offer.');
-                    }
-                } catch (error) {
-                    console.error("Error accessing media devices.", error);
-                    setDebugMessage(`LỖI: ${error.name} - ${error.message}`);
-                }
-            };
-            startMedia();
-        }
-
-        // Hàm dọn dẹp
-        return () => {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                setLocalStream(null);
+                startRtcFlow();
             }
-            if (peerConnection.current) {
-                peerConnection.current.close();
-                peerConnection.current = null;
+        }
+        
+        // Hàm dọn dẹp khi component unmount (rời khỏi trang)
+        return () => {
+            if (rtcInitiated.current) {
+                console.log("Cleaning up WebRTC resources...");
+                // Dùng .state để lấy stream hiện tại thay vì giá trị closure cũ
+                setLocalStream(currentStream => {
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(track => track.stop());
+                    }
+                    return null;
+                });
+
+                if (peerConnection.current) {
+                    peerConnection.current.close();
+                    peerConnection.current = null;
+                }
+                rtcInitiated.current = false;
             }
         };
-    }, [isPlayer, matchData?.status]);
+    }, [user, matchData]); // Phụ thuộc vào user và matchData để có thông tin ban đầu
     
     // useEffect xử lý tin nhắn WebSocket
     useEffect(() => {
