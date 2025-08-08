@@ -124,14 +124,9 @@ const MatchDetail = ({ user }) => {
     const [matchResult, setMatchResult] = useState(null);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [isPlayer, setIsPlayer] = useState(false);
-    const [debugMessage, setDebugMessage] = useState('');
-    // Dùng state để trigger re-render khi stream có sẵn
-    const [localStream, setLocalStream] = useState(null); 
-    const [remoteStream, setRemoteStream] = useState(null);
-    // Dùng ref cho các đối tượng không cần trigger re-render
-    const peerConnection = useRef(null);
-    // Ref để chống gọi lại logic khởi tạo
-    const rtcInitiated = useRef(false);
+    const [localStream, setLocalStream] = useState(null);
+    const [remoteStream, setRemoteStream] = useState(null);
+    const peerConnection = useRef(null);
 
     // --- LOGIC WEBRTC ---
     const stunServers = {
@@ -267,75 +262,41 @@ const MatchDetail = ({ user }) => {
         };
     }, [id, isConnected, sendMessage]);
 
-    // useEffect TỔNG để xử lý logic WebRTC MỘT LẦN DUY NHẤT
+    // useEffect để xác định vai trò của user và khởi tạo media
     useEffect(() => {
-        // Chỉ chạy khi có đủ thông tin và chưa được khởi tạo
-        if (user && matchData?.player1 && matchData?.player2 && !rtcInitiated.current) {
+        if (user && matchData?.player1 && matchData?.player2) {
             const isUserPlayer = user.telegram_id === matchData.player1.id || user.telegram_id === matchData.player2.id;
             setIsPlayer(isUserPlayer);
 
+            // Chỉ khởi tạo media nếu là người chơi và trận đấu đang diễn ra
             if (isUserPlayer && (matchData.status === 'live' || matchData.status === 'pending_confirmation')) {
-                // Đánh dấu đã khởi tạo để không chạy lại
-                rtcInitiated.current = true; 
-                
-                const startRtcFlow = async () => {
-                    setDebugMessage('Player detected. Bắt đầu yêu cầu camera...');
+                const startMedia = async () => {
                     try {
-                        alert('BƯỚC 1: Bắt đầu `startMedia`');
-                        setDebugMessage('Player detected. Bắt đầu yêu cầu camera...');
                         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                        alert('BƯỚC 2: Đã `getUserMedia` thành công, có stream.');
-                        setDebugMessage('Đã lấy được stream.');
-                        
-                        // Cập nhật state để component DraggableWebcam nhận stream và re-render
-                        setLocalStream(stream); 
-
+                        setLocalStream(stream);
                         const opponent = user.telegram_id === matchData.player1.id ? matchData.player2 : matchData.player1;
-                        if (!opponent || !opponent.id) {
-                            alert('LỖI: Không tìm thấy thông tin đối thủ.');
-                            return;
-                        }
-                        
-                        alert('BƯỚC 3: Sẵn sàng `setupPeerConnection`');
                         setupPeerConnection(stream, opponent);
-                        alert('BƯỚC 4: Đã `setupPeerConnection` xong.');
 
+                        // Người chơi có ID nhỏ hơn sẽ chủ động tạo offer
                         if (user.telegram_id < opponent.id) {
-                             alert('BƯỚC 5: Sẵn sàng `createOffer`');
-                             await createOffer(opponent);
-                             alert('BƯỚC 6: Đã `createOffer` xong.');
+                            createOffer(opponent);
                         }
                     } catch (error) {
-                        alert(`LỖI Ở BƯỚC CUỐI: ${error.name} - ${error.message}`);
-                        console.error("Lỗi khi khởi tạo WebRTC:", error);
-                        setDebugMessage(`LỖI: ${error.name} - ${error.message}`);
+                        console.error("Error accessing media devices.", error);
                     }
                 };
-
-                startRtcFlow();
+                startMedia();
             }
         }
-        
-        // Hàm dọn dẹp khi component unmount (rời khỏi trang)
+        // Dọn dẹp khi thoát
         return () => {
-            if (rtcInitiated.current) {
-                console.log("Cleaning up WebRTC resources...");
-                // Dùng .state để lấy stream hiện tại thay vì giá trị closure cũ
-                setLocalStream(currentStream => {
-                    if (currentStream) {
-                        currentStream.getTracks().forEach(track => track.stop());
-                    }
-                    return null;
-                });
-
-                if (peerConnection.current) {
-                    peerConnection.current.close();
-                    peerConnection.current = null;
-                }
-                rtcInitiated.current = false;
+            localStream?.getTracks().forEach(track => track.stop());
+            if (peerConnection.current) {
+                peerConnection.current.close();
+                peerConnection.current = null;
             }
         };
-    }, [user, matchData]); // Phụ thuộc vào user và matchData để có thông tin ban đầu
+    }, [user, matchData]);
     
     // useEffect xử lý tin nhắn WebSocket
     useEffect(() => {
@@ -416,7 +377,7 @@ const MatchDetail = ({ user }) => {
         return () => {
             window.removeEventListener('websocket-message', handleWebSocketMessage);
         };
-    }, [id, fetchMatchDetail, user]);
+    }, [id, fetchMatchDetail, matchData]); // Thêm matchData để logic NEW_TRADE lấy được tên
 
     // useEffect để fetch dữ liệu lần đầu khi vào trang
     useEffect(() => {
@@ -615,26 +576,6 @@ const MatchDetail = ({ user }) => {
 
     return (
         <div className="match-detail-container">
-            {/* --- KHUNG DEBUG --- */}
-            {isPlayer && (
-                <div style={{
-                    position: 'fixed',
-                    bottom: '60px',
-                    left: '10px',
-                    right: '10px',
-                    background: 'rgba(0, 0, 0, 0.7)',
-                    color: 'white',
-                    padding: '10px',
-                    zIndex: 9999,
-                    borderRadius: '5px',
-                    fontSize: '12px',
-                    fontFamily: 'monospace'
-                }}>
-                    <strong>DEBUG LOG:</strong> {debugMessage}
-                </div>
-            )}
-            {/* --- KẾT THÚC KHUNG DEBUG --- */}
-
             {/* --- BỔ SUNG HIỂN THỊ VIDEO --- */}
             {isPlayer && localStream && (
                 <DraggableWebcam
