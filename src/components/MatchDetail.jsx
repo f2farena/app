@@ -12,11 +12,13 @@ const LoginConfirmationModal = ({ matchData, cancellationReason }) => {
         return (
             <div className="login-modal-overlay">
                 <div className="login-modal-content card">
-                    <h3 className="login-modal-title" style={{color: 'var(--color-loss)'}}>⚔️ Trận Đấu Đã Bị Hủy</h3>
+                    <h3 className="login-modal-title" style={{color: 'var(--color-loss)'}}>⚔️ Match Canceled</h3>
                     <p className="login-modal-instructions" style={{marginTop: '1rem'}}>
                         {cancellationReason}
                     </p>
-                    {/* Có thể thêm nút để quay về trang Arena */}
+                    <button className="btn btn-secondary" onClick={() => navigate('/arena')}>
+                       Back to Arena
+                    </button>
                 </div>
             </div>
         );
