@@ -6,42 +6,58 @@ import { useWebSocket } from '../contexts/WebSocketContext';
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n => n[0]).join('') || 'NN').toUpperCase()}`;
 
 // Modal chờ đăng nhập
-const LoginConfirmationModal = ({ matchData }) => {
-    const player1Ready = matchData.player1.ready;
-    const player2Ready = matchData.player2.ready;
-
-    const StatusIndicator = ({ isReady }) => (
-        <div className={`status-indicator ${isReady ? 'ready' : 'waiting'}`}>
-            {isReady ? '✅ Ready' : 'Waiting...'}
-        </div>
-    );
-
-    return (
-        <div className="login-modal-overlay">
-            <div className="login-modal-content card">
-                <h3 className="login-modal-title">Awaiting Players</h3>
-                <p className="login-modal-instructions">
-                    Please log in to your trading account. The match will begin automatically once both players are ready.
-                </p>
-                <div className="player-status-list">
-                    <div className="player-status-row">
-                        <div className="player-info-modal">
-                            <img src={matchData.player1.avatar} alt={matchData.player1.name} className="player-avatar-modal" />
-                            <span>{matchData.player1.name}</span>
-                        </div>
-                        <StatusIndicator isReady={player1Ready} />
-                    </div>
-                    <div className="player-status-row">
-                        <div className="player-info-modal">
-                            <img src={matchData.player2.avatar} alt={matchData.player2.name} className="player-avatar-modal" />
-                            <span>{matchData.player2.name}</span>
-                        </div>
-                        <StatusIndicator isReady={player2Ready} />
-                    </div>
+const LoginConfirmationModal = ({ matchData, cancellationReason }) => {
+    // Nếu có lý do hủy trận, hiển thị thông báo hủy
+    if (cancellationReason) {
+        return (
+            <div className="login-modal-overlay">
+                <div className="login-modal-content card">
+                    <h3 className="login-modal-title" style={{color: 'var(--color-loss)'}}>⚔️ Trận Đấu Đã Bị Hủy</h3>
+                    <p className="login-modal-instructions" style={{marginTop: '1rem'}}>
+                        {cancellationReason}
+                    </p>
+                    {/* Có thể thêm nút để quay về trang Arena */}
                 </div>
             </div>
-        </div>
-    );
+        );
+    }
+    
+    // Logic cũ giữ nguyên nếu không có lý do hủy
+    const player1Ready = matchData.player1.ready;
+    const player2Ready = matchData.player2.ready;
+
+    const StatusIndicator = ({ isReady }) => (
+        <div className={`status-indicator ${isReady ? 'ready' : 'waiting'}`}>
+            {isReady ? '✅ Ready' : 'Waiting...'}
+        </div>
+    );
+
+    return (
+        <div className="login-modal-overlay">
+            <div className="login-modal-content card">
+                <h3 className="login-modal-title">Awaiting Players</h3>
+                <p className="login-modal-instructions">
+                    Please log in to your trading account. The match will begin automatically once both players are ready.
+                </p>
+                <div className="player-status-list">
+                    <div className="player-status-row">
+                        <div className="player-info-modal">
+                            <img src={matchData.player1.avatar} alt={matchData.player1.name} className="player-avatar-modal" />
+                            <span>{matchData.player1.name}</span>
+                        </div>
+                        <StatusIndicator isReady={player1Ready} />
+                    </div>
+                    <div className="player-status-row">
+                        <div className="player-info-modal">
+                            <img src={matchData.player2.avatar} alt={matchData.player2.name} className="player-avatar-modal" />
+                            <span>{matchData.player2.name}</span>
+                        </div>
+                        <StatusIndicator isReady={player2Ready} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 // Component hiển thị kết quả trận đấu
@@ -122,6 +138,7 @@ const MatchDetail = ({ user }) => {
     const [outsideBetsTotal, setOutsideBetsTotal] = useState(0);
     const [showResultModal, setShowResultModal] = useState(false);
     const [matchResult, setMatchResult] = useState(null);
+    const [cancellationReason, setCancellationReason] = useState(null);
 
     // =================================================================
     // BƯỚC 1: ĐỊNH NGHĨA fetchMatchDetail BẰNG useCallback
@@ -211,6 +228,10 @@ const MatchDetail = ({ user }) => {
                 case "MATCH_STARTED":
                     console.log('[WebSocket] Match started! Fetching latest details.');
                     fetchMatchDetail();
+                    break;
+
+                case "OPPONENT_LOGIN_FAILED":
+                    setCancellationReason(message.data.message);
                     break;
 
                 case "NEW_TRADE":
@@ -488,7 +509,7 @@ const MatchDetail = ({ user }) => {
                 <MatchResultDisplay matchData={matchData} user={user} />
             ) : (
                 <>
-                    {matchData.status === 'pending_confirmation' && <LoginConfirmationModal matchData={matchData} />}
+                    {matchData.status === 'pending_confirmation' && <LoginConfirmationModal matchData={matchData} cancellationReason={cancellationReason} />}
                     
                     <div className="tab-buttons">
                         <button className={`tab-button ${activeTab === 'matching' ? 'active' : ''}`} onClick={() => setActiveTab('matching')}>

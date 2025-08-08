@@ -2602,6 +2602,47 @@ const ChatbotPage = () => {
 // COMPONENT APP CHÍNH
 // ===================================================================================
 
+const TradingAccountValidationPage = () => {
+    const { status } = useParams();
+    const navigate = useNavigate();
+
+    if (status === 'fail') {
+        return (
+            <div className="page-padding" style={{ textAlign: 'center', paddingTop: '5rem' }}>
+                <h2 style={{ color: 'var(--color-loss)' }}>❌ Đăng nhập thất bại</h2>
+                <p style={{ marginTop: '1rem', marginBottom: '2rem' }}>
+                    Đăng nhập tài khoản giao dịch không thành công, vui lòng kiểm tra lại.
+                </p>
+                <p>
+                    Nếu cần hỗ trợ, vui lòng liên hệ:
+                    <br />
+                    <a 
+                        href="https://t.me/2f2arena_support" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="btn btn-primary"
+                        style={{marginTop: '0.5rem'}}
+                    >
+                        Hỗ trợ qua Telegram @2f2arena_support
+                    </a>
+                </p>
+                <button className="btn btn-secondary" style={{marginTop: '2rem'}} onClick={() => navigate('/home')}>
+                    Về trang chủ
+                </button>
+            </div>
+        );
+    }
+
+    // Trường hợp 'success' hoặc không xác định, chỉ hiển thị loading
+    // vì logic redirect chính được xử lý qua WebSocket
+    return (
+        <div className="page-padding" style={{ textAlign: 'center', paddingTop: '5rem' }}>
+            <h2>Đang xử lý đăng nhập...</h2>
+            <p>Vui lòng chờ. Bạn sẽ được tự động chuyển hướng.</p>
+        </div>
+    );
+};
+
 const AppContent = () => {
   const [showSettingsSidebar, setShowSettingsSidebar] = useState(false);
   const [showHeader, setShowHeader] = useState(true);
@@ -2774,6 +2815,7 @@ useEffect(() => {
           <Route path="/wallet" element={<WalletPage user={user} onUserUpdate={handleUserUpdate} />} />
           <Route path="/chatbot" element={<ChatbotPage />} />
           <Route path="/match/:id" element={<MatchDetail user={user} />} />
+          <Route path="/accounts/validate-trading-account/:status" element={<TradingAccountValidationPage />} />
           <Route path="/" element={<HomePage />} />
           <Route path="*" element={
             <div className="page-padding">
