@@ -2778,11 +2778,13 @@ useEffect(() => {
         
         // Xử lý tự động chuyển hướng cho người chơi
         if (message.type === "REDIRECT_TO_MATCH") {
-            console.log(`[AppContent] Received redirect request for match ${message.match_id}`);
-            // User object đã có sẵn trong AppContent, không cần kiểm tra lại
-            // Backend đã đảm bảo chỉ gửi tin nhắn này cho người chơi liên quan
-            navigate(`/match/${message.match_id}`);
-        }
+            console.log(`[AppContent] Received redirect request for match ${message.match_id}`);
+            // Luồng chạy đúng:
+            // 1. Backend gửi tin nhắn này đến user_id của cả 2 người chơi.
+            // 2. WebSocketProvider nhận tin nhắn và phát đi một custom event 'websocket-message'.
+            // 3. Listener này trong AppContent bắt được event và gọi navigate.
+            navigate(`/match/${message.match_id}`);
+        }
     };
 
     window.addEventListener('websocket-message', handleGlobalWebSocketMessage);
@@ -2790,7 +2792,7 @@ useEffect(() => {
     return () => {
         window.removeEventListener('websocket-message', handleGlobalWebSocketMessage);
     };
-  }, [navigate, user]);
+  }, [navigate]); 
 
   return (
     <WebSocketProvider user={user}>
