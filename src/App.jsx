@@ -1619,6 +1619,7 @@ const UpdateWalletAddressForm = ({ onClose, user, onWalletAddressUpdated }) => {
 
 const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersList, conditionType }) => {
     const navigate = useNavigate();
+    const [showDepositFlow, setShowDepositFlow] = useState(false);
     const [newAccount, setNewAccount] = useState({ name_account: '', password_account: '', server_account: '' });
     const [newEmail, setNewEmail] = useState(user?.email || ''); 
 
@@ -1632,10 +1633,18 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
     const hasBrokerAccount = user?.linkedBrokers?.includes(match.broker_id) || false;
     const hasEmail = user?.email && user.email.trim() !== '';
 
-    const handleGoToWallet = () => {
-        navigate('/wallet');
-        onClose();
-    };
+    if (showDepositFlow) {
+        return (
+            <DepositForm
+                user={user}
+                onUserUpdate={onUserUpdate}
+                onClose={() => {
+                    setShowDepositFlow(false);
+                    onClose();
+                }}
+            />
+        );
+    }
 
     const handleSubmitNewAccount = async () => {
         if (!newAccount.name_account.trim() || !newAccount.server_account.trim()) {
@@ -1734,7 +1743,7 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
                     </div>
                     <div className="confirmation-buttons">
                         <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-                        <button className="btn btn-primary" onClick={handleSubmitNewAccount}>Connect Account</button>
+                        <button className="btn btn-primary" onClick={() => setShowDepositFlow(true)}>Deposit</button>
                     </div>
                 </>
             );
