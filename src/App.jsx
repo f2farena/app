@@ -1250,13 +1250,11 @@ const DepositForm = ({ onClose, user, onUserUpdate }) => {
   const handleConfirm = async (e) => {
     e.preventDefault();
     if (!depositAmount || !memoContent) {
-      alert('Please enter both deposit amount and memo content.');
       return;
     }
     
     if (!user || !user.telegram_id) {
       console.error("User data is not available. Cannot send notification.");
-      alert("User information missing. Please refresh or try again.");
       return;
     }
 
@@ -1268,7 +1266,6 @@ const DepositForm = ({ onClose, user, onUserUpdate }) => {
       startPollingBalance();
     } catch (error) {
       console.error('Error in deposit confirmation process:', error);
-      alert('There was an issue processing your deposit. Please try again or contact support.');
     }
   };
 
@@ -1288,7 +1285,6 @@ const DepositForm = ({ onClose, user, onUserUpdate }) => {
       if (timer <= 0) { 
         clearInterval(intervalRef.current);
         console.log('Polling stopped: QR code timer expired.');
-        alert("Deposit confirmation time expired. If you've sent money, please contact support!");
         onClose(); 
         return;
       }
@@ -1303,8 +1299,7 @@ const DepositForm = ({ onClose, user, onUserUpdate }) => {
 
         console.log(`Fetched current balance: ${currentBetWallet}, Expected after deposit: ${expectedBalance}`);
 
-        if (Math.abs(currentBetWallet - expectedBalance) < 0.001) { 
-          alert("🎉 Deposit successful! Your balance has been updated.");
+        if (Math.abs(currentBetWallet - expectedBalance) < 0.001) {
           clearInterval(intervalRef.current); 
           onClose(); 
           onUserUpdate(updatedUserData); // Cập nhật user object ở AppContent
@@ -1661,7 +1656,6 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
             });
             const data = await response.json();
             if (data.id) {
-                alert('Account linked successfully! Updating your information...');
                 await onUserUpdate(); // Gọi hàm onUserUpdate mới, nó sẽ tự fetch lại user
                 onClose();
             } else {

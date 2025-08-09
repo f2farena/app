@@ -25,12 +25,9 @@ export const notifyAdminOfDeposit = async (userId, amount, memo) => {
     }
 
     console.log('Successfully requested deposit notification for user:', userId);
-    // Có thể thêm thông báo thành công cho người dùng ở đây
-    alert('Yêu cầu nạp tiền của bạn đã được gửi đến Admin. Vui lòng chờ xác nhận!');
 
   } catch (error) {
     console.error('Error sending deposit notification request:', error);
-    alert('Đã có lỗi khi gửi yêu cầu nạp tiền. Vui lòng thử lại hoặc liên hệ hỗ trợ.'); // Thông báo lỗi cho người dùng
   }
 };
 
