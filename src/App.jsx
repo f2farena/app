@@ -2161,7 +2161,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                                         console.error(`Failed to load image: ${item.thumbnail}`);
                                         e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
                                     }} onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }} />
-                                    <TournamentStatus startTime={item.startTime} />
+                                    <TournamentStatus startTime={item.event_time} />
                                 </div>
                                 <div className="tournament-content">
                                     <h3 className="tournament-title">{item.title}</h3>
