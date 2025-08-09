@@ -343,11 +343,7 @@ const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
   if (!tournament) {
     return (
       <div className="page-padding detail-page-container">
-        <h2>Tournament Not Found</h2>
-        <p>No tournament found with ID {id}.</p>
-        <button className="btn btn-primary" onClick={() => navigate('/arena')}>
-          Back to Arena
-        </button>
+        <h2>Loading...</h2>
       </div>
     );
   }
