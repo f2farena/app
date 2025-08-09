@@ -1801,7 +1801,9 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
 };
 
 const CreateMatchConditionModal = ({ onClose, user, onUserUpdate, brokersList, requiredBrokerId, requiredBetAmount }) => {
-    const navigate = useNavigate();
+    // STATE MỚI để quản lý luồng nạp tiền
+    const [showDepositFlow, setShowDepositFlow] = useState(false);
+    
     const [newAccount, setNewAccount] = useState({ name_account: '', password_account: '', server_account: '' });
     const [newEmail, setNewEmail] = useState(user?.email || '');
 
@@ -1810,16 +1812,25 @@ const CreateMatchConditionModal = ({ onClose, user, onUserUpdate, brokersList, r
     const hasBrokerAccount = user?.linkedBrokers?.includes(requiredBrokerId) || false;
     const hasEmail = user?.email && user.email.trim() !== '';
 
-    // Lấy thông tin broker đang được chọn
     const selectedBroker = brokersList.find(b => b.id === requiredBrokerId);
     const brokerName = selectedBroker?.name || 'this broker';
     const brokerRegistrationUrl = selectedBroker?.registration_url || '#';
-
-    const handleGoToWallet = () => {
-        navigate('/wallet');
-        onClose();
-    };
-
+    
+    // Nếu người dùng chọn nạp tiền, hiển thị DepositForm
+    if (showDepositFlow) {
+        return (
+            <DepositForm 
+                user={user}
+                onUserUpdate={onUserUpdate}
+                onClose={() => {
+                    setShowDepositFlow(false); // Quay lại modal điều kiện
+                    onClose(); // Đóng hẳn modal điều kiện
+                }}
+            />
+        );
+    }
+    
+    // CÁC HÀM XỬ LÝ KHÁC GIỮ NGUYÊN
     const handleSubmitNewAccount = async () => {
         if (!newAccount.name_account.trim() || !newAccount.server_account.trim()) {
             alert('Please enter your Account Name and Server.');
@@ -1840,8 +1851,8 @@ const CreateMatchConditionModal = ({ onClose, user, onUserUpdate, brokersList, r
             const data = await response.json();
             if (response.ok && data.id) {
                 alert('Account linked successfully! Your info is being updated.');
-                await onUserUpdate(); // Tải lại dữ liệu user mới nhất
-                onClose(); // Đóng modal để người dùng thử lại
+                await onUserUpdate();
+                onClose();
             } else {
                 alert(data.detail || 'Account linking failed.');
             }
@@ -1868,9 +1879,9 @@ const CreateMatchConditionModal = ({ onClose, user, onUserUpdate, brokersList, r
                 throw new Error(errorData.detail || 'Email update failed.');
             }
             const updatedUserData = await response.json();
-            onUserUpdate(updatedUserData); // Cập nhật user state ngay lập tức
+            onUserUpdate(updatedUserData);
             alert('Email updated successfully!');
-            onClose(); // Đóng modal để người dùng tiếp tục
+            onClose();
         } catch (error) {
             console.error('Error updating email:', error);
             alert(`Error: ${error.message}`);
@@ -1919,7 +1930,8 @@ const CreateMatchConditionModal = ({ onClose, user, onUserUpdate, brokersList, r
                     <p>Your current balance is <strong>{currentBalance.toFixed(2)} USDT</strong>. You need at least <strong>{requiredBetAmount} USDT</strong> to create this match.</p>
                     <div className="confirmation-buttons">
                         <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-                        <button className="btn btn-primary" onClick={handleGoToWallet}>Deposit</button>
+                        {/* NÚT NÀY SẼ KÍCH HOẠT LUỒNG NẠP TIỀN */}
+                        <button className="btn btn-primary" onClick={() => setShowDepositFlow(true)}>Deposit</button>
                     </div>
                 </>
             );
