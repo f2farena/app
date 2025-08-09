@@ -1087,7 +1087,7 @@ const WalletPage = ({ user, onUserUpdate }) => {
   );
 };
 
-const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess }) => {
+const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUserUpdate }) => { // Thêm onUserUpdate
     const [betAmount, setBetAmount] = useState('');
     const [tradingSymbol, setTradingSymbol] = useState('');
     const [challengeMode, setChallengeMode] = useState('waiting');
@@ -1095,48 +1095,40 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess }) => 
     const [durationTime, setDurationTime] = useState(1);
     const [selectedBroker, setSelectedBroker] = useState('');
     const [showConfirmation, setShowConfirmation] = useState(false);
+    
+    // STATE MỚI để quản lý modal điều kiện
+    const [showConditionModal, setShowConditionModal] = useState(false);
 
+    // THAY THẾ TOÀN BỘ HÀM handleConfirm
     const handleConfirm = (e) => {
-        e.preventDefault();
+        e.preventDefault();
 
-        // 1. Kiểm tra các trường cơ bản
-        if (!betAmount || !selectedBroker || !tradingSymbol) {
-            alert('Please fill in Bet Amount, Trading Symbol, and select a Broker.');
-            return;
-        }
-        if (parseFloat(betAmount) <= 0) {
-            alert('Bet amount must be greater than 0.');
-            return;
-        }
+        if (!betAmount || !selectedBroker || !tradingSymbol) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+        if (parseFloat(betAmount) <= 0) {
+            alert('Bet amount must be greater than 0.');
+            return;
+        }
 
-        // 2. Lấy thông tin user và kiểm tra điều kiện
-        const currentBalance = parseFloat(user?.bet_wallet || 0);
-        const hasEmail = user?.email && user.email.trim() !== '';
-        const linkedBrokers = user?.linkedBrokers || [];
-        const hasBrokerAccount = linkedBrokers.includes(Number(selectedBroker));
+        const currentBalance = parseFloat(user?.bet_wallet || 0);
+        const hasEmail = user?.email && user.email.trim() !== '';
+        const linkedBrokers = user?.linkedBrokers || [];
+        const hasBrokerAccount = linkedBrokers.includes(Number(selectedBroker));
+        const hasSufficientBalance = currentBalance >= parseFloat(betAmount);
+        
+        // Nếu thiếu bất kỳ điều kiện nào, mở modal điều kiện thay vì alert
+        if (!hasEmail || !hasBrokerAccount || !hasSufficientBalance) {
+            setShowConditionModal(true);
+            return; // Dừng lại tại đây
+        }
+        
+        // Nếu tất cả điều kiện đều OK, hiển thị modal xác nhận cuối cùng
+        setShowConfirmation(true);
+    };
 
-        // 3. Thực hiện validation tuần tự
-        if (!hasEmail) {
-            alert("Please update your email address in Settings before creating a match.");
-            return;
-        }
-
-        if (!hasBrokerAccount) {
-            const brokerName = brokersList.find(b => b.id === Number(selectedBroker))?.name || 'the selected broker';
-            alert(`You do not have a linked account for ${brokerName}. Please link your account first.`);
-            return;
-        }
-        
-        if (currentBalance < parseFloat(betAmount)) {
-            alert(`Insufficient balance. You need ${betAmount} USDT but only have ${currentBalance.toFixed(2)} USDT.`);
-            return;
-        }
-        
-        // Nếu tất cả điều kiện đều OK, hiển thị modal xác nhận
-        setShowConfirmation(true);
-    };
-
-    const confirmMatchSetup = async () => {  // Add async for await fetch
+    const confirmMatchSetup = async () => {
       console.log("Creating match:", { betAmount, tradingSymbol, challengeMode, opponentId, durationTime, selectedBroker });
       try {
           const response = await fetch('https://f2farena.com/api/matches/', {
@@ -1153,12 +1145,12 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess }) => 
           });
           if (!response.ok) {
               const errorData = await response.json();
-              console.error('Create match failed:', response.status, errorData.detail);  // Log error detail (e.g invalid broker_id)
-              alert('Create failed: ' + errorData.detail);  // Show user
+              console.error('Create match failed:', response.status, errorData.detail);
+              alert('Create failed: ' + errorData.detail);
               return;
           }
           const data = await response.json();
-          console.log('Create match success, id:', data.id);  // Log success
+          console.log('Create match success, id:', data.id);
           setShowConfirmation(false);
           onClose();
           onCreateSuccess?.();
@@ -1166,89 +1158,61 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess }) => 
           console.error('Error POST create match:', error);
           alert('Error creating match');
       }
-  };
+    };
 
     return (
         <>
+            {/* Modal điều kiện sẽ hiển thị ở đây */}
+            {showConditionModal && (
+                <CreateMatchConditionModal
+                    onClose={() => setShowConditionModal(false)}
+                    user={user}
+                    onUserUpdate={onUserUpdate}
+                    brokersList={brokersList}
+                    requiredBrokerId={Number(selectedBroker)}
+                    requiredBetAmount={parseFloat(betAmount)}
+                />
+            )}
+
             <div className="page-padding">
                 <div className="form-header">
                     <h2>Create New Match</h2>
                     <button onClick={onClose} className="icon-button close-button">&times;</button>
                 </div>
                 <form className="card" onSubmit={handleConfirm}>
+                    {/* Các input form giữ nguyên không đổi */}
                     <div className="form-group">
                         <label className="form-label">Bet Amount (USDT)</label>
-                        <input
-                            type="number"
-                            className="form-input"
-                            value={betAmount}
-                            onChange={(e) => setBetAmount(e.target.value)}
-                            placeholder="e.g., 100"
-                            required
-                        />
+                        <input type="number" className="form-input" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} placeholder="e.g., 100" required />
                     </div>
                     <div className="form-group">
                         <label className="form-label">Trading Symbol</label>
-                        <input
-                            type="text"
-                            className="form-input"
-                            value={tradingSymbol}
-                            onChange={(e) => setTradingSymbol(e.target.value)}
-                            placeholder="e.g., BTC/USDT, GOLD"
-                            required
-                        />
+                        <input type="text" className="form-input" value={tradingSymbol} onChange={(e) => setTradingSymbol(e.target.value)} placeholder="e.g., BTC/USDT, GOLD" required />
                     </div>
                     <div className="form-group">
                         <label className="form-label">Challenge Mode</label>
                         <div className="form-radio-group">
-                            <label className="form-radio-label">
-                                <input type="radio" name="challengeMode" value="specific" checked={challengeMode === 'specific'} onChange={(e) => setChallengeMode(e.target.value)} />
-                                <span>Challenge User</span>
-                            </label>
-                            <label className="form-radio-label">
-                                <input type="radio" name="challengeMode" value="waiting" checked={challengeMode === 'waiting'} onChange={(e) => setChallengeMode(e.target.value)} />
-                                <span>Waiting Mode</span>
-                            </label>
+                            <label className="form-radio-label"><input type="radio" name="challengeMode" value="specific" checked={challengeMode === 'specific'} onChange={(e) => setChallengeMode(e.target.value)} /><span>Challenge User</span></label>
+                            <label className="form-radio-label"><input type="radio" name="challengeMode" value="waiting" checked={challengeMode === 'waiting'} onChange={(e) => setChallengeMode(e.target.value)} /><span>Waiting Mode</span></label>
                         </div>
                     </div>
                     <div className="form-group">
                       <label className="form-label">Duration Time (hours)</label>
-                      <select
-                        className="form-input"
-                        value={durationTime}
-                        onChange={(e) => setDurationTime(Number(e.target.value))}
-                        required
-                      >
-                        <option value={1}>1 hour</option>
-                        <option value={4}>4 hours</option>
-                        <option value={8}>8 hours</option>
+                      <select className="form-input" value={durationTime} onChange={(e) => setDurationTime(Number(e.target.value))} required>
+                        <option value={1}>1 hour</option><option value={4}>4 hours</option><option value={8}>8 hours</option>
                       </select>
                     </div>
                     <div className="form-group">
                       <label className="form-label">Broker</label>
-                      <select
-                        className="form-input"
-                        value={selectedBroker}
-                        onChange={(e) => setSelectedBroker(e.target.value)}
-                        required
-                      >
+                      <select className="form-input" value={selectedBroker} onChange={(e) => setSelectedBroker(e.target.value)} required>
                         <option value="">Select Broker</option>
-                        {brokersList.map(broker => (
-                          <option key={broker.id} value={broker.id}>{broker.name}</option>
-                        ))}
+                        {brokersList.map(broker => (<option key={broker.id} value={broker.id}>{broker.name}</option>))}
                       </select>
                     </div>
-                    {challengeMode === 'specific' && (                       
+                    {challengeMode === 'specific' && (
                       <div className="form-group">
                           <label className="form-label">Opponent's ID</label>
-                          <input
-                              type="number"
-                              className="form-input"
-                              value={opponentId}
-                              onChange={(e) => setOpponentId(e.target.value)}
-                              placeholder="Enter Telegram ID"
-                              required
-                          />
+                          <input type="number" className="form-input" value={opponentId} onChange={(e) => setOpponentId(e.target.value)} placeholder="Enter Telegram ID" required />
                       </div>
                     )}
                     <button type="submit" className="btn btn-accent" style={{width: '100%', marginTop: '1rem'}}>
@@ -1836,21 +1800,178 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
     );
 };
 
-const JoinConfirmModal = ({ onClose, onConfirm, match }) => {
+const CreateMatchConditionModal = ({ onClose, user, onUserUpdate, brokersList, requiredBrokerId, requiredBetAmount }) => {
+    const navigate = useNavigate();
+    const [newAccount, setNewAccount] = useState({ name_account: '', password_account: '', server_account: '' });
+    const [newEmail, setNewEmail] = useState(user?.email || '');
+
+    const currentBalance = parseFloat(user?.bet_wallet || 0);
+    const hasSufficientBalance = currentBalance >= requiredBetAmount;
+    const hasBrokerAccount = user?.linkedBrokers?.includes(requiredBrokerId) || false;
+    const hasEmail = user?.email && user.email.trim() !== '';
+
+    // Lấy thông tin broker đang được chọn
+    const selectedBroker = brokersList.find(b => b.id === requiredBrokerId);
+    const brokerName = selectedBroker?.name || 'this broker';
+    const brokerRegistrationUrl = selectedBroker?.registration_url || '#';
+
+    const handleGoToWallet = () => {
+        navigate('/wallet');
+        onClose();
+    };
+
+    const handleSubmitNewAccount = async () => {
+        if (!newAccount.name_account.trim() || !newAccount.server_account.trim()) {
+            alert('Please enter your Account Name and Server.');
+            return;
+        }
+        try {
+            const response = await fetch('https://f2farena.com/api/accounts/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: user.telegram_id,
+                    broker_id: requiredBrokerId,
+                    name_account: newAccount.name_account,
+                    password_account: newAccount.password_account,
+                    server_account: newAccount.server_account
+                })
+            });
+            const data = await response.json();
+            if (response.ok && data.id) {
+                alert('Account linked successfully! Your info is being updated.');
+                await onUserUpdate(); // Tải lại dữ liệu user mới nhất
+                onClose(); // Đóng modal để người dùng thử lại
+            } else {
+                alert(data.detail || 'Account linking failed.');
+            }
+        } catch (error) {
+            console.error('Error linking account:', error);
+            alert('An error occurred while linking the account.');
+        }
+    };
+
+    const handleSubmitNewEmail = async () => {
+        const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!newEmail || !emailPattern.test(newEmail)) {
+            alert('Please enter a valid email address.');
+            return;
+        }
+        try {
+            const response = await fetch(`https://f2farena.com/api/users/${user.telegram_id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: newEmail })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Email update failed.');
+            }
+            const updatedUserData = await response.json();
+            onUserUpdate(updatedUserData); // Cập nhật user state ngay lập tức
+            alert('Email updated successfully!');
+            onClose(); // Đóng modal để người dùng tiếp tục
+        } catch (error) {
+            console.error('Error updating email:', error);
+            alert(`Error: ${error.message}`);
+        }
+    };
+
+    const renderContent = () => {
+        if (!hasEmail) {
+            return (
+                <>
+                    <h4>Email required</h4>
+                    <p>Please provide your email address to create a match. This will be used for notifications and verification.</p>
+                    <div className="form-group">
+                        <label className="form-label">Your Email</label>
+                        <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="Enter your email" className="form-input" required />
+                    </div>
+                    <div className="confirmation-buttons">
+                        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button className="btn btn-primary" onClick={handleSubmitNewEmail}>Update Email</button>
+                    </div>
+                </>
+            );
+        }
+        if (!hasBrokerAccount) {
+            return (
+                <>
+                    <h4>Trading Account Required</h4>
+                    <p>You need a linked account with <strong>{brokerName}</strong> to create this match.</p>
+                    <p>
+                        <a href={brokerRegistrationUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)' }}>Click here</a> to register if you don't have an account.
+                    </p>
+                    <div className="form-group"><label className="form-label">Trading Account</label><input type="text" value={newAccount.name_account} onChange={(e) => setNewAccount({ ...newAccount, name_account: e.target.value })} placeholder="e.g., 1234567" className="form-input" required /></div>
+                    <div className="form-group"><label className="form-label">Trading Password (Optional)</label><input type="password" value={newAccount.password_account} onChange={(e) => setNewAccount({ ...newAccount, password_account: e.target.value })} placeholder="Enter your trading password" className="form-input" /></div>
+                    <div className="form-group"><label className="form-label">Broker Server</label><input type="text" value={newAccount.server_account} onChange={(e) => setNewAccount({ ...newAccount, server_account: e.target.value })} placeholder="e.g., Exness-Real7" className="form-input" required /></div>
+                    <div className="confirmation-buttons">
+                        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button className="btn btn-primary" onClick={handleSubmitNewAccount}>Link Account</button>
+                    </div>
+                </>
+            );
+        }
+        if (!hasSufficientBalance) {
+            return (
+                <>
+                    <h4>Insufficient Balance</h4>
+                    <p>Your current balance is <strong>{currentBalance.toFixed(2)} USDT</strong>. You need at least <strong>{requiredBetAmount} USDT</strong> to create this match.</p>
+                    <div className="confirmation-buttons">
+                        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button className="btn btn-primary" onClick={handleGoToWallet}>Deposit</button>
+                    </div>
+                </>
+            );
+        }
+        return null;
+    };
+
     return (
-      <>
-        <div className="confirmation-overlay" onClick={onClose}></div>
-        <div className="confirmation-modal card">
-          <h4>Confirm Entry</h4>
-          <p>Are you sure you want to enter competition {match.id} with a stake of {match.betAmount} USDT?</p>
-          <div className="confirmation-buttons">
-            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={onConfirm}>Confirm</button>
-          </div>
+        <div className="deposit-modal-wrapper" onClick={onClose}>
+            <div className="deposit-modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="form-header">
+                    <h2>Match Requirement</h2>
+                    <button onClick={onClose} className="icon-button close-button">&times;</button>
+                </div>
+                {renderContent()}
+            </div>
         </div>
-      </>
     );
-  };
+};
+
+const JoinConfirmModal = ({ onClose, onConfirm, match, status }) => {
+    return (
+        <>
+            <div className="confirmation-overlay" onClick={onClose}></div>
+            <div className="confirmation-modal card">
+                {status === 'sent' ? (
+                    // TRẠNG THÁI SAU KHI NHẤN CONFIRM
+                    <>
+                        <h4>Waiting for confirmation...</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '1rem 0' }}>
+                            <div className="loading-pulse" style={{ fontSize: '2rem' }}></div>
+                            <p style={{textAlign: 'center', margin: 0}}>
+                                Your request to join has been sent. Please wait for the match creator to confirm!
+                            </p>
+                        </div>
+                        {/* Không có nút bấm ở đây */}
+                    </>
+                ) : (
+                    // TRẠNG THÁI BAN ĐẦU
+                    <>
+                        <h4>Confirm Entry</h4>
+                        <p>Are you sure you want to enter competition {match.id} with a stake of {match.betAmount} USDT?</p>
+                        <div className="confirmation-buttons">
+                            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                            <button className="btn btn-primary" onClick={onConfirm}>Confirm</button>
+                        </div>
+                    </>
+                )}
+            </div>
+        </>
+    );
+};
 
 // Helper component để xử lý logic đếm ngược và hiển thị trạng thái
 const TournamentStatus = ({ startTime }) => {
@@ -1927,6 +2048,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     const [waitingMatches, setWaitingMatches] = useState([]);
     const [liveMatches, setLiveMatches] = useState([]);
     const [showJoinMatchConditionModal, setShowJoinMatchConditionModal] = useState(false);
+    const [joinRequestStatus, setJoinRequestStatus] = useState('idle');
 
     const [allMatches, setAllMatches] = useState([]);
     const [statusFilters, setStatusFilters] = useState({
@@ -2015,41 +2137,43 @@ const ArenaPage = ({ user, onUserUpdate }) => {
       }
 
       setSelectedMatch(match);
+      setJoinRequestStatus('confirming');
       setShowJoinConfirm(true);
     };
 
     const handleConfirmJoin = async () => {
-      if (!selectedMatch || !user) return;
+      if (!selectedMatch || !user) return;
 
-      try {
-          const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  player2_id: user.telegram_id,
-                  player2_username: user.username || user.telegram_id.toString(),
-                  bet_amount: selectedMatch.betAmount
-              })
-          });
+      try {
+          const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  player2_id: user.telegram_id,
+                  player2_username: user.username || user.telegram_id.toString(),
+                  bet_amount: selectedMatch.betAmount
+              })
+          });
 
-          if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.detail || 'Failed to join match.');
-          }
+          if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.detail || 'Failed to join match.');
+          }
+          
+          // THAY ĐỔI CHÍNH: Thay alert bằng cách cập nhật state
+          setJoinRequestStatus('sent'); 
 
-          // Thông báo này giờ đã chính xác với luồng mới
-          alert("Yêu cầu tham gia đã được gửi. Vui lòng chờ người tạo trận xác nhận!");
+          fetchAllMatches(); // Vẫn cập nhật lại danh sách trận đấu
 
-          fetchAllMatches(); // Cập nhật lại UI, trận đấu này sẽ biến mất khỏi danh sách chờ
-
-      } catch (error) {
-          console.error('Error sending join request:', error);
-          alert(`Lỗi khi tham gia trận đấu: ${error.message}`);
-      } finally {
-          setShowJoinConfirm(false);
-          setSelectedMatch(null);
-      }
-  };
+      } catch (error) {
+          console.error('Error sending join request:', error);
+          alert(`Lỗi khi tham gia trận đấu: ${error.message}`);
+          // Nếu lỗi thì đóng modal lại
+          setShowJoinConfirm(false);
+          setJoinRequestStatus('idle');
+          setSelectedMatch(null);
+      } 
+    };
 
     const fetchTournaments = async () => {
       const cachedTournaments = sessionStorage.getItem('tournaments_data');
@@ -2160,8 +2284,14 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     }, [showFilters]);
 
     if (showCreateForm) {
-        return <CreateNewMatchForm onClose={() => setShowCreateForm(false)} brokersList={brokersList} onCreateSuccess={() => fetchAllMatches()} user={user} />;
-    }
+        return <CreateNewMatchForm 
+            onClose={() => setShowCreateForm(false)} 
+            brokersList={brokersList} 
+            onCreateSuccess={fetchAllMatches}
+            user={user} 
+            onUserUpdate={onUserUpdate}
+        />;
+    }
 
     return (
         <div className="page-padding">
@@ -2299,12 +2429,16 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                 <DepositForm onClose={() => setShowDepositModal(false)} user={user} onUserUpdate={onUserUpdate} />
             )}
             {showJoinConfirm && (
-                <JoinConfirmModal
-                    onClose={() => setShowJoinConfirm(false)}
-                    onConfirm={handleConfirmJoin}
-                    match={selectedMatch}
-                />
-            )}
+                <JoinConfirmModal
+                    onClose={() => {
+                        setShowJoinConfirm(false);
+                        setJoinRequestStatus('idle');
+                    }}
+                    onConfirm={handleConfirmJoin}
+                    match={selectedMatch}
+                    status={joinRequestStatus}
+                />
+            )}
         </div>
     );
 };
