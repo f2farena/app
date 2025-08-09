@@ -1626,13 +1626,13 @@ const UpdateWalletAddressForm = ({ onClose, user, onWalletAddressUpdated }) => {
 
 const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersList, conditionType }) => {
     const navigate = useNavigate();
-    const [newAccount, setNewAccount] = useState({ name_account: '', server_account: '' });
-    const [newEmail, setNewEmail] = useState(user?.email || ''); // Initialize with user's current email
+    const [newAccount, setNewAccount] = useState({ name_account: '', password_account: '', server_account: '' });
+    const [newEmail, setNewEmail] = useState(user?.email || ''); 
 
     // Lấy thông tin broker của trận đấu
     const matchBroker = brokersList.find(b => b.id === match.broker_id);
     const brokerName = matchBroker?.name || 'this broker';
-    const brokerRegistrationUrl = matchBroker?.registration_url || 'https://example.com/register'; // Cần lấy từ API broker hoặc hardcode nếu không có
+    const brokerRegistrationUrl = matchBroker?.registration_url || 'https://example.com/register';
 
     const currentBalance = parseFloat(user?.bet_wallet || 0);
     const hasSufficientBalance = currentBalance >= match.betAmount;
@@ -1646,7 +1646,7 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
 
     const handleSubmitNewAccount = async () => {
         if (!newAccount.name_account.trim() || !newAccount.server_account.trim()) {
-            alert('Vui lòng nhập đầy đủ Tên tài khoản và Server.');
+            alert('Please enter your Account Name and Server.');
             return;
         }
         try {
@@ -1657,27 +1657,27 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
                     user_id: user.telegram_id,
                     broker_id: match.broker_id,
                     name_account: newAccount.name_account,
+                    password_account: newAccount.password_account,
                     server_account: newAccount.server_account
                 })
             });
             const data = await response.json();
             if (data.id) {
-                alert('Tài khoản đã được liên kết thành công! Đang cập nhật thông tin của bạn...');
+                alert('Account linked successfully! Updating your information...');
                 await onUserUpdate(); // Gọi hàm onUserUpdate mới, nó sẽ tự fetch lại user
                 onClose();
             } else {
-                alert(data.detail || 'Liên kết tài khoản thất bại.');
+                alert(data.detail || 'Account linking failed.');
             }
         } catch (error) {
             console.error('Lỗi khi liên kết tài khoản:', error);
-            alert('Lỗi khi liên kết tài khoản: ' + error.message);
         }
     };
 
     const handleSubmitNewEmail = async () => {
         const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!newEmail || !emailPattern.test(newEmail)) {
-            alert('Vui lòng nhập địa chỉ email hợp lệ.');
+            alert('Please enter a valid email address.');
             return;
         }
         try {
@@ -1688,15 +1688,14 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
             });
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.detail || 'Cập nhật email thất bại.');
+                throw new Error(errorData.detail || 'Email update failed.');
             }
             const updatedUserData = await response.json(); // Nhận về user object đã cập nhật
             onUserUpdate(updatedUserData);
-            alert('Email đã được cập nhật thành công!');
+            alert('Email updated successfully!');
             onClose(); // Đóng modal sau khi cập nhật email
         } catch (error) {
             console.error('Lỗi khi cập nhật email:', error);
-            alert('Lỗi khi cập nhật email: ' + error.message);
         }
     };
 
@@ -1704,13 +1703,13 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
         if (!hasBrokerAccount) {
             return (
                 <>
-                    <h4>Yêu cầu tài khoản sàn</h4>
-                    <p>Bạn cần có tài khoản với sàn <strong>{brokerName}</strong> để tham gia trận đấu này.</p>
+                    <h4>Request a Trading Account</h4>
+                    <p>You need an account with <strong>{brokerName}</strong> to participate in this competition.</p>
                     <p>
-                        Nhấn <a href={brokerRegistrationUrl} target="_blank" rel="noopener,noreferrer" style={{ color: 'var(--color-accent)' }}>vào đây</a> để đăng ký tài khoản mới trên sàn nếu bạn chưa có.
+                        <a href={brokerRegistrationUrl} target="_blank" rel="noopener,noreferrer" style={{ color: 'var(--color-accent)' }}>Click here</a> to register for a new account with the broker if you don't already have one.
                     </p>
                     <div className="form-group">
-                        <label className="form-label">Tên tài khoản Trading</label>
+                        <label className="form-label">Trading Account</label>
                         <input
                             type="text"
                             value={newAccount.name_account}
@@ -1721,7 +1720,17 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
                         />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Server của tài khoản</label>
+                        <label className="form-label">Trading Password (Optional)</label>
+                        <input
+                            type="password"
+                            value={newAccount.password_account}
+                            onChange={(e) => setNewAccount({ ...newAccount, password_account: e.target.value })}
+                            placeholder="Enter your trading password"
+                            className="form-input"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Broker server link</label>
                         <input
                             type="text"
                             value={newAccount.server_account}
@@ -1732,8 +1741,8 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
                         />
                     </div>
                     <div className="confirmation-buttons">
-                        <button className="btn btn-secondary" onClick={onClose}>Hủy</button>
-                        <button className="btn btn-primary" onClick={handleSubmitNewAccount}>Liên kết tài khoản</button>
+                        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button className="btn btn-primary" onClick={handleSubmitNewAccount}>Connect Account</button>
                     </div>
                 </>
             );
@@ -1742,12 +1751,12 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
         if (!hasSufficientBalance) {
             return (
                 <>
-                    <h4>Số dư không đủ</h4>
-                    <p>Số dư hiện tại của bạn là <strong>{currentBalance.toFixed(2)} USDT</strong>. Trận đấu này yêu cầu tối thiểu <strong>{match.betAmount} USDT</strong>.</p>
-                    <p>Vui lòng nạp thêm tiền vào ví của bạn.</p>
+                    <h4>Insufficient balance.</h4>
+                    <p>Your current balance is <strong>{currentBalance.toFixed(2)} USDT</strong>. You need a minimum of <strong>{match.betAmount} USDT</strong> to enter this competition.</p>
+                    <p>Please add more funds to your wallet.</p>
                     <div className="confirmation-buttons">
-                        <button className="btn btn-secondary" onClick={onClose}>Hủy</button>
-                        <button className="btn btn-primary" onClick={handleGoToWallet}>Đi đến ví</button>
+                        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button className="btn btn-primary" onClick={handleGoToWallet}>View Wallet</button>
                     </div>
                 </>
             );
@@ -1756,8 +1765,8 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
         if (!hasEmail) {
             return (
                 <>
-                    <h4>Yêu cầu Email</h4>
-                    <p>Vui lòng cung cấp email của bạn để tham gia trận đấu. Email này sẽ được dùng để liên lạc và xác nhận thông tin.</p>
+                    <h4>Email request</h4>
+                    <p>Please provide your email address to enter the competition. This email will be used for communication and information verification.</p>
                     <div className="form-group">
                         <label className="form-label">Email của bạn</label>
                         <input
@@ -1771,20 +1780,20 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
                     </div>
                     <div className="confirmation-buttons">
                         <button className="btn btn-secondary" onClick={onClose}>Hủy</button>
-                        <button className="btn btn-primary" onClick={handleSubmitNewEmail}>Cập nhật Email</button>
+                        <button className="btn btn-primary" onClick={handleSubmitNewEmail}>Email Update</button>
                     </div>
                 </>
             );
         }
 
-        return null; // Không nên tới đây nếu logic điều kiện chuẩn đã cover
+        return null;
     };
 
     return (
         <div className="deposit-modal-wrapper" onClick={onClose}>
             <div className="deposit-modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="form-header">
-                    <h2>Điều kiện tham gia trận đấu</h2>
+                    <h2>Entry Requirements</h2>
                     <button onClick={onClose} className="icon-button close-button">&times;</button>
                 </div>
                 {renderContent()}
@@ -1798,11 +1807,11 @@ const JoinConfirmModal = ({ onClose, onConfirm, match }) => {
       <>
         <div className="confirmation-overlay" onClick={onClose}></div>
         <div className="confirmation-modal card">
-          <h4>Xác nhận tham gia Challenge</h4>
-          <p>Bạn có chắc muốn tham gia trận {match.id} với bet {match.betAmount} USDT?</p>
+          <h4>Confirm Entry</h4>
+          <p>Are you sure you want to enter competition {match.id} with a stake of {match.betAmount} USDT?</p>
           <div className="confirmation-buttons">
-            <button className="btn btn-secondary" onClick={onClose}>Hủy</button>
-            <button className="btn btn-primary" onClick={onConfirm}>Xác nhận</button>
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" onClick={onConfirm}>Confirm</button>
           </div>
         </div>
       </>
