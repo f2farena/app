@@ -1757,7 +1757,7 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
                     <p>Please add more funds to your wallet.</p>
                     <div className="confirmation-buttons">
                         <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-                        <button className="btn btn-primary" onClick={handleGoToWallet}>View Wallet</button>
+                        <button className="btn btn-primary" onClick={() => setShowDepositFlow(true)}>Deposit</button>
                     </div>
                 </>
             );
