@@ -1097,10 +1097,44 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess }) => 
     const [showConfirmation, setShowConfirmation] = useState(false);
 
     const handleConfirm = (e) => {
-        e.preventDefault();
-        // Thêm kiểm tra validation cơ bản ở đây nếu cần
-        setShowConfirmation(true);
-    };
+        e.preventDefault();
+
+        // 1. Kiểm tra các trường cơ bản
+        if (!betAmount || !selectedBroker || !tradingSymbol) {
+            alert('Please fill in Bet Amount, Trading Symbol, and select a Broker.');
+            return;
+        }
+        if (parseFloat(betAmount) <= 0) {
+            alert('Bet amount must be greater than 0.');
+            return;
+        }
+
+        // 2. Lấy thông tin user và kiểm tra điều kiện
+        const currentBalance = parseFloat(user?.bet_wallet || 0);
+        const hasEmail = user?.email && user.email.trim() !== '';
+        const linkedBrokers = user?.linkedBrokers || [];
+        const hasBrokerAccount = linkedBrokers.includes(Number(selectedBroker));
+
+        // 3. Thực hiện validation tuần tự
+        if (!hasEmail) {
+            alert("Please update your email address in Settings before creating a match.");
+            return;
+        }
+
+        if (!hasBrokerAccount) {
+            const brokerName = brokersList.find(b => b.id === Number(selectedBroker))?.name || 'the selected broker';
+            alert(`You do not have a linked account for ${brokerName}. Please link your account first.`);
+            return;
+        }
+        
+        if (currentBalance < parseFloat(betAmount)) {
+            alert(`Insufficient balance. You need ${betAmount} USDT but only have ${currentBalance.toFixed(2)} USDT.`);
+            return;
+        }
+        
+        // Nếu tất cả điều kiện đều OK, hiển thị modal xác nhận
+        setShowConfirmation(true);
+    };
 
     const confirmMatchSetup = async () => {  // Add async for await fetch
       console.log("Creating match:", { betAmount, tradingSymbol, challengeMode, opponentId, durationTime, selectedBroker });
