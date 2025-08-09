@@ -1693,7 +1693,6 @@ const JoinMatchConditionModal = ({ onClose, match, user, onUserUpdate, brokersLi
             }
             const updatedUserData = await response.json(); // Nhận về user object đã cập nhật
             onUserUpdate(updatedUserData);
-            alert('Email updated successfully!');
             onClose(); // Đóng modal sau khi cập nhật email
         } catch (error) {
             console.error('Lỗi khi cập nhật email:', error);
