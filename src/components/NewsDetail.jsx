@@ -138,7 +138,7 @@ const NewsDetail = ({ user }) => {
   if (!article) {
     return (
       <div className="page-padding" style={{ backgroundColor: 'var(--color-card-bg)', color: 'var(--color-text)', minHeight: '100vh' }}>
-        <h2>Loading Article...</h2>  // Thêm loading để tránh null error
+        <h2>Loading Article...</h2> 
       </div>
     );
   }
