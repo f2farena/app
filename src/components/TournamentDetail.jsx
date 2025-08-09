@@ -416,9 +416,10 @@ const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
           </div>
         </div>
 
-        <p className="detail-page-content">
-          {tournament.description}
-        </p>
+        <div
+          className="detail-page-content"
+          dangerouslySetInnerHTML={{ __html: tournament.description }}
+        />
 
         {isTournamentEnded && tournament.results.length > 0 && (
           <div className="card">
