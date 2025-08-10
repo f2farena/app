@@ -129,7 +129,7 @@ const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, us
         <>
           <h4>Successful!</h4>
           <p style={{ margin: '1rem 0' }}>
-            Yêu cầu của bạn đã được ghi nhận. Hệ thống sẽ xử lý và xác thực trong thời gian sớm nhất.
+            Your request has been received. It will be processed and verified shortly.
           </p>
           <div className="confirmation-buttons">
             <button className="btn btn-primary" onClick={onClose} style={{width: '100%'}}>
