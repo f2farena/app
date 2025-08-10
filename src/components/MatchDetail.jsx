@@ -259,6 +259,9 @@ const MatchDetail = ({ user }) => {
                         };
                     });
                     break;
+                case "VIEW_COUNT_UPDATE":
+                    setViews(message.data.views);
+                    break;
                 case "MATCH_DONE":
                     setMatchResult(message.data);
                     setShowResultModal(true);
@@ -271,7 +274,7 @@ const MatchDetail = ({ user }) => {
         return () => {
             window.removeEventListener('websocket-message', handleWebSocketMessage);
         };
-    }, [id, fetchMatchDetail, matchData]); // Thêm matchData để logic NEW_TRADE lấy được tên
+    }, [id, fetchMatchDetail, matchData]);
 
     // useEffect để fetch dữ liệu lần đầu khi vào trang
     useEffect(() => {
