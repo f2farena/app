@@ -39,7 +39,7 @@ const LoginConfirmationModal = ({ matchData, cancellationReason, navigate }) => 
             <div className="login-modal-content card">
                 <h3 className="login-modal-title">Awaiting Players</h3>
                 <p className="login-modal-instructions">
-                    Please log in to your trading account. The match will begin automatically once both players are ready.
+                    The system is verifying and connecting to your trading account. Please wait a few minutes.
                 </p>
                 <div className="player-status-list">
                     <div className="player-status-row">
