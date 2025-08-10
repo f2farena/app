@@ -2125,7 +2125,9 @@ const TournamentStatus = ({ startTime }) => {
 
 const ArenaPage = ({ user, onUserUpdate }) => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('tournament');
+    const [activeTab, setActiveTab] = useState(() => {
+        return sessionStorage.getItem('arenaActiveTab') || 'tournament';
+    });
     const [tournamentFilter, setTournamentFilter] = useState('all');
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
@@ -2142,12 +2144,25 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     const [joinRequestStatus, setJoinRequestStatus] = useState('idle');
 
     const [allMatches, setAllMatches] = useState([]);
-    const [statusFilters, setStatusFilters] = useState({
-        live: true,
-        waiting: true,
-        done: false, // Mặc định không hiển thị lịch sử
+    const [statusFilters, setStatusFilters] = useState(() => {
+        const savedFilters = sessionStorage.getItem('arenaStatusFilters');
+        return savedFilters ? JSON.parse(savedFilters) : {
+            live: true,
+            waiting: true,
+            pending_confirmation: true,
+            done: false,
+        };
     });
     const [doneMatches, setDoneMatches] = useState([]);
+
+    useEffect(() => {
+        sessionStorage.setItem('arenaActiveTab', activeTab);
+    }, [activeTab]);
+
+    useEffect(() => {
+        sessionStorage.setItem('arenaStatusFilters', JSON.stringify(statusFilters));
+    }, [statusFilters]);
+
 
     const fetchMatchHistory = async () => {
         if (!user || !user.telegram_id) return; // Dừng nếu chưa có thông tin user
@@ -2165,32 +2180,32 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     };
     
     const fetchAllMatches = async () => {
-      try {
-          const response = await fetch('https://f2farena.com/api/matches/active');
-          if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          const data = await response.json();
-          if (!Array.isArray(data)) {
-              console.error('API response for active matches is not an array:', data);
-              setWaitingMatches([]);
-              setLiveMatches([]);
-              return;
-          }
+        try {
+            // Lấy tất cả các trận active (bao gồm cả waiting, pending_confirmation, live)
+            const response = await fetch('https://f2farena.com/api/matches/active'); 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            if (!Array.isArray(data)) {
+                console.error('API response for active matches is not an array:', data);
+                setLiveMatches([]);
+                setWaitingMatches([]);
+                return;
+            }
 
-          // Lọc và cập nhật chính xác 2 state cũ
-          const waitingData = data.filter(match => match.status === 'waiting');
-          const liveData = data.filter(match => match.status === 'live');
-          
-          setWaitingMatches(waitingData);
-          setLiveMatches(liveData);
-          
-          sessionStorage.setItem('active_matches', JSON.stringify(data)); // Vẫn lưu cache chung
-      } catch (error) {
-          console.error('Error fetching all active matches:', error);
-          setWaitingMatches([]);
-          setLiveMatches([]);
-      }
+            const liveData = data.filter(match => match.status === 'live');
+            const waitingData = data.filter(match => match.status === 'waiting');
+            
+            setLiveMatches(liveData);
+            setWaitingMatches(waitingData);
+            
+            sessionStorage.setItem('active_matches', JSON.stringify(data));
+        } catch (error) {
+            console.error('Error fetching all active matches:', error);
+            setLiveMatches([]);
+            setWaitingMatches([]);
+        }
     };
 
     const handleJoinChallenge = (match) => {
@@ -2353,8 +2368,6 @@ const ArenaPage = ({ user, onUserUpdate }) => {
         setStatusFilters(prevFilters => {
             const newFilters = { ...prevFilters, [name]: checked };
 
-            // Nếu người dùng tick vào "Done", gọi API để lấy dữ liệu.
-            // Nếu bỏ tick, không cần làm gì vì dữ liệu đã có hoặc sẽ bị ẩn đi.
             if (name === 'done' && checked) {
                 fetchMatchHistory();
             }
@@ -2364,11 +2377,12 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     
     // Logic lọc và gộp danh sách trận đấu mới dựa trên checkbox
     const filteredMatches = [
-        ...(statusFilters.live ? liveMatches : []),
+        // Dùng chung key 'live' để hiển thị cả 2 trạng thái này
+        ...(statusFilters.live || statusFilters.pending_confirmation ? liveMatches : []),
         ...(statusFilters.waiting ? waitingMatches : []),
         ...(statusFilters.done ? doneMatches : [])
-    ].sort((a, b) => { // Sắp xếp để trận mới nhất lên đầu
-        const statusOrder = { live: 3, waiting: 2, done: 1 };
+    ].sort((a, b) => {
+        const statusOrder = { live: 4, pending_confirmation: 3, waiting: 2, done: 1 };
         if (statusOrder[a.status] !== statusOrder[b.status]) {
             return statusOrder[b.status] - statusOrder[a.status];
         }
@@ -2457,16 +2471,15 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                           <label className="form-label" style={{ marginBottom: '0.75rem', display: 'block' }}>Filter by Status</label>
                           <div className="form-checkbox-group">
                               {Object.keys(statusFilters).map((key) => (
-                                  <label key={key} className="form-checkbox-label">
-                                      <input
-                                          type="checkbox"
-                                          name={key}
-                                          checked={statusFilters[key]}
-                                          onChange={handleFilterChange}
-                                      />
-                                      {/* Viết hoa chữ cái đầu */}
-                                      <span>{key.charAt(0).toUpperCase() + key.slice(1)}</span>
-                                  </label>
+                                <label key={key} className="form-checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        name={key}
+                                        checked={statusFilters[key]}
+                                        onChange={handleFilterChange}
+                                    />
+                                    <span>{key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                                </label>
                               ))}
                           </div>
                       </div>
