@@ -310,6 +310,7 @@ const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
     fetchTournamentDetail();
   }, [id]);
 
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true); 
   const navigate = useNavigate();
   const [tournament, setTournament] = useState(null);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -325,6 +326,33 @@ const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
   const [accountInfo, setAccountInfo] = useState(null);
   const [newAccount, setNewAccount] = useState({ name_account: '', server_account: '', password_account: '' });
   const [newEmail, setNewEmail] = useState('');
+
+  useEffect(() => {
+    // Chỉ chạy khi có đủ thông tin user và tournament
+    if (user && tournament) {
+      const checkRegistrationStatus = async () => {
+        try {
+          const response = await fetch(`https://f2farena.com/api/tournament-register/check?user_id=${user.telegram_id}&tournament_id=${id}`);
+          if (!response.ok) {
+            throw new Error('Failed to check status');
+          }
+          const data = await response.json();
+          if (data.is_registered) {
+            setIsRegistered(true);
+          }
+        } catch (error) {
+          console.error("Failed to check registration status:", error);
+        } finally {
+          setIsLoadingStatus(false); // Dừng loading sau khi kiểm tra xong
+        }
+      };
+
+      checkRegistrationStatus();
+    } else if (!tournament) {
+        // Nếu tournament chưa có dữ liệu, cũng coi như hết loading
+        setIsLoadingStatus(false);
+    }
+  }, [user, tournament, id]);
 
   const checkAccountAndEmail = async () => {
     if (!user.email) {
@@ -343,6 +371,48 @@ const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
       }
     } catch (error) {
       console.error('Error fetching account:', error);
+    }
+  };
+
+  const handleRegisterClick = async () => {
+    if (!user || !tournament) return;
+
+    // Kiểm tra xem user đã liên kết tài khoản của broker này chưa
+    const hasBrokerAccount = user.linkedBrokers?.includes(tournament.broker_id);
+
+    if (hasBrokerAccount) {
+      // LUỒNG MỚI: Đăng ký trực tiếp
+      setIsLoadingStatus(true); // Bắt đầu loading
+      try {
+        const response = await fetch('https://f2farena.com/api/tournament-register/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: user.telegram_id,
+            tournament_id: tournament.id,
+            // Theo schema DB, status là bit(1) nên ta dùng số 0 để đại diện cho "waiting_verify"
+            status: 0 
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || "Registration failed");
+        }
+        
+        // Thông báo thành công và ẩn nút
+        alert("Registration successful. Please wait for verification.");
+        setIsRegistered(true);
+
+      } catch (error) {
+        console.error("Direct registration error:", error);
+        alert(`Error: ${error.message}`);
+      } finally {
+        setIsLoadingStatus(false); // Dừng loading
+      }
+    } else {
+      // LUỒNG CŨ: Mở modal để người dùng liên kết tài khoản
+      setShowRegisterModal(true);
     }
   };
 
@@ -465,6 +535,18 @@ const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
           </button>
         </footer>
       )}
+
+      {isLoadingStatus && !isTournamentEnded && (
+        <footer className="detail-page-footer">
+          <button 
+            className="btn btn-secondary" 
+            style={{ width: '90%', maxWidth: '400px' }}
+            disabled
+          >
+            Checking Status...
+          </button>
+        </footer>
+      )}
 
       {showRegisterModal && (
         <RegistrationModal
