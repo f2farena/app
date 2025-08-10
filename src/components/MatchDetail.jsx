@@ -3,6 +3,48 @@ import { useParams, useNavigate } from 'react-router-dom';
 import './MatchDetail.css';
 import { useWebSocket } from '../contexts/WebSocketContext';
 
+const MatchCountdownTimer = ({ startTime, durationHours }) => {
+    const [timeRemaining, setTimeRemaining] = useState("Calculating...");
+
+    useEffect(() => {
+        if (!startTime || !durationHours) {
+            setTimeRemaining("Finished");
+            return;
+        }
+
+        const endTime = new Date(startTime).getTime() + durationHours * 3600 * 1000;
+
+        const calculateAndSetRemaining = () => {
+            const now = new Date().getTime();
+            const remainingMilliseconds = endTime - now;
+            
+            if (remainingMilliseconds <= 0) {
+                setTimeRemaining("00:00:00");
+                return 0;
+            }
+
+            const totalSeconds = Math.floor(remainingMilliseconds / 1000);
+            const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+            const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+            const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+            
+            setTimeRemaining(`${hours}:${minutes}:${seconds}`);
+            return remainingMilliseconds;
+        };
+
+        if (calculateAndSetRemaining() <= 0) return;
+        const interval = setInterval(() => {
+            if (calculateAndSetRemaining() <= 0) {
+                clearInterval(interval);
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [startTime, durationHours]);
+
+    return <>{timeRemaining}</>; // Trả về text, không bọc trong div
+};
+
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n => n[0]).join('') || 'NN').toUpperCase()}`;
 
 // Modal chờ đăng nhập
@@ -291,37 +333,6 @@ const MatchDetail = ({ user }) => {
     }, [matchData]);
 
     useEffect(() => {
-        if (!matchData || matchData.status !== 'live' || !matchData.timeRemaining) {
-            setTimeRemaining(matchData?.timeRemaining || "N/A");
-            return;
-        }
-
-        let interval = null;
-        const [hours, minutes, seconds] = matchData.timeRemaining.split(':').map(Number);
-        let totalSeconds = hours * 3600 + minutes * 60 + seconds;
-        
-        if (totalSeconds <= 0) {
-            setTimeRemaining("00:00:00");
-            return;
-        }
-
-        interval = setInterval(() => {
-            totalSeconds--;
-            if (totalSeconds <= 0) {
-                clearInterval(interval);
-                setTimeRemaining("00:00:00");
-                return;
-            }
-            const newHours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
-            const newMinutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-            const newSeconds = (totalSeconds % 60).toString().padStart(2, '0');
-            setTimeRemaining(`${newHours}:${newMinutes}:${newSeconds}`);
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [matchData]); 
-
-    useEffect(() => {
         const fetchComments = async () => {
             if (!matchData) return;
             try {
@@ -469,9 +480,9 @@ const MatchDetail = ({ user }) => {
                 <div className="center-details">
                     <div className="time-remaining">
                         {matchData.status === 'done' 
-                        ? 'Finished' 
-                        : <MatchCountdownTimer startTime={matchData.start_time} durationHours={matchData.duration_time} />
-                    }
+                            ? 'Finished' 
+                            : <MatchCountdownTimer startTime={matchData.start_time} durationHours={matchData.duration_time} />
+                        }
                     </div>
                     <div className="vs-text">VS</div>
                 </div>
