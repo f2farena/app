@@ -2948,7 +2948,7 @@ const AppContent = () => {
     }
 
     if (!telegramId) {
-        telegramId = 6461541179; // ID mặc định cho development
+        telegramId = 1; // ID mặc định cho development
     }
 
     try {

@@ -51,16 +51,18 @@ const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, us
 
   const handleSubmitNewAccount = async () => {
     try {
-        const response = await fetch('[https://f2farena.com/api/accounts/](https://f2farena.com/api/accounts/)', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                user_id: user.telegram_id,
-                broker_id: tournament.broker_id,
-                name_account: newAccount.name_account,
-                server_account: newAccount.server_account
-            })
-        });
+        const response = await fetch('https://f2farena.com/api/accounts/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // === SỬA PHẦN BODY BÊN DƯỚI ===
+            body: JSON.stringify({
+                user_id: user.telegram_id,
+                broker_id: tournament.broker_id,
+                name_account: newAccount.name_account,
+                password_account: newAccount.password_account,
+                server_account: newAccount.server_account
+            })
+        });
         const data = await response.json();
         console.log('POST new account response:', data);
         if (data.id) {
@@ -161,13 +163,21 @@ const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, us
             style={{ marginBottom: '1rem' }}  // Thêm margin để tách
           />
           <input
+            type="password"
+            value={newAccount.password_account || ''}
+            onChange={(e) => setNewAccount({ ...newAccount, password_account: e.target.value })}
+            placeholder="Password (Optional)"
+            className="form-input"
+            style={{ marginBottom: '1rem' }}
+          />
+          <input
             type="text"
             value={newAccount.server_account || ''}  // Add fallback ''
             onChange={(e) => setNewAccount({ ...newAccount, server_account: e.target.value })}
             placeholder="Server"
             className="form-input"
             style={{ marginBottom: '1rem' }}  // Thêm margin để tách
-          />
+          />         
           <div className="confirmation-buttons">
               <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
               <button className="btn btn-primary" onClick={handleSubmitNewAccount}>Submit Account</button>
@@ -317,8 +327,8 @@ const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
     }
   }, []);
   const [accountInfo, setAccountInfo] = useState(null);
-  const [newAccount, setNewAccount] = useState({ name_account: '', server_account: '' });
-  const [newEmail, setNewEmail] = useState('');
+  const [newAccount, setNewAccount] = useState({ name_account: '', server_account: '', password_account: '' });
+  const [newEmail, setNewEmail] = useState('');
 
   const checkAccountAndEmail = async () => {
     if (!user.email) {
