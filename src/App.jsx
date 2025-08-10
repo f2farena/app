@@ -241,7 +241,7 @@ const MatchCountdownTimer = ({ startTime, durationHours }) => {
     useEffect(() => {
         // Nếu không có thời gian bắt đầu hoặc thời lượng, coi như đã kết thúc
         if (!startTime || !durationHours) {
-            setTimeRemaining("Finished");
+            setTimeRemaining("Waiting...")
             return;
         }
 

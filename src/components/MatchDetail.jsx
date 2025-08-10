@@ -479,9 +479,9 @@ const MatchDetail = ({ user }) => {
                 </div>
                 <div className="center-details">
                     <div className="time-remaining">
-                        {matchData.status === 'done' 
-                            ? 'Finished' 
-                            : <MatchCountdownTimer startTime={matchData.start_time} durationHours={matchData.duration_time} />
+                        {matchData.status === 'live'
+                            ? <MatchCountdownTimer startTime={matchData.start_time} durationHours={matchData.duration_time} />
+                            : (matchData.status === 'done' ? 'Finished' : 'Pending') 
                         }
                     </div>
                     <div className="vs-text">VS</div>
