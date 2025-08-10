@@ -14,16 +14,15 @@ const handleConfirmRegistration = async () => {
       body: JSON.stringify({ user_id: user.telegram_id, tournament_id: tournament.id, status: 0 })
     });
     const data = await response.json();
-    console.log('Registration response:', data); // Log
-    alert('Registration Confirmed!');
+    console.log('Registration response:', data);
   } catch (error) {
     console.error('Error registering:', error);
   }
   onClose();
 };
 
-const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, userEmail, setUserEmail, newEmail, setNewEmail, accountInfo, setAccountInfo, newAccount, setNewAccount, onUserUpdate }) => {
-  const [showDownloadStep, setShowDownloadStep] = useState(false);  
+const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, userEmail, setUserEmail, newEmail, setNewEmail, accountInfo, setAccountInfo, newAccount, setNewAccount, onUserUpdate, onRegisterSuccess }) => {
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false); 
   // Logic kiểm tra
   console.log('User object in RegistrationModal:', user);  // Log thêm: Để nhìn full user (sau fix sẽ thấy linkedBrokers)
   console.log('Attempting hasBrokerAccount check, linkedBrokers exists:', !!user?.linkedBrokers);  // Log thêm: Confirm trước check
@@ -45,7 +44,6 @@ const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, us
   const handleConfirmRegistration = () => {
       // Đây là nơi sẽ gọi API để đăng ký giải đấu thật
       console.log(`User ${user.id} confirmed registration for tournament ${tournament.id}`);
-      alert('Registration Confirmed!'); // Thông báo tạm thời
       onClose();
   };
 
@@ -66,24 +64,23 @@ const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, us
         const data = await response.json();
         console.log('POST new account response:', data);
         if (data.id) {
-            setAccountInfo(data);
+          setAccountInfo(data);
 
-            // Cập nhật linkedBrokers trong user object và sessionStorage
-            const updatedLinkedBrokers = [...(user.linkedBrokers || []), tournament.broker_id];
-            const updatedUser = { ...user, linkedBrokers: updatedLinkedBrokers };
-            // Truyền updatedUser lên AppContent để cập nhật state user chính
-            if (typeof onUserUpdate === 'function') { // Đảm bảo onUserUpdate là một prop có sẵn và là hàm
-                onUserUpdate(updatedUser); 
-            } else {
-                sessionStorage.setItem('user_data', JSON.stringify(updatedUser));
-            }
-            
+          const updatedLinkedBrokers = [...(user.linkedBrokers || []), tournament.broker_id];
+          const updatedUser = { ...user, linkedBrokers: updatedLinkedBrokers };
+
+          if (typeof onUserUpdate === 'function') {
             onUserUpdate(updatedUser);
-            alert('Account added successfully!');
-            setShowDownloadStep(true);
+          } else {
+            sessionStorage.setItem('user_data', JSON.stringify(updatedUser));
+          }
+          
+          // Bỏ alert và thay bằng set state mới
+          setShowSuccessMessage(true);
+          onRegisterSuccess(); // Gọi hàm để ẩn nút "Register Now" ở ngoài
+
         } else {
-            // Xử lý trường hợp backend trả về không thành công nhưng không throw lỗi HTTP
-            alert(data.detail || 'Failed to add account.');
+          alert(data.detail || 'Failed to add account.');
         }
     } catch (error) {
         console.error('Error POST account:', error);
@@ -126,21 +123,19 @@ const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, us
 
   const renderContent = () => {
     console.log('renderContent called, userEmail:', userEmail);
-    if (showDownloadStep) {
+
+    if (showSuccessMessage) {
       return (
         <>
-          <h4>Verify Account</h4>
-          <p>Download the trading software (Desktop version) to verify your account. After downloading, log in with your account details. If successful, the system will confirm your registration.</p>
-          <button 
-            className="btn btn-primary" 
-            onClick={() => {
-              window.open('www.f2farena.com/tradingapp', '_blank', 'noopener,noreferrer');
-              onClose();  // Thoát modal sau khi mở tab tải
-            }}
-            style={{ marginBottom: '1rem' }}
-          >
-            Download F2F Trading App
-          </button>
+          <h4>Successful!</h4>
+          <p style={{ margin: '1rem 0' }}>
+            Yêu cầu của bạn đã được ghi nhận. Hệ thống sẽ xử lý và xác thực trong thời gian sớm nhất.
+          </p>
+          <div className="confirmation-buttons">
+            <button className="btn btn-primary" onClick={onClose} style={{width: '100%'}}>
+              OK
+            </button>
+          </div>
         </>
       );
     }
@@ -262,6 +257,7 @@ const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, us
 
 const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
   const { id } = useParams();
+  const [isRegistered, setIsRegistered] = useState(false);
 
   useEffect(() => {  
     const fetchTournamentDetail = async () => {
@@ -455,20 +451,20 @@ const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
         )}
       </div>
 
-      {!isTournamentEnded && (
-        <footer className="detail-page-footer">
-          <button 
-            className="btn btn-accent" 
-            style={{ width: '90%', maxWidth: '400px' }}
-            onClick={async () => {
-              await checkAccountAndEmail();
-              setShowRegisterModal(true);
-            }}
-          >
-            Register Now
-          </button>
-        </footer>
-      )}
+      {!isTournamentEnded && !isRegistered && (
+        <footer className="detail-page-footer">
+          <button 
+            className="btn btn-accent" 
+            style={{ width: '90%', maxWidth: '400px' }}
+            onClick={async () => {
+              await checkAccountAndEmail();
+              setShowRegisterModal(true);
+            }}
+          >
+            Register Now
+          </button>
+        </footer>
+      )}
 
       {showRegisterModal && (
         <RegistrationModal
@@ -486,6 +482,7 @@ const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
             newAccount={newAccount}
             setNewAccount={setNewAccount}
             onUserUpdate={onUserUpdate}
+            onRegisterSuccess={() => setIsRegistered(true)}
         />
       )}
     </div>
