@@ -388,7 +388,7 @@ const MatchDetail = ({ user }) => {
                 widgetRef.current = new window.TradingView.widget({
                     width: '100%',
                     height: 400,
-                    symbol: `BINANCE:${matchData.symbol.replace('/', '')}`,
+                    symbol: matchData.tradingview_symbol,
                     interval: '1',
                     timezone: 'Etc/UTC',
                     theme: 'dark',
@@ -406,7 +406,7 @@ const MatchDetail = ({ user }) => {
             if (widgetDiv) widgetDiv.innerHTML = '';
             widgetRef.current = null;
         };
-    }, [activeTab, matchData?.symbol]);
+    }, [activeTab, matchData?.tradingview_symbol]);
 
     const handleSendComment = async (e) => {
         e.preventDefault();

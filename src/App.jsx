@@ -1096,8 +1096,25 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
     const [selectedBroker, setSelectedBroker] = useState('');
     const [showConfirmation, setShowConfirmation] = useState(false);
     
-    // STATE MỚI để quản lý modal điều kiện
     const [showConditionModal, setShowConditionModal] = useState(false);
+    const [supportedSymbols, setSupportedSymbols] = useState([]);
+
+    useEffect(() => {
+        const fetchSymbols = async () => {
+            try {
+                const response = await fetch('https://f2farena.com/api/matches/supported-symbols');
+                const data = await response.json();
+                setSupportedSymbols(data);
+                // Tự động chọn symbol đầu tiên trong danh sách làm mặc định
+                if (data.length > 0) {
+                    setTradingSymbol(data[0].value);
+                }
+            } catch (error) {
+                console.error('Error fetching supported symbols:', error);
+            }
+        };
+        fetchSymbols();
+    }, []);
 
     // THAY THẾ TOÀN BỘ HÀM handleConfirm
     const handleConfirm = (e) => {
@@ -1186,8 +1203,19 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
                         <input type="number" className="form-input" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} placeholder="e.g., 100" required />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Trading Symbol</label>
-                        <input type="text" className="form-input" value={tradingSymbol} onChange={(e) => setTradingSymbol(e.target.value)} placeholder="e.g., BTC/USDT, GOLD" required />
+                      <label className="form-label">Trading Symbol</label>
+                      <select 
+                        className="form-input" 
+                        value={tradingSymbol} 
+                        onChange={(e) => setTradingSymbol(e.target.value)} 
+                        required
+                      >
+                        {supportedSymbols.map(symbol => (
+                            <option key={symbol.value} value={symbol.value}>
+                                {symbol.label}
+                            </option>
+                        ))}
+                      </select>
                     </div>
                     <div className="form-group">
                         <label className="form-label">Challenge Mode</label>
