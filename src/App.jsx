@@ -2993,43 +2993,44 @@ const handleUserUpdate = async () => {
 
 // useEffect ban đầu giờ chỉ dùng để load user lần đầu (từ cache hoặc fetch mới)
 useEffect(() => {
-    const loadUserFromCacheOrFetch = async () => {
-        const cachedUser = sessionStorage.getItem('user_data');
-        if (cachedUser) {
-            console.log('Loaded user from sessionStorage:', cachedUser);
-            setUser(JSON.parse(cachedUser));
-        } else {
-            await fetchAndSetUser();
+    const mainContent = document.getElementById('main-content');
+    if (!mainContent) return;
+
+    let lastScrollTop = 0;
+
+    const handleScroll = () => {
+        // Ẩn/hiện chỉ áp dụng cho các trang không phải trang chi tiết
+        const isNonDetailPage = !['/match/', '/news/', '/arena/', '/tournament/'].some(path => location.pathname.includes(path));
+        
+        if (isNonDetailPage) {
+            let scrollTop = mainContent.scrollTop;
+            if (scrollTop > lastScrollTop && scrollTop > 50) { // Cuộn xuống và đủ xa
+                setShowHeader(false);
+                setShowFooter(false);
+            } else { // Cuộn lên
+                setShowHeader(true);
+                setShowFooter(location.pathname !== '/chatbot');
+            }
+            lastScrollTop = scrollTop <= 0 ? 0 : scrollTop; // For Mobile or negative scrolling
         }
     };
-    loadUserFromCacheOrFetch();
-}, [location.search]);
+    
+    // Xử lý ẩn header/footer cho các trang chi tiết
+    const isDetailPage = ['/match/', '/news/', '/arena/', '/tournament/'].some(path => location.pathname.includes(path));
+    if (isDetailPage) {
+        setShowHeader(false);
+        setShowFooter(false);
+    } else {
+        // Đặt lại trạng thái mặc định khi chuyển từ trang chi tiết về trang chính
+        setShowHeader(true);
+        setShowFooter(location.pathname !== '/chatbot');
+    }
 
-  useEffect(() => {
-    const mainContent = document.getElementById('main-content');
-    if (!mainContent) return;
-
-    const sentinel = document.createElement('div');
-    sentinel.style.height = '1px';
-    mainContent.prepend(sentinel);
-
-    const observer = new IntersectionObserver(([entry]) => {
-      const isDetailPage = ['/match/', '/news/', '/arena/', '/tournament/'].some(path => location.pathname.includes(path));
-      if (isDetailPage) {
-        setShowHeader(false);
-        setShowFooter(false);
-      } else {
-        setShowHeader(entry.isIntersecting);
-        setShowFooter(entry.isIntersecting && location.pathname !== '/chatbot');
-      }
-    }, { threshold: 0 });
-
-    observer.observe(sentinel);
-    return () => {
-      observer.disconnect();
-      sentinel.remove();
-    };
-  }, [location.pathname]);
+    mainContent.addEventListener('scroll', handleScroll);
+    return () => {
+        mainContent.removeEventListener('scroll', handleScroll);
+    };
+}, [location.pathname]);
 
 
   useEffect(() => {
