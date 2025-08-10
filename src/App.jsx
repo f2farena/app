@@ -2233,43 +2233,43 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     };
 
     const handleConfirmJoin = async () => {
-      if (!selectedMatch || !user) return;
+    if (!selectedMatch || !user) return;
 
-      // Hiển thị trạng thái đang gửi đi...
-      setJoinRequestStatus('sent'); 
+    // Hiển thị trạng thái đang gửi đi...
+    setJoinRequestStatus('sent'); 
 
-      try {
-          const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              // Chỉ cần gửi player2_id theo logic mới của backend
-              body: JSON.stringify({
-                  player2_id: user.telegram_id,
-              })
-          });
+    try {
+        const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            // Chỉ cần gửi player2_id theo logic mới của backend
+            body: JSON.stringify({
+                player2_id: user.telegram_id,
+            })
+        });
 
-          if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.detail || 'Failed to join match.');
-          }
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to join match.');
+        }
 
-          // Sau khi backend mới xử lý thành công, nó sẽ gửi WebSocket để redirect.
-          // Chúng ta chỉ cần đóng modal ở đây.
-          // Người dùng sẽ được tự động chuyển trang.
-          setShowJoinConfirm(false);
-          setJoinRequestStatus('idle');
-          setSelectedMatch(null);
-          
-          // Không cần gọi fetchAllMatches() nữa vì WebSocket 'MATCH_STATE_CHANGE' sẽ tự kích hoạt cập nhật.
+        // Sau khi backend mới xử lý thành công, nó sẽ gửi WebSocket để redirect.
+        // Chúng ta chỉ cần đóng modal ở đây.
+        // Người dùng sẽ được tự động chuyển trang.
+        setShowJoinConfirm(false);
+        setJoinRequestStatus('idle');
+        setSelectedMatch(null);
+        
+        // Không cần gọi fetchAllMatches() nữa vì WebSocket 'MATCH_STATE_CHANGE' sẽ tự kích hoạt cập nhật.
 
-      } catch (error) {
-          console.error('Error sending join request:', error);
-          alert(`Lỗi khi tham gia trận đấu: ${error.message}`);
-          setShowJoinConfirm(false);
-          setJoinRequestStatus('idle');
-          setSelectedMatch(null);
-      } 
-  };
+    } catch (error) {
+        console.error('Error sending join request:', error);
+        alert(`Lỗi khi tham gia trận đấu: ${error.message}`);
+        setShowJoinConfirm(false);
+        setJoinRequestStatus('idle');
+        setSelectedMatch(null);
+    } 
+};
 
     const fetchTournaments = async () => {
       const cachedTournaments = sessionStorage.getItem('tournaments_data');
