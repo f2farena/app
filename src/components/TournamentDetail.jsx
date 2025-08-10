@@ -122,128 +122,63 @@ const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, us
   };
 
   const renderContent = () => {
-    console.log('renderContent called, userEmail:', userEmail);
+    // Luồng hiển thị thông báo thành công sau khi submit
+    if (showSuccessMessage) {
+      return (
+        <>
+          <h4>Successful!</h4>
+          <p style={{ margin: '1rem 0' }}>
+            Your request has been received. It will be processed and verified shortly.
+          </p>
+          <div className="confirmation-buttons">
+            <button className="btn btn-primary" onClick={onClose} style={{width: '100%'}}>
+              OK
+            </button>
+          </div>
+        </>
+      );
+    }
 
-    if (showSuccessMessage) {
-      return (
-        <>
-          <h4>Successful!</h4>
-          <p style={{ margin: '1rem 0' }}>
-            Your request has been received. It will be processed and verified shortly.
-          </p>
-          <div className="confirmation-buttons">
-            <button className="btn btn-primary" onClick={onClose} style={{width: '100%'}}>
-              OK
-            </button>
-          </div>
-        </>
-      );
-    }
-    // Trường hợp 1: Chưa có tài khoản sàn
-    if (!hasBrokerAccount) {
-      console.log('No linked broker, showing input and register button, newAccount:', newAccount, 'brokerRegistrationUrl:', tournament.brokerRegistrationUrl);  // Log thêm brokerRegistrationUrl để confirm trước render
-      return (
-        <>
-          <h4>Account Required</h4>
-          <p>You need an account with <strong>{tournament.broker}</strong> to join this tournament.</p>
-          <p style={{ marginBottom: '1rem' }}>
-            Click <a href={tournament.brokerRegistrationUrl} target="_blank" rel="noopener,noreferrer" style={{ color: '#007bff' }}>here</a> to register on the broker's platform if you don't have an account yet.
-          </p>
-          <input
-            type="text"
-            value={newAccount.name_account || ''}  // Add fallback ''
-            onChange={(e) => setNewAccount({ ...newAccount, name_account: e.target.value })}
-            placeholder="Account Name"
-            className="form-input"
-            style={{ marginBottom: '1rem' }}  // Thêm margin để tách
-          />
-          <input
-            type="password"
-            value={newAccount.password_account || ''}
-            onChange={(e) => setNewAccount({ ...newAccount, password_account: e.target.value })}
-            placeholder="Password (Optional)"
-            className="form-input"
-            style={{ marginBottom: '1rem' }}
-          />
-          <input
-            type="text"
-            value={newAccount.server_account || ''}  // Add fallback ''
-            onChange={(e) => setNewAccount({ ...newAccount, server_account: e.target.value })}
-            placeholder="Server"
-            className="form-input"
-            style={{ marginBottom: '1rem' }}  // Thêm margin để tách
-          />         
-          <div className="confirmation-buttons">
-              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleSubmitNewAccount}>Submit Account</button>
-          </div>
-        </>
-      );
-    }
-
-    // Trường hợp 2: Có tài khoản nhưng không đủ số dư
-    if (hasBrokerAccount && !hasSufficientBalance) {
-        return (
-            <>
-                <h4>Insufficient Balance</h4>
-                <p>Your current balance is <strong>{currentBalance.toFixed(2)} USDT</strong>, but this tournament requires a minimum of <strong>{tournament.minBalanceRequired} USDT</strong>.</p>
-                <p>Please deposit more funds to your wallet.</p>
-                <div className="confirmation-buttons">
-                    <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-                    <button className="btn btn-primary" onClick={handleGoToWallet}>Go to Wallet</button>
-                </div>
-            </>
-        );
-    }
-
-      // Trường hợp 3: thiếu email
-    if (!userEmail) {
-      return (
-        <>
-          <h4>Email Required</h4>
-          <p>Please provide your email to register.</p>
-          <input
-            type="email"
-            value={newEmail || ''}  // Add fallback '' nếu undefined
-            onChange={(e) => setNewEmail(e.target.value)}
-            placeholder="Enter your email"
-            className="form-input"
-          />
-          <div className="confirmation-buttons">
-            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleSubmitNewEmail}>Submit Email</button>
-          </div>
-        </>
-      );
-    }
-
-    // Trường hợp 4: Đủ điều kiện
-    if (hasBrokerAccount && hasSufficientBalance) {
-        return (
-            <>
-                <h4>Confirm Registration</h4>
-                <p>You are eligible to join the <strong>{tournament.title}</strong>.</p>
-                <div className="wallet-info-row" style={{padding: '0.5rem 0'}}>
-                    <span className="label">Required Balance</span>
-                    <span className="value">{tournament.minBalanceRequired} USDT</span>
-                </div>
-                <div className="wallet-info-row" style={{padding: '0.5rem 0'}}>
-                    <span className="label">Your Current Balance</span>
-                    <span className="value win">{currentBalance.toFixed(2)} USDT</span>
-                </div>
-                <p style={{marginTop: '1rem', color: 'var(--color-secondary-text)', fontSize: '0.9rem'}}>
-                    By confirming, you agree to the tournament's terms and conditions.
-                </p>
-                <div className="confirmation-buttons">
-                    <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-                    <button className="btn btn-accent" onClick={handleConfirmRegistration}>Confirm</button>
-                </div>
-            </>
-        );
-    }
-
-    return null; // Trường hợp mặc định
-  };
+    // Luồng mặc định: Yêu cầu người dùng nhập thông tin tài khoản broker
+    // vì Modal này giờ chỉ mở khi user chưa có tài khoản
+    return (
+      <>
+        <h4>Account Required</h4>
+        <p>You need an account with <strong>{tournament.broker}</strong> to join this tournament.</p>
+        <p style={{ marginBottom: '1rem' }}>
+          Click <a href={tournament.brokerRegistrationUrl} target="_blank" rel="noopener,noreferrer" style={{ color: '#007bff' }}>here</a> to register on the broker's platform if you don't have an account yet.
+        </p>
+        <input
+          type="text"
+          value={newAccount.name_account || ''}
+          onChange={(e) => setNewAccount({ ...newAccount, name_account: e.target.value })}
+          placeholder="Account Name"
+          className="form-input"
+          style={{ marginBottom: '1rem' }}
+        />
+        <input
+          type="password"
+          value={newAccount.password_account || ''}
+          onChange={(e) => setNewAccount({ ...newAccount, password_account: e.target.value })}
+          placeholder="Password (Optional)"
+          className="form-input"
+          style={{ marginBottom: '1rem' }}
+        />
+        <input
+          type="text"
+          value={newAccount.server_account || ''}
+          onChange={(e) => setNewAccount({ ...newAccount, server_account: e.target.value })}
+          placeholder="Server"
+          className="form-input"
+          style={{ marginBottom: '1rem' }}
+        />         
+        <div className="confirmation-buttons">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleSubmitNewAccount}>Submit Account</button>
+        </div>
+      </>
+    );
+  };
 
   return (
       <>
@@ -521,15 +456,13 @@ const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
         )}
       </div>
 
-      {!isTournamentEnded && !isRegistered && (
+      {!isTournamentEnded && !isRegistered && !isLoadingStatus && (
         <footer className="detail-page-footer">
           <button 
             className="btn btn-accent" 
             style={{ width: '90%', maxWidth: '400px' }}
-            onClick={async () => {
-              await checkAccountAndEmail();
-              setShowRegisterModal(true);
-            }}
+            // SỬA LẠI ONCLICK ĐỂ GỌI ĐÚNG HÀM LOGIC MỚI
+            onClick={handleRegisterClick}
           >
             Register Now
           </button>
@@ -545,6 +478,18 @@ const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
           >
             Checking Status...
           </button>
+        </footer>
+      )}
+
+      {isRegistered && !isTournamentEnded && (
+        <footer className="detail-page-footer">
+            <button
+                className="btn btn-secondary"
+                style={{ width: '90%', maxWidth: '400px' }}
+                disabled
+            >
+                Registered
+            </button>
         </footer>
       )}
 
