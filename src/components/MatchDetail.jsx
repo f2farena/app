@@ -263,8 +263,8 @@ const MatchDetail = ({ user }) => {
                     setViews(message.data.views);
                     break;
                 case "MATCH_DONE":
-                    setMatchResult(message.data);
-                    setShowResultModal(true);
+                    onsole.log("Match is done, refetching details to show results...");
+                    fetchMatchDetail();
                     break;
             }
         };
