@@ -190,6 +190,27 @@ const RegistrationModal = ({ tournament, user, walletData, onClose, navigate, us
   );
 };
 
+const SuccessModal = ({ onClose, message }) => {
+  return (
+    <>
+      <div className="confirmation-overlay" onClick={onClose}></div>
+      <div className="confirmation-modal card">
+        <h4>Success!</h4>
+        <p style={{ margin: '1rem 0' }}>{message}</p>
+        <div className="confirmation-buttons">
+          <button
+            className="btn btn-primary"
+            onClick={onClose}
+            style={{ width: '100%' }}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
+
 const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
   const { id } = useParams();
   const [isRegistered, setIsRegistered] = useState(false);
@@ -249,6 +270,7 @@ const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
   const navigate = useNavigate();
   const [tournament, setTournament] = useState(null);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [userEmail, setUserEmail] = useState(user ? user.email || '' : '');  // Thêm check user not null trước .email
   useEffect(() => {
     const cachedUser = sessionStorage.getItem('user_data');
@@ -336,7 +358,7 @@ const TournamentDetail = ({ user, walletData, onUserUpdate }) => {
         }
         
         // Thông báo thành công và ẩn nút
-        alert("Registration successful. Please wait for verification.");
+        setShowSuccessModal(true);
         setIsRegistered(true);
 
       } catch (error) {
