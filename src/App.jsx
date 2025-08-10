@@ -2598,7 +2598,7 @@ const SettingsSidebar = ({ show, onClose, user }) => {
                     />
                   </button>
                 </li>
-                <li>
+                {/* <li>
                   <button
                     className="sidebar-nav-item"
                     onClick={() => setCurrentView('terms')}
@@ -2625,7 +2625,7 @@ const SettingsSidebar = ({ show, onClose, user }) => {
                       onError={() => console.error('Failed to load arrow icon')}
                     />
                   </button>
-                </li>
+                </li> */}
               </ul>
             </div>
           );
@@ -2728,11 +2728,11 @@ const PersonalInfoView = ({ onBack, user }) => {
 };
 
 const LanguageView = ({ onBack }) => {
-    const [selectedLanguage, setSelectedLanguage] = useState('vi');
+    const [selectedLanguage, setSelectedLanguage] = useState('en');
     const languages = [
         { code: 'en', name: 'English', flag: 'US' },
-        { code: 'vi', name: 'Tiếng Việt', flag: 'VN' },
-        { code: 'zh', name: '简体中文', flag: 'CN' },
+        // { code: 'vi', name: 'Tiếng Việt', flag: 'VN' },
+        // { code: 'zh', name: '简体中文', flag: 'CN' },
     ];
     return (
         <div className="sidebar-view">
