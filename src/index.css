@@ -31,12 +31,11 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 
 /* --- Header & Footer --- */
 .header, .footer { 
-  position: fixed; /* TRẢ LẠI POSITION FIXED */
+  position: fixed; /* GIỮ NGUYÊN */
   left: 0; 
   width: 100%; 
   z-index: 20; 
-  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; /* Dùng transform để ẩn/hiện mượt mà */
-  flex-shrink: 0;
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; /* DÙNG LẠI TRANSFORM */
 }
 .header-hidden {
   opacity: 0;
@@ -48,6 +47,8 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
   pointer-events: none;
   transform: translateY(100%);
 }
+.header { background-image: linear-gradient(to right, #1d329d, #0a175d); height: 60px; /*...*/ top: 0; /*...*/ }
+.footer { background-image: linear-gradient(to bottom, #1d329d, #0a175d); height: 62px; /*...*/ bottom: 0; /*...*/ }
 .header-hidden, .footer-hidden { 
   opacity: 0;
   pointer-events: none;
