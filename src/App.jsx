@@ -3087,11 +3087,11 @@ useEffect(() => {
   return (
     <WebSocketProvider user={user}>
         <div className="app-container">
-      <Header 
+      {showHeader && <Header 
         onSettingsClick={() => setShowSettingsSidebar(true)} 
         onChatbotClick={() => setActivePage('chatbot')}
-        showHeader={showHeader}
-      />
+        showHeader={showHeader} 
+      />}
       <main
         id="main-content"
         className="main-content"
@@ -3117,11 +3117,11 @@ useEffect(() => {
           } />
         </Routes>
       </main>
-      <Footer 
+      {showFooter && <Footer 
         activePage={activePage}
         setActivePage={setActivePage}
         showFooter={showFooter}
-      />
+      />}
       <SettingsSidebar 
         user={user}
         show={showSettingsSidebar} 

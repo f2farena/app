@@ -514,11 +514,13 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 }
 
 /* --- Trang Chi Tiết (Detail Page - News & Arena) --- */
-.detail-page-container {
+.detail-page-container, .match-detail-container {
   background-color: var(--color-card-bg);
   color: var(--color-text);
-  min-height: 100vh;
-  padding-bottom: 90px; /* Tăng padding-bottom để tránh che khuất bởi footer (70px + 20px khoảng cách) */
+  min-height: 100%; /* Thay đổi từ 100vh thành 100% */
+  display: flex; /* Thêm display flex */
+  flex-direction: column; /* Thêm flex-direction */
+  padding-bottom: 0; /* Bỏ padding-bottom cũ */
 }
 
 .detail-page-banner {
