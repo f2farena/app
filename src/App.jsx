@@ -2152,6 +2152,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     const [waitingMatches, setWaitingMatches] = useState([]);
     const [liveMatches, setLiveMatches] = useState([]);
     const [showJoinMatchConditionModal, setShowJoinMatchConditionModal] = useState(false);
+    const [isJoinProcessActive, setIsJoinProcessActive] = useState(false); 
     const [joinRequestStatus, setJoinRequestStatus] = useState('idle');
 
     const [allMatches, setAllMatches] = useState([]);
@@ -2173,6 +2174,47 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     useEffect(() => {
         sessionStorage.setItem('arenaStatusFilters', JSON.stringify(statusFilters));
     }, [statusFilters]);
+
+    useEffect(() => {
+        // Chỉ chạy khi người dùng đã nhấn nút "Join Challenge" và đã chọn một trận đấu
+        if (!isJoinProcessActive || !selectedMatch) return;
+
+        // Lấy dữ liệu người dùng mới nhất để kiểm tra
+        const currentUserData = user; 
+        const betWallet = parseFloat(currentUserData?.bet_wallet || 0);
+        const hasEmail = currentUserData?.email && currentUserData.email.trim() !== '';
+        const linkedBrokers = currentUserData?.linkedBrokers || [];
+        const hasBrokerAccount = linkedBrokers.includes(Number(selectedMatch.broker_id));
+
+        // Kiểm tra tuần tự các điều kiện
+        // 1. Kiểm tra Email
+        if (!hasEmail) {
+            console.log("Join condition fail: Missing email.");
+            setShowJoinMatchConditionModal(true);
+            return; // Dừng lại và đợi người dùng cung cấp email
+        }
+
+        // 2. Kiểm tra tài khoản Broker
+        if (!hasBrokerAccount) {
+            console.log("Join condition fail: Missing broker account.");
+            setShowJoinMatchConditionModal(true);
+            return; // Dừng lại và đợi người dùng liên kết tài khoản
+        }
+
+        // 3. Kiểm tra số dư
+        if (betWallet < selectedMatch.betAmount) {
+            console.log("Join condition fail: Insufficient balance.");
+            setShowJoinMatchConditionModal(true);
+            return; // Dừng lại và đợi người dùng nạp tiền
+        }
+
+        // Nếu tất cả các điều kiện đều đã được đáp ứng
+        console.log("All join conditions met. Showing final confirmation.");
+        setShowJoinMatchConditionModal(false); // Đảm bảo modal điều kiện đã đóng
+        setShowJoinConfirm(true);              // Hiển thị modal xác nhận cuối cùng
+        setJoinRequestStatus('confirming');    // Chuẩn bị cho modal xác nhận
+        setIsJoinProcessActive(false);         // Kết thúc luồng kiểm tra, reset lại "công tắc"
+    }, [isJoinProcessActive, user, selectedMatch, brokersList]);
 
 
     const fetchMatchHistory = async () => {
@@ -2220,42 +2262,16 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     };
 
     const handleJoinChallenge = (match) => {
-      const cachedUserData = sessionStorage.getItem('user_data');
-      if (!cachedUserData) {
-          alert('Thông tin người dùng chưa được tải. Vui lòng thử lại.');
-          return;
-      }
-
-      const currentUserData = user;
-      const betWallet = parseFloat(currentUserData?.bet_wallet || 0);
-      const hasEmail = currentUserData?.email && currentUserData.email.trim() !== '';
-      const linkedBrokers = currentUserData?.linkedBrokers || [];
-      const hasBrokerAccount = linkedBrokers.includes(Number(match.broker_id));
-      const isPlayer1 = currentUserData.telegram_id === match.player1.id;
-
-      if (isPlayer1) {
-        alert("Bạn không thể tham gia trận đấu của chính mình!");
-        return;
-      }
-      if (!hasEmail) {
-          setSelectedMatch(match);
-          setShowJoinMatchConditionModal(true);
-          return;
-      }
-      if (!hasBrokerAccount) {
-          setSelectedMatch(match);
-          setShowJoinMatchConditionModal(true);
-          return;
-      }
-      if (betWallet < match.betAmount) {
-          setSelectedMatch(match);
-          setShowJoinMatchConditionModal(true);
-          return;
-      }
-
-      setSelectedMatch(match);
-      setJoinRequestStatus('confirming');
-      setShowJoinConfirm(true);
+        // Kiểm tra không cho người tạo tự tham gia trận của mình
+        if (user && user.telegram_id === match.player1.id) {
+            alert("You cannot join your own match!");
+            return;
+        }
+        
+        // Lưu lại trận đấu đang được xử lý
+        setSelectedMatch(match);
+        // Kích hoạt luồng kiểm tra điều kiện
+        setIsJoinProcessActive(true); 
     };
 
     const handleConfirmJoin = async () => {
@@ -2538,7 +2554,11 @@ const ArenaPage = ({ user, onUserUpdate }) => {
             )}
             {showJoinMatchConditionModal && (
                 <JoinMatchConditionModal
-                    onClose={() => setShowJoinMatchConditionModal(false)}
+                    onClose={() => {
+                        setShowJoinMatchConditionModal(false);
+                        setIsJoinProcessActive(false);
+                        setSelectedMatch(null);
+                    }}
                     match={selectedMatch}
                     user={user}
                     onUserUpdate={onUserUpdate}
