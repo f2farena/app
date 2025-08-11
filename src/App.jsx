@@ -2512,13 +2512,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                       </div>
                     </div>
 
-                    {filteredMatches.filter(match => {
-                        if (match.status !== 'live' || !match.start_time || !match.duration_time) {
-                            return true;
-                        }
-                        const endTime = new Date(match.start_time).getTime() + match.duration_time * 3600 * 1000;
-                        return endTime > Date.now();
-                    }).map(match => (
+                    {filteredMatches.map(match => (
                         <div key={match.id} className="card arena-match-card">
                             <div className="challenger-info">
                                 <img src={match.player1.avatar || generateAvatarUrl(match.player1.name)} alt={match.player1.name} className="challenger-avatar" />
