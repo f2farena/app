@@ -670,7 +670,7 @@ const ComplaintModal = ({ onClose, onSubmit, user }) => {
                         <p>Are you sure you want to submit this complaint?</p>
                         <div className="confirmation-buttons">
                             <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)} disabled={isSubmitting}>Cancel</button>
-                            <button className="btn btn-primary" onClick={confirmMatchSetup} disabled={isSubmitting}>
+                            <button className="btn btn-primary" onClick={confirmSubmit} disabled={isSubmitting}>
                                 {isSubmitting ? 'Confirming...' : 'Confirm'}
                             </button>
                         </div>
@@ -1288,12 +1288,11 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
                         <h4>Confirm Match Setup</h4>
                         <p>Are you sure you want to set up this match?</p>
                         <div className="confirmation-buttons">
-                            <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)}>Cancel</button>
-                            <button className="btn btn-primary" onClick={confirmMatchSetup}>Confirm</button>
+                            <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)} disabled={isSubmitting}>Cancel</button>
+                            <button className="btn btn-primary" onClick={confirmMatchSetup} disabled={isSubmitting}>
+                                {isSubmitting ? 'Confirming...' : 'Confirm'}
+                            </button>
                         </div>
-                        <button className="btn btn-primary" onClick={confirmMatchSetup} disabled={isSubmitting}>
-                            {isSubmitting ? 'Confirming...' : 'Confirm'}
-                        </button>
                     </div>
                 </>
             )}
