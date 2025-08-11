@@ -3037,33 +3037,6 @@ useEffect(() => {
 }, [location.search]);
 
   useEffect(() => {
-    const mainContent = document.getElementById('main-content');
-    if (!mainContent) return;
-
-    const sentinel = document.createElement('div');
-    sentinel.style.height = '1px';
-    mainContent.prepend(sentinel);
-
-    const observer = new IntersectionObserver(([entry]) => {
-      const isDetailPage = ['/match/', '/news/', '/arena/', '/tournament/'].some(path => location.pathname.includes(path));
-      if (isDetailPage) {
-        setShowHeader(false);
-        setShowFooter(false);
-      } else {
-        setShowHeader(entry.isIntersecting);
-        setShowFooter(entry.isIntersecting && location.pathname !== '/chatbot');
-      }
-    }, { threshold: 0 });
-
-    observer.observe(sentinel);
-    return () => {
-      observer.disconnect();
-      sentinel.remove();
-    };
-  }, [location.pathname]);
-
-
-  useEffect(() => {
     const path = location.pathname.substring(1);
     const page = path.split('/')[0];
     const isDetailPage = ['match', 'news', 'arena'].includes(page) && path.includes('/');
