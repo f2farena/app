@@ -2968,6 +2968,7 @@ const AppContent = () => {
   const location = useLocation();
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  const lastScrollY = useRef(0);
 
   const [walletData, setWalletData] = useState({
         currentBalance: '0.00 USDT',
@@ -3049,60 +3050,56 @@ useEffect(() => {
   }, [location.pathname]);
 
   useEffect(() => {
-    setShowHeader(!(location.pathname.startsWith('/match') || location.pathname.startsWith('/news/') || location.pathname.startsWith('/arena/') || location.pathname.startsWith('/tournament/')));
-    setShowFooter(!(location.pathname.startsWith('/match') || location.pathname.startsWith('/news/') || location.pathname.startsWith('/arena/') || location.pathname.startsWith('/tournament/') || location.pathname === '/chatbot'));
+      const mainContent = document.getElementById('main-content');
+      if (!mainContent) return;
+
+      const isDetailPage = ['/match/', '/news/', '/arena/', '/tournament/'].some(path => location.pathname.startsWith(path));
+
+      // Nếu là trang chi tiết, luôn ẩn header/footer và không cần listener
+      if (isDetailPage) {
+          setShowHeader(false);
+          setShowFooter(false);
+          return;
+      }
+
+      // Nếu là trang menu chính, reset trạng thái và thêm listener
+      const isChatbotPage = location.pathname === '/chatbot';
+      mainContent.scrollTop = 0;
+      lastScrollY.current = 0;
+      setShowHeader(true);
+      setShowFooter(!isChatbotPage);
+
+      const handleScroll = () => {
+          const currentScrollY = mainContent.scrollTop;
+          const contentHeight = mainContent.scrollHeight;
+          const viewportHeight = mainContent.clientHeight;
+
+          // Nếu nội dung trang quá ngắn không thể cuộn, thì không ẩn header/footer
+          if (contentHeight <= viewportHeight + 62) { // 62 là chiều cao footer
+              setShowHeader(true);
+              setShowFooter(!isChatbotPage);
+              return;
+          }
+
+          if (currentScrollY > lastScrollY.current && currentScrollY > 60) { // Cuộn xuống
+              setShowHeader(false);
+              setShowFooter(false);
+          } else if (currentScrollY < lastScrollY.current) { // Cuộn lên
+              setShowHeader(true);
+              if (!isChatbotPage) {
+                  setShowFooter(true);
+              }
+          }
+          lastScrollY.current = currentScrollY <= 0 ? 0 : currentScrollY;
+      };
+
+      mainContent.addEventListener('scroll', handleScroll, { passive: true });
+
+      // Cleanup function: xóa listener khi component unmount hoặc path thay đổi
+      return () => {
+          mainContent.removeEventListener('scroll', handleScroll);
+      };
   }, [location.pathname]);
-
-  // useEffect để quản lý padding và ẩn/hiện header/footer khi cuộn
-  useEffect(() => {
-    const mainContent = document.getElementById('main-content');
-    if (!mainContent) return;
-
-    // Reset style mỗi khi location thay đổi để tránh lỗi caching
-    mainContent.style.paddingTop = '0px';
-    mainContent.style.paddingBottom = '0px';
-
-    const isDetailPage = ['/match/', '/news/', '/arena/', '/tournament/'].some(path => location.pathname.startsWith(path));
-
-    if (isDetailPage) {
-      setShowHeader(false);
-      setShowFooter(false);
-      return; // Dừng lại ở đây cho các trang chi tiết
-    }
-
-    // Logic cho các trang không phải trang chi tiết
-    const isChatbotPage = location.pathname === '/chatbot';
-
-    // Áp dụng padding dựa trên trạng thái hiển thị
-    mainContent.style.paddingTop = showHeader ? '60px' : '0px';
-    mainContent.style.paddingBottom = showFooter ? '62px' : '0px';
-
-    // Logic cuộn
-    let lastScrollY = mainContent.scrollTop;
-    const handleScroll = () => {
-      if (mainContent.scrollTop > lastScrollY && mainContent.scrollTop > 60) { // Cuộn xuống
-        setShowHeader(false);
-        setShowFooter(false);
-      } else if (mainContent.scrollTop < lastScrollY) { // Cuộn lên
-        setShowHeader(true);
-        if (!isChatbotPage) {
-          setShowFooter(true);
-        }
-      }
-      lastScrollY = mainContent.scrollTop <= 0 ? 0 : mainContent.scrollTop;
-    };
-
-    mainContent.addEventListener('scroll', handleScroll);
-
-    // Luôn hiển thị header/footer khi vào trang mới
-    setShowHeader(true);
-    setShowFooter(!isChatbotPage);
-
-    return () => {
-      mainContent.removeEventListener('scroll', handleScroll);
-    };
-    // Thêm showHeader và showFooter vào dependency array
-  }, [location.pathname, showHeader, showFooter]);
 
   useEffect(() => {
     const path = location.pathname;
@@ -3133,7 +3130,20 @@ useEffect(() => {
     return () => {
         window.removeEventListener('websocket-message', handleGlobalWebSocketMessage);
     };
-  }, [navigate]); 
+  }, [navigate]);
+
+  const isDetailPage = ['/match/', '/news/', '/arena/', '/tournament/'].some(path => location.pathname.startsWith(path));
+  const isChatbotPage = location.pathname === '/chatbot';
+
+  // Cờ quyết định việc RENDER component, không phải chỉ ẩn/hiện
+  const shouldRenderHeader = !isDetailPage;
+  const shouldRenderFooter = !isDetailPage && !isChatbotPage;
+
+  // Áp dụng padding cố định cho các trang có header/footer để chống giật
+  const mainStyle = {
+    paddingTop: shouldRenderHeader ? '60px' : '0',
+    paddingBottom: shouldRenderFooter ? '62px' : '0',
+  };
 
   return (
     <WebSocketProvider user={user}>
@@ -3146,6 +3156,7 @@ useEffect(() => {
       <main
         id="main-content"
         className="main-content"
+        style={mainStyle} 
       >
         <Routes>
           <Route path="/home" element={<HomePage />} />
@@ -3168,7 +3179,7 @@ useEffect(() => {
           } />
         </Routes>
       </main>
-      {showFooter && <Footer 
+      {shouldRenderFooter && <Footer 
         activePage={activePage}
         setActivePage={setActivePage}
         showFooter={showFooter}

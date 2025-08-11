@@ -49,15 +49,7 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 }
 .header { background-image: linear-gradient(to right, #1d329d, #0a175d); height: 60px; /*...*/ top: 0; /*...*/ }
 .footer { background-image: linear-gradient(to bottom, #1d329d, #0a175d); height: 62px; /*...*/ bottom: 0; /*...*/ }
-.header-hidden, .footer-hidden { 
-  opacity: 0;
-  pointer-events: none;
-  height: 0 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  border: none !important;
-  overflow: hidden;
-}
+
 .header { background-image: linear-gradient(to right, #1d329d, #0a175d); height: 60px; padding: 0 1rem; display: flex; justify-content: space-between; align-items: center; top: 0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
 .footer { background-image: linear-gradient(to bottom, #1d329d, #0a175d); height: 62px; padding: 0.75rem; display: flex; justify-content: space-around; align-items: center; bottom: 0; border-top: 1px solid var(--color-hover-bg); }
 .header .logo-container { display: flex; align-items: center; position: absolute; left: 50%; transform: translateX(-50%); }
