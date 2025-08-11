@@ -1923,7 +1923,6 @@ const ArenaPage = ({ user, onUserUpdate }) => {
 
             setShowJoinFormModal(false);
             setSelectedMatch(null);
-            alert("Join request successful! You will be redirected shortly.");
 
         } catch (error) {
             console.error('Error sending join request:', error);
