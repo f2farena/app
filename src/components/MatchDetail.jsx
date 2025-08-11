@@ -305,7 +305,7 @@ const MatchDetail = ({ user }) => {
                     setViews(message.data.views);
                     break;
                 case "MATCH_DONE":
-                    onsole.log("Match is done, refetching details to show results...");
+                    console.log("Match is done, refetching details to show results...");
                     fetchMatchDetail();
                     break;
             }
