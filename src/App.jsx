@@ -3053,6 +3053,59 @@ useEffect(() => {
     setShowFooter(!(location.pathname.startsWith('/match') || location.pathname.startsWith('/news/') || location.pathname.startsWith('/arena/') || location.pathname.startsWith('/tournament/') || location.pathname === '/chatbot'));
   }, [location.pathname]);
 
+  // useEffect để quản lý padding và ẩn/hiện header/footer khi cuộn
+  useEffect(() => {
+    const mainContent = document.getElementById('main-content');
+    if (!mainContent) return;
+
+    // Xác định xem trang hiện tại có phải là trang chi tiết hay không
+    const isDetailPage = ['/match/', '/news/', '/arena/', '/tournament/'].some(path => location.pathname.startsWith(path));
+
+    if (isDetailPage) {
+      // Trên các trang chi tiết, không hiển thị header/footer và không thêm padding
+      setShowHeader(false);
+      setShowFooter(false);
+      mainContent.style.paddingTop = '0px';
+      mainContent.style.paddingBottom = '0px';
+      return; // Dừng lại, không cần observer
+    }
+    
+    // Logic cho các trang còn lại (Home, Arena, Wallet, ...)
+    mainContent.style.paddingTop = '60px'; // Luôn set padding ban đầu
+    setShowHeader(true);
+    // Footer chỉ hiện khi không phải trang chatbot
+    if (location.pathname !== '/chatbot') {
+        mainContent.style.paddingBottom = '62px';
+        setShowFooter(true);
+    } else {
+        mainContent.style.paddingBottom = '0px';
+        setShowFooter(false);
+    }
+
+    let lastScrollY = mainContent.scrollTop;
+
+    const handleScroll = () => {
+      if (mainContent.scrollTop > lastScrollY && mainContent.scrollTop > 60) {
+        // Cuộn xuống -> Ẩn
+        setShowHeader(false);
+        setShowFooter(false);
+      } else {
+        // Cuộn lên -> Hiện
+        setShowHeader(true);
+        if (location.pathname !== '/chatbot') {
+            setShowFooter(true);
+        }
+      }
+      lastScrollY = mainContent.scrollTop;
+    };
+
+    mainContent.addEventListener('scroll', handleScroll);
+
+    return () => {
+      mainContent.removeEventListener('scroll', handleScroll);
+    };
+  }, [location.pathname]);
+
   useEffect(() => {
     const path = location.pathname;
     if (path.startsWith('/match') || path.startsWith('/news/')) {
