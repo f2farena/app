@@ -1349,3 +1349,17 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
     50% { opacity: 1; }
     100% { opacity: 0.5; }
 }
+
+.player-avatar,
+.challenger-avatar,
+.trader-avatar,
+.personal-info-avatar,
+.player-avatar-modal,
+.review-card-flag {
+  /* Thuộc tính quan trọng nhất để sửa lỗi */
+  object-fit: cover;
+
+  /* Các thuộc tính khác để đảm bảo hiển thị đẹp */
+  border-radius: 50%;
+  background-color: #333; /* Màu nền tạm thời khi ảnh chưa tải */
+}

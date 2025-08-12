@@ -316,7 +316,7 @@ const MatchDetail = ({ user }) => {
         return () => {
             window.removeEventListener('websocket-message', handleWebSocketMessage);
         };
-    }, [id, fetchMatchDetail, matchData]);
+    }, [id, fetchMatchDetail]);
 
     // useEffect để fetch dữ liệu lần đầu khi vào trang
     useEffect(() => {
