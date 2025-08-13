@@ -1146,10 +1146,11 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
     const [showConfirmation, setShowConfirmation] = useState(false);
     const [supportedSymbols, setSupportedSymbols] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-
     const [nameAccount, setNameAccount] = useState('');
     const [passwordAccount, setPasswordAccount] = useState('');
     const [serverAccount, setServerAccount] = useState('');
+    const [showDepositForm, setShowDepositForm] = useState(false);
+    const [justDeposited, setJustDeposited] = useState(false);
 
     useEffect(() => {
         const fetchSymbols = async () => {
@@ -1174,11 +1175,19 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
             alert('Please fill in all required fields, including your trading account details.');
             return;
         }
-        if (parseFloat(betAmount) <= 0) {
+        const betAmountFloat = parseFloat(betAmount);
+        if (betAmountFloat <= 0) {
             alert('Bet amount must be greater than 0.');
             return;
         }
-        setShowConfirmation(true);
+
+        const currentBalance = parseFloat(user.bet_wallet || 0);
+        if (currentBalance < betAmountFloat) {
+            setShowDepositForm(true); 
+        } else {
+            setJustDeposited(false);
+            setShowConfirmation(true);
+        }
     };
 
     const confirmMatchSetup = async () => {
@@ -1203,16 +1212,36 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
                 const errorData = await response.json();
                 throw new Error(errorData.detail || 'Create match failed');
             }
-            // Không cần lấy data vì đã thành công
             setShowConfirmation(false);
-            onClose(); // Đóng form
-            onCreateSuccess?.(); // Gọi lại hàm để tải lại danh sách trận đấu
+            onClose(); 
+            onCreateSuccess?.(); 
         } catch (error) {
             console.error('Error creating match:', error);
             alert(`Error: ${error.message}`);
         } finally {
-            setIsSubmitting(false); // Dừng submitting dù thành công hay thất bại
+            setIsSubmitting(false); 
         }
+    };
+
+    const handleDepositSuccess = (updatedUser) => {
+        onUserUpdate(updatedUser);
+        const currentBalance = parseFloat(updatedUser.bet_wallet || 0);
+        const betAmountFloat = parseFloat(betAmount);
+
+        if (currentBalance >= betAmountFloat) {
+            // BƯỚC 2B: Đây là luồng nạp tiền, set justDeposited = true
+            setJustDeposited(true);
+            setShowDepositForm(false);
+            setShowConfirmation(true); 
+        } else {
+            alert(`Deposit successful, but your balance of ${currentBalance.toFixed(2)} USDT is still not enough for the ${betAmountFloat} USDT bet. Please deposit more.`);
+            setShowDepositForm(true);
+        }
+    };
+
+    const handleCloseConfirmation = () => {
+        setShowConfirmation(false);
+        setJustDeposited(false);
     };
 
     return (
@@ -1283,12 +1312,15 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
 
             {showConfirmation && (
                 <>
-                    <div className="confirmation-overlay" onClick={() => setShowConfirmation(false)}></div>
+                    <div className="confirmation-overlay" onClick={handleCloseConfirmation}></div>
                     <div className="confirmation-modal card">
                         <h4>Confirm Match Setup</h4>
-                        <p>Are you sure you want to set up this match?</p>
+                        <p>
+                            {justDeposited && <span style={{ display: 'block', fontWeight: 'bold', color: 'var(--color-win)', marginBottom: '0.5rem' }}>Deposit successful!</span>}
+                            Are you sure you want to set up this match?
+                        </p>
                         <div className="confirmation-buttons">
-                            <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)} disabled={isSubmitting}>Cancel</button>
+                            <button className="btn btn-secondary" onClick={handleCloseConfirmation} disabled={isSubmitting}>Cancel</button>
                             <button className="btn btn-primary" onClick={confirmMatchSetup} disabled={isSubmitting}>
                                 {isSubmitting ? 'Confirming...' : 'Confirm'}
                             </button>
@@ -1296,11 +1328,19 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
                     </div>
                 </>
             )}
+            {showDepositForm && (
+                <DepositForm 
+                    onClose={() => setShowDepositForm(false)} 
+                    user={user} 
+                    onUserUpdate={onUserUpdate}
+                    onDepositSuccess={handleDepositSuccess}
+                />
+            )}
         </>
     );
 };
 
-const DepositForm = ({ onClose, user, onUserUpdate }) => {
+const DepositForm = ({ onClose, user, onUserUpdate, onDepositSuccess }) => {
   const [depositAmount, setDepositAmount] = useState('');
   const [memoContent, setMemoContent] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -1357,15 +1397,20 @@ const DepositForm = ({ onClose, user, onUserUpdate }) => {
         if (!response.ok) throw new Error('Failed to fetch user balance from API');
         const updatedUserData = await response.json();
         const currentBetWallet = parseFloat(updatedUserData.bet_wallet);
-        const expectedBalance = parseFloat(user.bet_wallet) + parseFloat(depositAmount); // So sánh với balance LÚC BẮT ĐẦU nạp + số tiền nạp
+        const initialBalance = parseFloat(user.bet_wallet);
 
-        console.log(`Fetched current balance: ${currentBetWallet}, Expected after deposit: ${expectedBalance}`);
-
-        if (Math.abs(currentBetWallet - expectedBalance) < 0.001) {
-          clearInterval(intervalRef.current); 
-          onClose(); 
-          onUserUpdate(updatedUserData); // Cập nhật user object ở AppContent
-        }
+        // Kiểm tra xem số dư mới có lớn hơn số dư ban đầu không
+        const expectedBalance = initialBalance + parseFloat(depositAmount);
+        if (Math.abs(currentBetWallet - expectedBalance) < 0.001 || currentBetWallet > initialBalance) {
+            console.log(`Deposit detected! New balance: ${currentBetWallet}`);
+            clearInterval(intervalRef.current); 
+            if (onDepositSuccess) {
+                onDepositSuccess(updatedUserData);
+            } else {
+                onUserUpdate(updatedUserData);
+            }
+            onClose();
+        }
       } catch (error) {
         console.error('Error fetching current balance during polling:', error);
       }
@@ -2182,8 +2227,8 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                 />
             )}
             {showDepositModal && (
-                <DepositForm onClose={() => setShowDepositModal(false)} user={user} onUserUpdate={onUserUpdate} />
-            )}
+                <DepositForm onClose={() => setShowDepositModal(false)} user={user} onUserUpdate={onUserUpdate} />
+            )}
         </div>
     );
 };
