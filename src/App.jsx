@@ -808,7 +808,6 @@ const NewsPage = ({ user }) => {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to create complaint');
       }
-      alert('Complaint created successfully!');
       setShowComplaintModal(false);
       fetchComplaints(true);
     } catch (error) {
@@ -899,9 +898,9 @@ const NewsPage = ({ user }) => {
 };
 
 const LeaderboardPage = () => {
-  const [activeTab, setActiveTab] = useState('traders');
-  const [tradersData, setTradersData] = useState([]);  // State cho personal
-  const [teamsData, setTeamsData] = useState([]);  // State cho tournament
+  const [activeTab, setActiveTab] = useState('tournament');
+  const [personalData, setPersonalData] = useState([]);
+  const [tournamentData, setTournamentData] = useState([]);
 
   useEffect(() => {
     const fetchLeaderboard = async (type) => {
@@ -923,6 +922,7 @@ const LeaderboardPage = () => {
           avatar: generateAvatarUrl(item.user_name || item.user_id),  // Avatar based on name or id
           wins: item.wins,
           profit: item.profit,
+          score: item.score,
           totalWinnings: item.profit  
         }));
         sessionStorage.setItem(cacheKey, JSON.stringify(mapped));
@@ -934,50 +934,54 @@ const LeaderboardPage = () => {
     };
 
     const loadData = async () => {
-      const personal = await fetchLeaderboard('personal');
-      setTradersData(personal);
-      const tournament = await fetchLeaderboard('tournament');
-      setTeamsData(tournament);
-    };
-    loadData();
-  }, []);  // Fetch once on mount
+      const personal = await fetchLeaderboard('personal');
+      setPersonalData(personal); 
+      const tournament = await fetchLeaderboard('tournament');
+      setTournamentData(tournament);
+    };
+    loadData();
+  }, []);
 
-  const currentData = activeTab === 'traders' ? tradersData : teamsData;
+  const currentData = activeTab === 'tournament' ? tournamentData : personalData;
 
   return (
-    <div className="page-padding">
-      <div className="wallet-tabs">
-        <button
-          className={`wallet-tab-button ${activeTab === 'traders' ? 'active' : ''}`}
-          onClick={() => setActiveTab('traders')}
-        >
-          Top Tournament Winners
-        </button>
-        <button
-          className={`wallet-tab-button ${activeTab === 'betOutside' ? 'active' : ''}`}
-          onClick={() => setActiveTab('betOutside')}
-        >
-          Top Personal Winners
-        </button>
+    <div className="page-padding">
+      <div className="wallet-tabs">
+        <button
+          className={`wallet-tab-button ${activeTab === 'tournament' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tournament')}
+        >
+          Top Tournament Winners
+        </button>
+        <button
+          className={`wallet-tab-button ${activeTab === 'personal' ? 'active' : ''}`}
+          onClick={() => setActiveTab('personal')}
+        >
+          Top Personal Winners
+        </button>
       </div>
       <div className="card">
         <div className="leaderboard-table">
           <div className="leaderboard-header">
-            <div>Rank</div>
-            <div>{activeTab === 'traders' ? 'Trader' : 'Team'}</div>
-            <div className="text-center">{activeTab === 'traders' ? 'Wins' : 'Total Winnings'}</div>
-            <div className="text-right">{activeTab === 'traders' ? 'Profit (USDT)' : 'Winnings (USDT)'}</div>
+              <div>Rank</div>
+              <div>{activeTab === 'tournament' ? 'Trader' : 'Trader'}</div> 
+              <div className="text-center">{activeTab === 'tournament' ? 'Wins' : 'Wins'}</div>
+              <div className="text-right">{activeTab === 'tournament' ? 'Profit (USDT)' : 'Score'}</div>
           </div>
           {currentData.map(item => (
-            <div key={item.id} className="leaderboard-row">
-              <div className={`leaderboard-rank ${item.rank <= 3 ? 'top-rank' : ''}`}>{item.rank}</div>
-              <div className="trader-info">
-                <img src={item.avatar} alt={item.name} className="trader-avatar" />
-                <span>{item.name}</span>
+              <div key={item.id} className="leaderboard-row">
+                  <div className={`leaderboard-rank ${item.rank <= 3 ? 'top-rank' : ''}`}>{item.rank}</div>
+                  <div className="trader-info">
+                      <img src={item.avatar} alt={item.name} className="trader-avatar" />
+                      <span>{item.name}</span>
+                  </div>
+                  <div className="text-center">{item.wins.toLocaleString()}</div>
+                  <div className="text-right profit-text">
+                      {activeTab === 'tournament' 
+                          ? `+${item.profit.toLocaleString()}` 
+                          : item.score.toFixed(2)}
+                  </div>
               </div>
-              <div className="text-center">{activeTab === 'traders' ? item.wins : item.totalWinnings.toLocaleString()}</div>
-              <div className="text-right profit-text">+{activeTab === 'traders' ? item.profit.toLocaleString() : item.totalWinnings.toLocaleString()}</div>
-            </div>
           ))}
         </div>
       </div>

@@ -186,7 +186,6 @@ const NewsDetail = ({ user }) => {
         throw new Error(errorData.detail || 'Failed to post comment');
       }
 
-      alert('Bình luận đã được đăng thành công!');
       setNewComment('');
       setShowConfirmation(false);
       // Sau khi đăng thành công, reset và tải lại 10 bình luận đầu tiên
