@@ -141,7 +141,17 @@ const MatchResultDisplay = ({ matchData, user }) => {
                     <StarIcon style={{ transform: 'scale(1.3)', animationDelay: '0s' }} />
                     <StarIcon style={{ animationDelay: '0.4s' }}/>
                 </div>
-                <img src={winner.avatar} alt={winner.name} className="winner-showcase-avatar" />
+                <div 
+                    className="winner-showcase-avatar" 
+                    style={{
+                        backgroundImage: `url(${winner.avatar})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center center',
+                        backgroundRepeat: 'no-repeat',
+                    }}
+                    role="img"
+                    aria-label={winner.name}
+                ></div>
                 <h2 className="winner-showcase-label">VICTORIOUS</h2>
                 <h3 className="winner-showcase-name">{winner.name}</h3>
                 <div className="winner-final-stats">

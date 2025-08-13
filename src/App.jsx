@@ -1928,7 +1928,6 @@ const ArenaPage = ({ user, onUserUpdate }) => {
         return savedFilters ? JSON.parse(savedFilters) : {
             live: true,
             waiting: true,
-            pending_confirmation: true,
             done: false,
         };
     });
@@ -2111,12 +2110,11 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     
     // Logic lọc và gộp danh sách trận đấu mới dựa trên checkbox
     const filteredMatches = [
-        // Dùng chung key 'live' để hiển thị cả 2 trạng thái này
-        ...(statusFilters.live || statusFilters.pending_confirmation ? liveMatches : []),
+        ...(statusFilters.live ? liveMatches : []),
         ...(statusFilters.waiting ? waitingMatches : []),
         ...(statusFilters.done ? doneMatches : [])
     ].sort((a, b) => {
-        const statusOrder = { live: 4, pending_confirmation: 3, waiting: 2, done: 1 };
+        const statusOrder = { live: 3, waiting: 2, done: 1 };
         if (statusOrder[a.status] !== statusOrder[b.status]) {
             return statusOrder[b.status] - statusOrder[a.status];
         }
@@ -2203,7 +2201,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                     <div className="filters-panel" style={{ maxHeight: `${filterPanelHeight}px`, marginBottom: filterPanelHeight > 0 ? '1rem' : '0' }}>
                       <div className="card" ref={filterContentRef} style={{ padding: '1rem', overflow: 'hidden' }}>
                           <label className="form-label" style={{ marginBottom: '0.75rem', display: 'block' }}>Filter by Status</label>
-                          <div className="form-checkbox-group">
+                          <div className="form-checkbox-group" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                               {Object.keys(statusFilters).map((key) => (
                                 <label key={key} className="form-checkbox-label">
                                     <input
