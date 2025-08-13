@@ -389,33 +389,35 @@ const HomePage = () => {
   }, []);
 
   useEffect(() => {
-      const handleWebSocketMessage = (event) => {
-          const message = event.detail;
+      const handleWebSocketMessage = (event) => {
+          const message = event.detail;
 
-          if (message.type === "SCORE_UPDATE") {
-              setOngoingMatches(prevMatches => 
-                  prevMatches.map(match => {
-                      if (match.id === message.match_id) {
-                          console.log(`[HomePage] Updating score for match ${match.id}`);
-                          return {
-                              ...match,
-                              player1: { ...match.player1, score: message.data.player1_score },
-                              player2: { ...match.player2, score: message.data.player2_score }
-                          };
-                      }
-                      return match;
-                  })
-              );
-          }
-          // Thêm các case khác nếu cần (ví dụ: một trận đấu mới chuyển sang 'live')
-      };
+          // Tạo một bản sao mới của mảng để xử lý
+          const updatedMatches = ongoingMatches.map(match => {
+              if (match.id !== message.match_id) {
+                  return match;
+              }
 
-      window.addEventListener('websocket-message', handleWebSocketMessage);
+              // Xử lý cập nhật cho trận đấu tương ứng
+              let updatedMatch = { ...match };
+              if (message.type === "SCORE_UPDATE") {
+                  console.log(`[HomePage] Updating score for match ${match.id}`);
+                  updatedMatch.player1 = { ...match.player1, score: message.data.player1_score };
+                  updatedMatch.player2 = { ...match.player2, score: message.data.player2_score };
+              } else if (message.type === "VIEW_COUNT_UPDATE") {
+                  console.log(`[HomePage] Updating views for match ${match.id}`);
+                  updatedMatch.views = message.data.views;
+              }
+              return updatedMatch;
+          });
+          setOngoingMatches(updatedMatches);
+      };
 
-      return () => {
-          window.removeEventListener('websocket-message', handleWebSocketMessage);
-      };
-  }, []);
+      window.addEventListener('websocket-message', handleWebSocketMessage);
+      return () => {
+          window.removeEventListener('websocket-message', handleWebSocketMessage);
+      };
+  }, [ongoingMatches]);
 
   return (
       <div>
@@ -431,7 +433,14 @@ const HomePage = () => {
                           <div className="top-section">
                               <div className="player-info">
                                   <LazyLoad height={48} offset={100}>
-                                      <img src={match.player1.avatar} alt={match.player1.name} className="player-avatar" loading="lazy" />
+                                      <img 
+                                        src={match.player1.avatar || generateAvatarUrl(match.player1.name)} 
+                                        alt={match.player1.name} 
+                                        className="player-avatar" 
+                                        loading="lazy" 
+                                        style={{ objectFit: 'cover' }} 
+                                        onError={(e) => { e.target.src = generateAvatarUrl(match.player1.name); }} 
+                                      />
                                   </LazyLoad>
                                   <span className="player-name">{match.player1.name}</span>
                                   <span className="player-odds">{match.player1.odds}</span>
@@ -442,7 +451,14 @@ const HomePage = () => {
                               </div>
                               <div className="player-info">
                                   <LazyLoad height={48} offset={100}>
-                                      <img src={match.player2.avatar} alt={match.player2.name} className="player-avatar" loading="lazy" />
+                                      <img 
+                                        src={match.player2.avatar || generateAvatarUrl(match.player2.name)} 
+                                        alt={match.player2.name} 
+                                        className="player-avatar" 
+                                        loading="lazy" 
+                                        style={{ objectFit: 'cover' }} 
+                                        onError={(e) => { e.target.src = generateAvatarUrl(match.player2.name); }} 
+                                      />
                                   </LazyLoad>
                                   <span className="player-name">{match.player2.name}</span>
                                   <span className="player-odds">{match.player2.odds}</span>
@@ -1942,48 +1958,77 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     }, [statusFilters]);
 
     const fetchMatchHistory = async () => {
-        if (!user || !user.telegram_id) return; // Dừng nếu chưa có thông tin user
-        try {
-            const response = await fetch(`https://f2farena.com/api/matches/history/${user.telegram_id}`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            setDoneMatches(data); // Lưu kết quả vào state doneMatches
-        } catch (error) {
-            console.error('Error fetching match history:', error);
-            setDoneMatches([]); // Set mảng rỗng nếu có lỗi
-        }
-    };
+        if (!user || !user.telegram_id) return;
+
+        // Tạo một key duy nhất cho cache của user
+        const cacheKey = `match_history_${user.telegram_id}`;
+        const cachedHistory = sessionStorage.getItem(cacheKey);
+
+        // Nếu có cache, dùng cache và thoát
+        if (cachedHistory) {
+            console.log("ArenaPage: Loading match history from cache.");
+            setDoneMatches(JSON.parse(cachedHistory));
+            return;
+        }
+
+        // Nếu không có cache, gọi API
+        console.log("ArenaPage: No history cache found, fetching from API.");
+        try {
+            const response = await fetch(`https://f2farena.com/api/matches/history/${user.telegram_id}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            setDoneMatches(data);
+            sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        } catch (error) {
+            console.error('Error fetching match history:', error);
+            setDoneMatches([]);
+        }
+    };
     
     const fetchAllMatches = async () => {
-        try {
-            // Lấy tất cả các trận active (bao gồm cả waiting, pending_confirmation, live)
-            const response = await fetch('https://f2farena.com/api/matches/active'); 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            if (!Array.isArray(data)) {
-                console.error('API response for active matches is not an array:', data);
-                setLiveMatches([]);
-                setWaitingMatches([]);
-                return;
-            }
+        // BƯỚC 1: KIỂM TRA CACHE TRƯỚC
+        const cachedMatches = sessionStorage.getItem('active_matches');
+        if (cachedMatches) {
+            console.log("ArenaPage: Loading matches from cache.");
+            const data = JSON.parse(cachedMatches);
+            const liveData = data.filter(match => match.status === 'live');
+            const waitingData = data.filter(match => match.status === 'waiting');
+            setLiveMatches(liveData);
+            setWaitingMatches(waitingData);
+            return;
+        }
 
-            const liveData = data.filter(match => match.status === 'live');
-            const waitingData = data.filter(match => match.status === 'waiting');
-            
-            setLiveMatches(liveData);
-            setWaitingMatches(waitingData);
-            
-            sessionStorage.setItem('active_matches', JSON.stringify(data));
-        } catch (error) {
-            console.error('Error fetching all active matches:', error);
-            setLiveMatches([]);
-            setWaitingMatches([]);
-        }
-    };
+        // BƯỚC 2: NẾU KHÔNG CÓ CACHE, MỚI GỌI API
+        console.log("ArenaPage: No cache found, fetching matches from API.");
+        try {
+            const response = await fetch('https://f2farena.com/api/matches/active'); 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            if (!Array.isArray(data)) {
+                console.error('API response for active matches is not an array:', data);
+                setLiveMatches([]);
+                setWaitingMatches([]);
+                return;
+            }
+
+            const liveData = data.filter(match => match.status === 'live' || match.status === 'pending_confirmation');
+            const waitingData = data.filter(match => match.status === 'waiting');
+            
+            setLiveMatches(liveData);
+            setWaitingMatches(waitingData);
+            
+            // Lưu lại vào cache cho lần sau
+            sessionStorage.setItem('active_matches', JSON.stringify(data));
+        } catch (error) {
+            console.error('Error fetching all active matches:', error);
+            setLiveMatches([]);
+            setWaitingMatches([]);
+        }
+    };
 
     const handleJoinChallenge = (match) => {
         if (user && user.telegram_id === match.player1.id) {
@@ -2073,10 +2118,15 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     };
 
     useEffect(() => {
-        fetchTournaments();
-        fetchAllMatches();
-        fetchBrokersForArena();
-    }, []);
+        fetchTournaments();
+        fetchAllMatches();
+        fetchBrokersForArena();
+
+        if (statusFilters.done) {
+            console.log("Filter 'Done' is active on load, fetching match history...");
+            fetchMatchHistory();
+        }
+    }, []);
 
     useEffect(() => {
         const handleMatchStateChange = (event) => {
@@ -2096,12 +2146,13 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     }, []);
 
     // Logic để gộp và lọc danh sách trận đấu
-     const handleFilterChange = (event) => {
+    const handleFilterChange = (event) => {
         const { name, checked } = event.target;
         setStatusFilters(prevFilters => {
             const newFilters = { ...prevFilters, [name]: checked };
 
-            if (name === 'done' && checked) {
+            // Chỉ fetch khi checkbox 'done' được bật VÀ chưa có dữ liệu
+            if (name === 'done' && checked && doneMatches.length === 0) {
                 fetchMatchHistory();
             }
             return newFilters;

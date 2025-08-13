@@ -1356,6 +1356,7 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
 .trader-avatar,
 .personal-info-avatar,
 .player-avatar-modal,
+.match-card .player-avatar,
 .review-card-flag {
   object-fit: cover;
 

@@ -328,19 +328,18 @@ const MatchDetail = ({ user }) => {
         };
     }, [id, fetchMatchDetail]);
 
-    // useEffect để fetch dữ liệu lần đầu khi vào trang
     useEffect(() => {
         fetchMatchDetail();
     }, [id, fetchMatchDetail]); 
 
-    // Các useEffect khác giữ nguyên...
-
     useEffect(() => {
         if (matchData) {
-            setViews(matchData.views || 0);
+            // Chỉ set giá trị ban đầu MỘT LẦN khi matchData được fetch lần đầu
+            setViews(prevViews => prevViews > 0 ? prevViews : (matchData.views || 0));
             setOutsideBetsTotal(matchData.outsideBetsTotal || 0);
         }
-    }, [matchData]);
+        // Phụ thuộc vào ID để chỉ chạy khi đổi trận đấu, không chạy khi score thay đổi
+    }, [id, matchData?.player1, matchData?.player2]);
 
     useEffect(() => {
         const fetchComments = async () => {
@@ -396,41 +395,48 @@ const MatchDetail = ({ user }) => {
     }, [id, matchData]);
 
     useEffect(() => {
-        if (!matchData || activeTab !== 'matching') {
-            const widgetDiv = document.getElementById('tradingview_widget');
-            if (widgetDiv) widgetDiv.innerHTML = '';
-            return;
+        // Chỉ chạy khi tab 'matching' active và có dữ liệu symbol để vẽ
+        if (activeTab === 'matching' && matchData && matchData.tradingview_symbol && matchData.status === 'live') {
+            // Chỉ tạo widget nếu nó chưa được khởi tạo
+            if (!widgetRef.current) {
+                console.log("Creating TradingView Widget for the first time.");
+                const script = document.createElement('script');
+                script.src = 'https://s3.tradingview.com/tv.js';
+                script.async = true;
+                script.onload = () => {
+                    if (document.getElementById('tradingview_widget')) {
+                        widgetRef.current = new window.TradingView.widget({
+                            width: '100%',
+                            height: 400,
+                            symbol: matchData.tradingview_symbol,
+                            interval: '1',
+                            timezone: 'Etc/UTC',
+                            theme: 'dark',
+                            style: '1',
+                            locale: 'en',
+                            toolbar_bg: '#f1f3f6',
+                            enable_publishing: false,
+                            allow_symbol_change: false,
+                            container_id: 'tradingview_widget',
+                        });
+                    }
+                };
+                document.body.appendChild(script);
+            }
         }
 
-        const script = document.createElement('script');
-        script.src = 'https://s3.tradingview.com/tv.js';
-        script.async = true;
-        document.body.appendChild(script);
-
-        script.onload = () => {
-            if (!widgetRef.current) {
-                widgetRef.current = new window.TradingView.widget({
-                    width: '100%',
-                    height: 400,
-                    symbol: matchData.tradingview_symbol,
-                    interval: '1',
-                    timezone: 'Etc/UTC',
-                    theme: 'dark',
-                    style: '1',
-                    locale: 'en',
-                    toolbar_bg: '#f1f3f6',
-                    enable_publishing: false,
-                    allow_symbol_change: false,
-                    container_id: 'tradingview_widget',
-                });
-            }
-        };
+        // Hàm dọn dẹp: Sẽ chạy khi component unmount hoặc khi activeTab thay đổi
         return () => {
-            const widgetDiv = document.getElementById('tradingview_widget');
-            if (widgetDiv) widgetDiv.innerHTML = '';
-            widgetRef.current = null;
+            // Nếu người dùng chuyển tab hoặc rời trang, xóa widget
+            if (widgetRef.current) {
+                console.log("Cleaning up TradingView Widget.");
+                const widgetDiv = document.getElementById('tradingview_widget');
+                if (widgetDiv) widgetDiv.innerHTML = '';
+                widgetRef.current = null;
+            }
         };
-    }, [activeTab, matchData?.tradingview_symbol]);
+
+    }, [activeTab, matchData?.tradingview_symbol]); 
 
     const handleSendComment = async (e) => {
         e.preventDefault();
@@ -455,7 +461,6 @@ const MatchDetail = ({ user }) => {
             setCommentInput('');
         } catch (error) {
             console.error('Error sending comment:', error);
-            // Bỏ alert
         }
     };
     
