@@ -1531,126 +1531,150 @@ const DepositForm = ({ onClose, user, onUserUpdate, onDepositSuccess }) => {
 };
 
 const WithdrawForm = ({ onClose, user, onUserUpdate }) => {
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [destinationWallet, setDestinationWallet] = useState('');
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Thêm state cho trạng thái submit
-  const [currentBalance, setCurrentBalance] = useState(0); // Lấy balance từ user prop
+  // BƯỚC 1: Quản lý trạng thái của form
+  const [formStep, setFormStep] = useState('input'); // Các trạng thái: 'input', 'confirm', 'success'
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [currentBalance, setCurrentBalance] = useState(0);
 
-  useEffect(() => {
-    if (user && user.bet_wallet !== undefined) {
-      setCurrentBalance(parseFloat(user.bet_wallet));
-    }
-  }, [user]);
+  useEffect(() => {
+    if (user && user.bet_wallet !== undefined) {
+      setCurrentBalance(parseFloat(user.bet_wallet));
+    }
+  }, [user]);
+
+  // BƯỚC 2: Tự động đóng modal sau khi hiển thị thành công
+  useEffect(() => {
+    let timer;
+    if (formStep === 'success') {
+      timer = setTimeout(() => {
+        onClose();
+      }, 3000); // Tự đóng sau 3 giây
+    }
+    return () => clearTimeout(timer); // Cleanup
+  }, [formStep, onClose]);
+
 
   const handleConfirm = (e) => {
-      e.preventDefault(); // Ngăn form reload lại trang
-      
-      // Kiểm tra validation cơ bản
-      const amount = parseFloat(withdrawAmount);
-      if (isNaN(amount) || amount <= 0) {
-          alert('Please enter a valid withdrawal amount.');
-          return;
-      }
-      if (amount > currentBalance) {
-          alert('Withdrawal amount cannot exceed your current balance.');
-          return;
-      }
-      if (!destinationWallet.trim()) {
-          alert('Please enter a destination wallet address.');
-          return;
-      }
-      
-      // Nếu hợp lệ, hiển thị modal xác nhận
-      setShowConfirmation(true);
+    e.preventDefault();
+    const amount = parseFloat(withdrawAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid withdrawal amount.');
+      return;
+    }
+    if (amount > currentBalance) {
+      alert('Withdrawal amount cannot exceed your current balance.');
+      return;
+    }
+    setFormStep('confirm'); // Chuyển sang bước xác nhận
   };
 
-  const confirmWithdrawal = async () => {
-    if (!user || !user.telegram_id) {
-      console.error("User data is not available. Cannot send withdrawal request.");
-      alert("Thông tin người dùng không khả dụng. Vui lòng thử lại.");
-      return;
-    }
+  const confirmWithdrawal = async () => {
+    if (!user || !user.telegram_id || !user.wallet_address) {
+      alert("User data is not available. Cannot send withdrawal request.");
+      return;
+    }
 
-    setIsSubmitting(true);
-    try {
-      await requestWithdrawal(user.telegram_id, withdrawAmount, destinationWallet);
-      alert('Yêu cầu rút tiền đã được gửi thành công. Vui lòng chờ admin xác nhận.');
-      setShowConfirmation(false);
-      onClose();
-      const response = await fetch(`https://f2farena.com/api/users/${user.telegram_id}`);
-      if (!response.ok) throw new Error('Failed to fetch updated user data');
-      const updatedUserData = await response.json();
-      onUserUpdate(updatedUserData);
+    setIsSubmitting(true);
+    try {
+      await requestWithdrawal(user.telegram_id, withdrawAmount, user.wallet_address);
+      
+      // BƯỚC 3: Thay vì alert, chuyển sang trạng thái thành công
+      setFormStep('success');
 
-    } catch (error) {
-      console.error('Error sending withdrawal request:', error);
-      alert(`Lỗi: ${error.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+      // Fetch lại data user mới nhất ở background
+      fetch(`https://f2farena.com/api/users/${user.telegram_id}`)
+        .then(res => res.json())
+        .then(updatedUserData => onUserUpdate(updatedUserData));
 
-  return (
-    <>
-      <div className="deposit-modal-wrapper" onClick={onClose}> {/* Đổi class để dùng chung style */}
-        <div className="deposit-modal-content" onClick={(e) => e.stopPropagation()}> {/* Đổi class để dùng chung style */}
-          {!showConfirmation ? (
-            <>
-              <div className="form-header">
-                <h2>Withdraw Funds</h2>
-                <button onClick={onClose} className="icon-button close-button">×</button>
-              </div>
-              <div className="wallet-info-row" style={{ marginBottom: '1rem' }}>
-                <span className="label">Available Balance</span>
-                <span className="value accent">{currentBalance.toFixed(2)} USDT</span>
-              </div>
-              <form className="card" onSubmit={handleConfirm} style={{border: 'none', background: 'transparent', padding: 0}}>
-                <div className="form-group">
-                  <label className="form-label">Withdrawal Amount (USDT)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                    placeholder="e.g., 100"
-                    required
-                    min="0.01" step="0.01" // Đảm bảo số dương và có thể nhập số lẻ
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Destination Wallet Address</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={destinationWallet}
-                    onChange={(e) => setDestinationWallet(e.target.value)}
-                    placeholder="e.g., 0x123..."
-                    required
-                  />
-                </div>
-                <button type="submit" className="btn btn-accent" style={{ width: '100%', marginTop: '1rem' }} disabled={isSubmitting}>
-                  {isSubmitting ? 'Submitting...' : 'Confirm Withdrawal'}
-                </button>
-              </form>
-            </>
-          ) : (
-            <div className="confirmation-modal card" style={{position: 'static', transform: 'none', background: 'transparent', boxShadow: 'none'}}>
-              <h4>Xác nhận rút tiền</h4>
-              <p>Bạn có muốn rút <span className="accent">{withdrawAmount} USDT</span> tới ví <span style={{wordBreak: 'break-all'}}>{destinationWallet}</span> không?</p>
-              <p>Số dư hiện tại: <span className="accent">{currentBalance.toFixed(2)} USDT</span></p>
-              <div className="confirmation-buttons">
-                <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)} disabled={isSubmitting}>Hủy</button>
-                <button className="btn btn-primary" onClick={confirmWithdrawal} disabled={isSubmitting}>
-                  {isSubmitting ? 'Đang xác nhận...' : 'Xác nhận'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
-  );
+    } catch (error) {
+      console.error('Error sending withdrawal request:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderContent = () => {
+    switch (formStep) {
+      case 'confirm':
+        return (
+          <div className="confirmation-modal card" style={{position: 'static', transform: 'none', background: 'transparent', boxShadow: 'none'}}>
+            <h4>Confirm Withdrawal</h4>
+            <p>
+                Do you want to withdraw <span className="accent">{withdrawAmount} USDT</span> to your wallet?
+                <br/>
+                <small style={{ color: 'var(--color-secondary-text)', wordBreak: 'break-all' }}>{user.wallet_address}</small>
+            </p>
+            <p>Current Balance: <span className="accent">{currentBalance.toFixed(2)} USDT</span></p>
+            <div className="confirmation-buttons">
+              <button className="btn btn-secondary" onClick={() => setFormStep('input')} disabled={isSubmitting}>Cancel</button>
+              <button className="btn btn-primary" onClick={confirmWithdrawal} disabled={isSubmitting}>
+                {isSubmitting ? 'Confirming...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        );
+      
+      case 'success':
+        return (
+          <div className="confirmation-modal card" style={{position: 'static', transform: 'none', background: 'transparent', boxShadow: 'none', textAlign: 'center'}}>
+            <svg style={{ width: '60px', height: '60px', color: 'var(--color-success)', margin: '0 auto 1rem auto' }} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <h4>Request Sent</h4>
+            <p>
+              Your withdrawal request for <span className="accent">{withdrawAmount} USDT</span> has been sent successfully.
+            </p>
+            <p style={{ color: 'var(--color-secondary-text)', fontSize: '0.9rem' }}>
+              Your request will be processed within 12 hours.
+            </p>
+            <div className="confirmation-buttons" style={{justifyContent: 'center'}}>
+              <button className="btn btn-primary" onClick={onClose}>OK</button>
+            </div>
+          </div>
+        );
+
+      case 'input':
+      default:
+        return (
+          <>
+            <div className="form-header">
+              <h2>Withdraw Funds</h2>
+              <button onClick={onClose} className="icon-button close-button">×</button>
+            </div>
+            <div className="wallet-info-row" style={{ marginBottom: '1rem' }}>
+              <span className="label">Available Balance</span>
+              <span className="value accent">{currentBalance.toFixed(2)} USDT</span>
+            </div>
+            <form className="card" onSubmit={handleConfirm} style={{border: 'none', background: 'transparent', padding: 0}}>
+              <div className="form-group">
+                <label className="form-label">Withdrawal Amount (USDT)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  placeholder="e.g., 100"
+                  required
+                  min="0.01" step="0.01"
+                />
+              </div>
+              <button type="submit" className="btn btn-accent" style={{ width: '100%', marginTop: '1rem' }}>
+                Confirm Withdrawal
+              </button>
+            </form>
+          </>
+        );
+    }
+  };
+
+  return (
+    <div className="deposit-modal-wrapper" onClick={formStep !== 'success' ? onClose : null}>
+      <div className="deposit-modal-content" onClick={(e) => e.stopPropagation()}>
+        {renderContent()}
+      </div>
+    </div>
+  );
 };
 
 const UpdateWalletAddressForm = ({ onClose, user, onWalletAddressUpdated }) => {
@@ -1703,23 +1727,23 @@ const UpdateWalletAddressForm = ({ onClose, user, onWalletAddressUpdated }) => {
           <button onClick={onClose} className="icon-button close-button">×</button>
         </div>
         <p style={{ textAlign: 'center', marginBottom: '1rem' }}>
-          Bạn cần cập nhật địa chỉ ví USDT (TRC20) để thực hiện rút tiền.
+          You need to update your USDT (TRC20) wallet address to proceed with withdrawals.
         </p>
         <form className="card" onSubmit={handleSubmit} style={{ border: 'none', background: 'transparent', padding: 0 }}>
           <div className="form-group">
-            <label className="form-label">Địa chỉ ví USDT (TRC20)</label>
+            <label className="form-label">USDT (TRC20) Wallet Address</label>
             <input
               type="text"
               className="form-input"
               value={walletAddress}
               onChange={(e) => setWalletAddress(e.target.value)}
-              placeholder="Nhập địa chỉ ví của bạn..."
+              placeholder="Enter your wallet address..."
               required
               disabled={isSubmitting}
             />
           </div>
           <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={isSubmitting}>
-            {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật địa chỉ ví'}
+            {isSubmitting ? 'Updating...' : 'Update Wallet Address'}
           </button>
         </form>
       </div>
@@ -2413,7 +2437,7 @@ const PersonalInfoView = ({ onBack, user }) => {
             <ul className="sidebar-nav-list scrollable">
                 <li className="list-item">
                     <span className="list-item-label">Email</span>
-                    <span className="list-item-value">{user.email || 'Chưa cập nhật'}</span>
+                    <span className="list-item-value">{user.email || 'Not set'}</span>
                 </li>
                 <li className="list-item">
                     <span className="list-item-label">Wallet Address</span>
@@ -2426,7 +2450,7 @@ const PersonalInfoView = ({ onBack, user }) => {
                 <li className="list-item">
                     <span className="list-item-label">Affiliate Link</span>
                     <button onClick={handleCopyAffiliateLink} className="copy-link-button" style={{background:'var(--color-primary)',color:'white',border:'none',padding:'4px 8px',borderRadius:'4px',cursor:'pointer',fontSize:'0.8rem'}}>
-                        {copied ? 'Đã sao chép!' : 'Sao chép link'}
+                        {copied ? 'Copied!' : 'Copy Link'}
                     </button>
                 </li>
                 <li className="list-item">
