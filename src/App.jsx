@@ -1122,9 +1122,8 @@ const WalletPage = ({ user, onUserUpdate }) => {
                   <p className="secondary" style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-secondary-text)' }}>{tx.date}</p>
                 </div>
                 <div className={`value ${tx.type === 'Loss' || tx.type === 'Withdraw' ? 'loss' : 'win'}`}>
-                  <span>{tx.type === 'Loss' || tx.type === 'Withdraw' ? '-' : '+'} {tx.amount}</span>
-                  <span className={`status-dot ${tx.status.toLowerCase()}`}>{tx.status}</span>
-                </div>
+                    <span>{tx.type === 'Loss' || tx.type === 'Withdraw' ? '-' : '+'} {tx.amount}</span>
+                </div>
               </div>
             ))
           ) : (
@@ -1544,6 +1543,28 @@ const WithdrawForm = ({ onClose, user, onUserUpdate }) => {
     }
   }, [user]);
 
+  const handleConfirm = (e) => {
+      e.preventDefault(); // Ngăn form reload lại trang
+      
+      // Kiểm tra validation cơ bản
+      const amount = parseFloat(withdrawAmount);
+      if (isNaN(amount) || amount <= 0) {
+          alert('Please enter a valid withdrawal amount.');
+          return;
+      }
+      if (amount > currentBalance) {
+          alert('Withdrawal amount cannot exceed your current balance.');
+          return;
+      }
+      if (!destinationWallet.trim()) {
+          alert('Please enter a destination wallet address.');
+          return;
+      }
+      
+      // Nếu hợp lệ, hiển thị modal xác nhận
+      setShowConfirmation(true);
+  };
+
   const confirmWithdrawal = async () => {
     if (!user || !user.telegram_id) {
       console.error("User data is not available. Cannot send withdrawal request.");
@@ -1663,8 +1684,7 @@ const UpdateWalletAddressForm = ({ onClose, user, onWalletAddressUpdated }) => {
         throw new Error(errorData.detail || 'Không thể cập nhật địa chỉ ví.');
       }
 
-      const updatedUser = await response.json(); // Nhận về user object đã cập nhật
-      alert('Địa chỉ ví đã được cập nhật thành công!');
+      const updatedUser = await response.json();
       onWalletAddressUpdated(updatedUser); // Cập nhật user state ở AppContent
       onClose(); // Đóng form
     } catch (error) {

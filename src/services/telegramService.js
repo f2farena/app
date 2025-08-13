@@ -1,7 +1,7 @@
 // telegramService.js
-export const notifyAdminOfDeposit = async (userId, amount, memo) => {
-  const NOTIFY_API_URL = 'https://f2farena.com/api/notify-deposit-request';
+const API_BASE_URL = 'https://f2farena.com/api';
 
+export const notifyAdminOfDeposit = async (userId, amount, memo) => {
   const payload = {
     user_id: userId,
     amount: parseFloat(amount), // Đảm bảo amount là số
@@ -10,7 +10,7 @@ export const notifyAdminOfDeposit = async (userId, amount, memo) => {
 
   try {
     console.log('Sending deposit notification request to backend:', payload); // LOG CHI TIẾT
-    const response = await fetch(NOTIFY_API_URL, {
+    const response = await fetch(`${API_BASE_URL}/notify-deposit-request`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
