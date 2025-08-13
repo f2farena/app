@@ -562,7 +562,7 @@ const MatchDetail = ({ user }) => {
                             <div className="timeline-container">
                                 <div className="timeline">
                                     {trades.map((trade, index) => (
-                                        <div key={trade.id || index} className={`trade-box ${trade.player === matchData.player1.name ? 'left' : 'right'}`}>
+                                        <div key={trade.id || index} className={`trade-box ${trade.player_id === matchData.player1.id ? 'left' : 'right'}`}>
                                             <div className="trade-info">
                                                 <span className="trade-type">{trade.type}</span>
                                                 <span className="trade-amount">{trade.amount} {matchData.symbol?.split('/')[0] || matchData.symbol}</span>
