@@ -1363,3 +1363,13 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
   border-radius: 50%;
   background-color: #333;
 }
+
+.form-input.is-invalid {
+  border-color: #e53e3e; /* Màu đỏ */
+}
+
+.error-message {
+  color: #e53e3e; /* Màu đỏ */
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}

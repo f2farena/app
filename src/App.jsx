@@ -1353,13 +1353,14 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
                     user={user} 
                     onUserUpdate={onUserUpdate}
                     onDepositSuccess={handleDepositSuccess}
+                    requiredAmount={parseFloat(betAmount)}
                 />
             )}
         </>
     );
 };
 
-const DepositForm = ({ onClose, user, onUserUpdate, onDepositSuccess }) => {
+const DepositForm = ({ onClose, user, onUserUpdate, onDepositSuccess, requiredAmount }) => {
   const [depositAmount, setDepositAmount] = useState('');
   const [memoContent, setMemoContent] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -1367,28 +1368,43 @@ const DepositForm = ({ onClose, user, onUserUpdate, onDepositSuccess }) => {
   const [copied, setCopied] = useState(false);
   const intervalRef = useRef(null); 
   const walletAddress = 'TUYDJGWvzE54Wpq1AqFXWCUkjbyozrK1L2';
+  const [error, setError] = useState(null);
 
   const handleConfirm = async (e) => {
-    e.preventDefault();
-    if (!depositAmount || !memoContent) {
-      return;
-    }
-    
-    if (!user || !user.telegram_id) {
-      console.error("User data is not available. Cannot send notification.");
-      return;
-    }
+      e.preventDefault();
+      setError(null); // Reset lỗi mỗi lần nhấn confirm
 
-    try {
-      await notifyAdminOfDeposit(user.telegram_id, depositAmount, memoContent);
-      setShowConfirmation(true);
-      setTimer(600); 
+      if (!depositAmount || !memoContent) {
+          return;
+      }
 
-      startPollingBalance();
-    } catch (error) {
-      console.error('Error in deposit confirmation process:', error);
-    }
-  };
+      if (requiredAmount && requiredAmount > 0) {
+          const currentBalance = parseFloat(user.bet_wallet || 0);
+          const neededAmount = requiredAmount - currentBalance;
+          const depositAmountFloat = parseFloat(depositAmount);
+
+          if (depositAmountFloat < neededAmount) {
+              // Thay vì alert, set state lỗi
+              setError(`Please deposit at least ${neededAmount.toFixed(2)} USDT.`);
+              return;
+          }
+      }
+
+      if (!user || !user.telegram_id) {
+          console.error("User data is not available. Cannot send notification.");
+          return;
+      }
+
+      try {
+          await notifyAdminOfDeposit(user.telegram_id, depositAmount, memoContent);
+          setShowConfirmation(true);
+          setTimer(600); 
+
+          startPollingBalance();
+      } catch (error) {
+          console.error('Error in deposit confirmation process:', error);
+      }
+  };
 
   const startPollingBalance = () => {
     if (intervalRef.current) {
@@ -1518,15 +1534,19 @@ const DepositForm = ({ onClose, user, onUserUpdate, onDepositSuccess }) => {
             </div>
             <form className="card" onSubmit={handleConfirm} style={{border: 'none', background: 'transparent', padding: 0}}>
               <div className="form-group">
-                <label className="form-label">Deposit Amount (USDT)</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  placeholder="e.g., 100"
-                  required
-                />
+                  <label className="form-label">Deposit Amount (USDT)</label>
+                  <input
+                      type="number"
+                      className={`form-input ${error ? 'is-invalid' : ''}`}
+                      value={depositAmount}
+                      onChange={(e) => {
+                          setDepositAmount(e.target.value);
+                          if (error) setError(null); // Xóa lỗi khi người dùng bắt đầu nhập lại
+                      }}
+                      placeholder="e.g., 100"
+                      required
+                  />
+                  {error && <p className="error-message">{error}</p>}
               </div>
               <div className="form-group">
                 <label className="form-label">Memo Content</label>
@@ -1940,7 +1960,9 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     const [tournamentItems, setTournamentItems] = useState([]);
     const [waitingMatches, setWaitingMatches] = useState([]);
     const [liveMatches, setLiveMatches] = useState([]);
-    const [showJoinFormModal, setShowJoinFormModal] = useState(false); 
+    const [showJoinFormModal, setShowJoinFormModal] = useState(false);
+    const [showDepositForJoin, setShowDepositForJoin] = useState(false);
+    const [requiredBetForJoin, setRequiredBetForJoin] = useState(0);
 
     const [allMatches, setAllMatches] = useState([]);
     const [statusFilters, setStatusFilters] = useState(() => {
@@ -2051,6 +2073,19 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     const handleConfirmJoin = async (joinData) => {
         if (!selectedMatch || !user) return;
 
+        const betAmount = parseFloat(selectedMatch.betAmount);
+        const currentBalance = parseFloat(user.bet_wallet || 0);
+
+        // BƯỚC 1: KIỂM TRA SỐ DƯ
+        if (currentBalance < betAmount) {
+            // Nếu không đủ, mở form nạp tiền
+            setRequiredBetForJoin(betAmount);
+            setShowJoinFormModal(false); // Đóng form join
+            setShowDepositForJoin(true);  // Mở form nạp tiền
+            return; // Dừng hàm tại đây
+        }
+
+        // BƯỚC 2: NẾU ĐỦ TIỀN, TIẾN HÀNH JOIN NHƯ CŨ
         try {
             const response = await fetch(`https://f2farena.com/api/matches/${selectedMatch.id}`, {
                 method: 'PATCH',
@@ -2065,6 +2100,8 @@ const ArenaPage = ({ user, onUserUpdate }) => {
 
             setShowJoinFormModal(false);
             setSelectedMatch(null);
+            // Sau khi join thành công, tải lại danh sách trận đấu để cập nhật trạng thái
+            fetchAllMatches(true);
 
         } catch (error) {
             console.error('Error sending join request:', error);
@@ -2326,6 +2363,20 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                     onConfirm={handleConfirmJoin}
                     match={selectedMatch}
                     user={user}
+                />
+            )}
+            {showDepositForJoin && (
+                <DepositForm
+                    onClose={() => setShowDepositForJoin(false)}
+                    user={user}
+                    onUserUpdate={onUserUpdate}
+                    onDepositSuccess={(updatedUser) => {
+                        onUserUpdate(updatedUser); // Cập nhật lại user data
+                        setShowDepositForJoin(false); // Đóng form nạp tiền
+                        // Mở lại form join để user xác nhận lại thông tin tài khoản
+                        setShowJoinFormModal(true); 
+                    }}
+                    requiredAmount={requiredBetForJoin}
                 />
             )}
             {showDepositModal && (
