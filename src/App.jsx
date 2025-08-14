@@ -107,8 +107,29 @@ const Footer = ({ activePage, setActivePage, showFooter }) => (
     </footer>
 );
 
+const ErrorModal = ({ message, onClose }) => {
+  if (!message) return null;
+
+  return (
+    <>
+      <div className="confirmation-overlay" onClick={onClose}></div>
+      <div className="confirmation-modal card">
+        <h4 style={{ color: 'var(--color-loss)' }}>Lỗi Thao Tác</h4>
+        <p style={{ marginTop: '1rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+          {message}
+        </p>
+        <div className="confirmation-buttons" style={{ justifyContent: 'center' }}>
+          <button className="btn btn-primary" onClick={onClose}>
+            Đã hiểu
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
+
 // ===================================================================================
-// CÁC COMPONENT TRANG (ĐÃ KHÔI PHỤC)
+// CÁC COMPONENT TRANG
 // ===================================================================================
 
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n=>n[0]).join('') || 'NN').toUpperCase()}`;
@@ -1156,6 +1177,7 @@ const WalletPage = ({ user, onUserUpdate }) => {
 };
 
 const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUserUpdate }) => {
+    const [errorMessage, setErrorMessage] = useState('');
     const [betAmount, setBetAmount] = useState('');
     const [tradingSymbol, setTradingSymbol] = useState('');
     const [challengeMode, setChallengeMode] = useState('waiting');
@@ -1236,7 +1258,8 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
             onCreateSuccess?.(); 
         } catch (error) {
             console.error('Error creating match:', error);
-            alert(`Error: ${error.message}`);
+            setShowConfirmation(false);
+            setErrorMessage(error.message);
         } finally {
             setIsSubmitting(false); 
         }
@@ -1356,6 +1379,7 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
                     requiredAmount={parseFloat(betAmount)}
                 />
             )}
+            {errorMessage && <ErrorModal message={errorMessage} onClose={() => setErrorMessage('')} />}
         </>
     );
 };
@@ -1944,6 +1968,7 @@ const JoinMatchFormModal = ({ onClose, onConfirm, match, user }) => {
 };
 
 const ArenaPage = ({ user, onUserUpdate }) => {
+    const [errorMessage, setErrorMessage] = useState('');
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState(() => {
         return sessionStorage.getItem('arenaActiveTab') || 'tournament';
@@ -2063,7 +2088,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
 
     const handleJoinChallenge = (match) => {
         if (user && user.telegram_id === match.player1.id) {
-            alert("You cannot join your own match!");
+            setErrorMessage("You cannot join your own match!");
             return;
         }
         setSelectedMatch(match);
@@ -2105,8 +2130,8 @@ const ArenaPage = ({ user, onUserUpdate }) => {
 
         } catch (error) {
             console.error('Error sending join request:', error);
-            alert(`Error joining match: ${error.message}`);
-            throw error; 
+            setShowJoinFormModal(false); // Đóng form join lại
+            setErrorMessage(error.message); // Mở modal lỗi
         }
     };
 
@@ -2382,6 +2407,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
             {showDepositModal && (
                 <DepositForm onClose={() => setShowDepositModal(false)} user={user} onUserUpdate={onUserUpdate} />
             )}
+            {errorMessage && <ErrorModal message={errorMessage} onClose={() => setErrorMessage('')} />}
         </div>
     );
 };
