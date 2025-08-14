@@ -132,7 +132,7 @@ const ErrorModal = ({ message, onClose }) => {
 // CÁC COMPONENT TRANG
 // ===================================================================================
 
-const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n=>n[0]).join('') || 'NN').toUpperCase()}`;
+const generateAvatarUrl = (seed) => `https://ui-avatars.com/api/?name=${encodeURIComponent(seed || 'N N')}&background=random&color=fff&size=50`;
 
 const EventBanner = ({ items }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
