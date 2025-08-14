@@ -2589,56 +2589,60 @@ const TextView = ({ title, content, onBack }) => (
 
 // Sửa đổi trong file App.jsx, bên trong component ChatbotPage
 const ChatbotPage = ({ user }) => {
-    // State để lưu tin nhắn hiển thị trên UI
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useState([]); // Khởi tạo mảng rỗng
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef(null);
 
-    // Key để lưu cache trong sessionStorage
     const chatHistoryKey = `chatbot_history_${user?.telegram_id}`;
 
-    // Load lịch sử khi component được mount
     useEffect(() => {
         const loadHistory = async () => {
-            if (!user?.telegram_id) return;
+            if (!user?.telegram_id) {
+                // Nếu chưa có user, chỉ hiển thị tin nhắn chào mừng mặc định
+                setMessages([{ text: "Xin chào! Tôi có thể giúp gì cho bạn về F2FArena?", sender: 'bot' }]);
+                return;
+            }
 
-            // 1. Kiểm tra sessionStorage trước
             const cachedHistory = sessionStorage.getItem(chatHistoryKey);
             if (cachedHistory) {
                 setMessages(JSON.parse(cachedHistory));
                 return;
             }
 
-            // 2. Nếu không có cache, gọi API
             setIsLoading(true);
             try {
                 const response = await fetch(`https://f2farena.com/api/chatbot/history/${user.telegram_id}`);
                 if (!response.ok) throw new Error("Failed to fetch history");
                 const historyData = await response.json();
 
-                const formattedHistory = historyData.map(item => ({
-                    text: item.parts[0],
-                    sender: item.role === 'user' ? 'user' : 'bot'
-                }));
-                
-                // Nếu không có lịch sử, thêm tin nhắn chào mừng
-                if (formattedHistory.length === 0) {
-                    formattedHistory.push({ text: "Xin chào! Tôi có thể giúp gì cho bạn về F2FArena?", sender: 'bot' });
+                // KIỂM TRA LỊCH SỬ VÀ XỬ LÝ
+                if (historyData && historyData.length > 0) {
+                    // Nếu có lịch sử, hiển thị nó
+                    const formattedHistory = historyData.map(item => ({
+                        text: item.parts[0],
+                        sender: item.role === 'user' ? 'user' : 'bot'
+                    }));
+                    setMessages(formattedHistory);
+                    sessionStorage.setItem(chatHistoryKey, JSON.stringify(formattedHistory));
+                } else {
+                    // Nếu KHÔNG có lịch sử, hiển thị tin chào mừng mặc định
+                    const welcomeMessage = [{ text: "Xin chào! Tôi có thể giúp gì cho bạn về F2FArena?", sender: 'bot' }];
+                    setMessages(welcomeMessage);
+                    sessionStorage.setItem(chatHistoryKey, JSON.stringify(welcomeMessage));
                 }
-
-                setMessages(formattedHistory);
-                sessionStorage.setItem(chatHistoryKey, JSON.stringify(formattedHistory));
             } catch (error) {
                 console.error("Error loading chat history:", error);
-                setMessages([{ text: "Không thể tải lịch sử trò chuyện. Vui lòng thử lại.", sender: 'bot' }]);
+                // Nếu API lỗi, CŨNG hiển thị tin chào mừng mặc định để ứng dụng không bị gián đoạn
+                const welcomeMessage = [{ text: "Xin chào! Tôi có thể giúp gì cho bạn về F2FArena?", sender: 'bot' }];
+                setMessages(welcomeMessage);
             } finally {
                 setIsLoading(false);
             }
         };
 
         loadHistory();
-    }, [user]); // Chạy lại khi có user
+    }, [user]); // Phụ thuộc vào user
 
     // Tự động cuộn
     useEffect(() => {
@@ -2652,14 +2656,17 @@ const ChatbotPage = ({ user }) => {
 
         const userMessage = { text: userQuestion, sender: 'user' };
         
-        // Cập nhật state messages ngay lập tức để user thấy tin nhắn của mình
-        const newMessages = [...messages, userMessage];
+        // Lấy state hiện tại, nếu là tin chào mừng mặc định thì thay thế, không thì nối vào
+        const currentMessages = messages.length === 1 && messages[0].text.startsWith("Xin chào!")
+            ? []
+            : messages;
+
+        const newMessages = [...currentMessages, userMessage];
         setMessages(newMessages);
         setInput('');
         setIsLoading(true);
 
         try {
-            // Lấy 10 tin nhắn cuối cùng để làm context
             const historyForPrompt = newMessages.slice(-10).map(msg => ({
                 role: msg.sender === 'user' ? 'user' : 'model',
                 parts: [msg.text]
@@ -2679,7 +2686,6 @@ const ChatbotPage = ({ user }) => {
             const data = await response.json();
             const botMessage = { text: data.answer, sender: 'bot' };
             
-            // Cập nhật state và sessionStorage với câu trả lời của bot
             const finalMessages = [...newMessages, botMessage];
             setMessages(finalMessages);
             sessionStorage.setItem(chatHistoryKey, JSON.stringify(finalMessages));
@@ -2693,7 +2699,7 @@ const ChatbotPage = ({ user }) => {
         }
     };
     
-    // Giao diện JSX không thay đổi nhiều
+    // Giao diện JSX không đổi
     return (
       <div className="chatbot-container">
           <div className="chatbot-messages">
