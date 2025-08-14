@@ -114,13 +114,13 @@ const ErrorModal = ({ message, onClose }) => {
     <>
       <div className="confirmation-overlay" onClick={onClose}></div>
       <div className="confirmation-modal card">
-        <h4 style={{ color: 'var(--color-loss)' }}>Lỗi Thao Tác</h4>
+        <h4 style={{ color: 'var(--color-loss)' }}>Warning!!!</h4>
         <p style={{ marginTop: '1rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
           {message}
         </p>
         <div className="confirmation-buttons" style={{ justifyContent: 'center' }}>
           <button className="btn btn-primary" onClick={onClose}>
-            Đã hiểu
+            Okay
           </button>
         </div>
       </div>
