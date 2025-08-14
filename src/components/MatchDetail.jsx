@@ -466,7 +466,7 @@ const MatchDetail = ({ user }) => {
             }
         };
 
-    }, [activeTab, matchData?.tradingview_symbol]); 
+    }, [activeTab, matchData?.tradingview_symbol, matchData?.status]);
 
     const handleSendComment = async (e) => {
         e.preventDefault();
