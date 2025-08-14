@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import './MatchDetail.css';
 import { useWebSocket } from '../contexts/WebSocketContext';
 
-const MatchCountdownTimer = ({ startTime, durationHours }) => {
+const MatchCountdownTimer = ({ startTime, durationHours, onFinish }) => {
     const [timeRemaining, setTimeRemaining] = useState("Calculating...");
+    const onFinishCalled = useRef(false);
 
     useEffect(() => {
         if (!startTime || !durationHours) {
@@ -20,6 +21,10 @@ const MatchCountdownTimer = ({ startTime, durationHours }) => {
             
             if (remainingMilliseconds <= 0) {
                 setTimeRemaining("00:00:00");
+                if (onFinish && !onFinishCalled.current) {
+                    onFinish();
+                    onFinishCalled.current = true;
+                }
                 return 0;
             }
 
@@ -40,9 +45,9 @@ const MatchCountdownTimer = ({ startTime, durationHours }) => {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [startTime, durationHours]);
+    }, [startTime, durationHours, onFinish]);
 
-    return <>{timeRemaining}</>; // Trả về text, không bọc trong div
+    return <>{timeRemaining}</>;
 };
 
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n => n[0]).join('') || 'NN').toUpperCase()}`;
@@ -172,6 +177,18 @@ const MatchResultDisplay = ({ matchData, user }) => {
     );
 };
 
+const WaitingForResultModal = () => (
+    <div className="login-modal-overlay">
+        <div className="login-modal-content card" style={{ textAlign: 'center' }}>
+            <h3 className="login-modal-title">Match Finished</h3>
+            <div className="loading-pulse" style={{ margin: '1.5rem auto' }}></div>
+            <p className="login-modal-instructions">
+                The match has concluded. Waiting for the final results from the server...
+            </p>
+        </div>
+    </div>
+);
+
 // Component chính
 const MatchDetail = ({ user }) => {
     const { id } = useParams();
@@ -193,6 +210,8 @@ const MatchDetail = ({ user }) => {
     const [showResultModal, setShowResultModal] = useState(false);
     const [matchResult, setMatchResult] = useState(null);
     const [cancellationReason, setCancellationReason] = useState(null);
+    const [matchResultFromSocket, setMatchResultFromSocket] = useState(null);
+    const [showWaitingModal, setShowWaitingModal] = useState(false);
 
     // =================================================================
     // BƯỚC 1: ĐỊNH NGHĨA fetchMatchDetail BẰNG useCallback
@@ -315,8 +334,19 @@ const MatchDetail = ({ user }) => {
                     setViews(message.data.views);
                     break;
                 case "MATCH_DONE":
-                    console.log("Match is done, refetching details to show results...");
-                    fetchMatchDetail();
+                    console.log("Received match results from WebSocket:", message.data);
+                    setMatchResultFromSocket(message.data);
+                    
+                    // Kiểm tra xem modal chờ có đang bật không
+                    setShowWaitingModal(isModalVisible => {
+                        // Nếu modal đang bật, nghĩa là timer đã xong trước, giờ có kết quả thì gọi fetch luôn
+                        if (isModalVisible) {
+                            console.log("Result received while waiting modal is visible. Fetching details.");
+                            fetchMatchDetail();
+                        }
+                        // Luôn trả về false để đảm bảo modal bị tắt khi có kết quả
+                        return false; 
+                    });
                     break;
             }
         };
@@ -495,7 +525,26 @@ const MatchDetail = ({ user }) => {
                 <div className="center-details">
                     <div className="time-remaining">
                         {matchData.status === 'live'
-                            ? <MatchCountdownTimer startTime={matchData.start_time} durationHours={matchData.duration_time} />
+                            ?   <MatchCountdownTimer 
+                                    startTime={matchData.start_time} 
+                                    durationHours={matchData.duration_time} 
+                                    onFinish={() => {
+                                        // Khi timer về 0, kiểm tra ngay lập tức
+                                        // Dùng `setMatchResultFromSocket` với một callback để lấy giá trị state mới nhất
+                                        setMatchResultFromSocket(currentResult => {
+                                            if (currentResult) {
+                                                // Nếu đã có kết quả -> gọi fetch để cập nhật UI
+                                                console.log("Timer finished. Result was already received. Fetching details.");
+                                                fetchMatchDetail(); 
+                                            } else {
+                                                // Nếu chưa có kết quả -> hiện modal chờ
+                                                console.log("Timer finished. No result yet. Showing waiting modal.");
+                                                setShowWaitingModal(true);
+                                            }
+                                            return currentResult; // return lại state không đổi
+                                        });
+                                    }} 
+                                />
                             : (matchData.status === 'done' ? 'Finished' : 'Pending') 
                         }
                     </div>
@@ -617,6 +666,7 @@ const MatchDetail = ({ user }) => {
                     </div>
                 </div>
             )}
+            {showWaitingModal && <WaitingForResultModal />}
         </div>
     );
 };
