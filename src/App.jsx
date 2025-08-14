@@ -1991,48 +1991,53 @@ const ArenaPage = ({ user, onUserUpdate }) => {
         }
     };
     
-    const fetchAllMatches = async () => {
+    const fetchAllMatches = async (clearCache = false) => {
+        if (clearCache) {
+            console.log("ArenaPage: Force refresh requested, clearing cache for 'active_matches'.");
+            sessionStorage.removeItem('active_matches');
+        }
+
         // BƯỚC 1: KIỂM TRA CACHE TRƯỚC
-        const cachedMatches = sessionStorage.getItem('active_matches');
-        if (cachedMatches) {
-            console.log("ArenaPage: Loading matches from cache.");
-            const data = JSON.parse(cachedMatches);
-            const liveData = data.filter(match => match.status === 'live');
-            const waitingData = data.filter(match => match.status === 'waiting');
-            setLiveMatches(liveData);
-            setWaitingMatches(waitingData);
-            return;
-        }
+        const cachedMatches = sessionStorage.getItem('active_matches');
+        if (cachedMatches) {
+            console.log("ArenaPage: Loading matches from cache.");
+            const data = JSON.parse(cachedMatches);
+            const liveData = data.filter(match => match.status === 'live' || match.status === 'pending_confirmation');
+            const waitingData = data.filter(match => match.status === 'waiting');
+            setLiveMatches(liveData);
+            setWaitingMatches(waitingData);
+            return;
+        }
 
         // BƯỚC 2: NẾU KHÔNG CÓ CACHE, MỚI GỌI API
-        console.log("ArenaPage: No cache found, fetching matches from API.");
-        try {
-            const response = await fetch('https://f2farena.com/api/matches/active'); 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            if (!Array.isArray(data)) {
-                console.error('API response for active matches is not an array:', data);
-                setLiveMatches([]);
-                setWaitingMatches([]);
-                return;
-            }
+        console.log("ArenaPage: No cache found, fetching matches from API.");
+        try {
+            const response = await fetch('https://f2farena.com/api/matches/active'); 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            if (!Array.isArray(data)) {
+                console.error('API response for active matches is not an array:', data);
+                setLiveMatches([]);
+                setWaitingMatches([]);
+                return;
+            }
 
-            const liveData = data.filter(match => match.status === 'live' || match.status === 'pending_confirmation');
-            const waitingData = data.filter(match => match.status === 'waiting');
-            
-            setLiveMatches(liveData);
-            setWaitingMatches(waitingData);
-            
+            const liveData = data.filter(match => match.status === 'live' || match.status === 'pending_confirmation');
+            const waitingData = data.filter(match => match.status === 'waiting');
+
+            setLiveMatches(liveData);
+            setWaitingMatches(waitingData);
+
             // Lưu lại vào cache cho lần sau
-            sessionStorage.setItem('active_matches', JSON.stringify(data));
-        } catch (error) {
-            console.error('Error fetching all active matches:', error);
-            setLiveMatches([]);
-            setWaitingMatches([]);
-        }
-    };
+            sessionStorage.setItem('active_matches', JSON.stringify(data));
+        } catch (error) {
+            console.error('Error fetching all active matches:', error);
+            setLiveMatches([]);
+            setWaitingMatches([]);
+        }
+    };
 
     const handleJoinChallenge = (match) => {
         if (user && user.telegram_id === match.player1.id) {
@@ -2138,7 +2143,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
             if (message.type === 'MATCH_STATE_CHANGE') {
                 console.log(`[ArenaPage] Detected match state change for match ${message.data.match_id}. Refetching matches...`);
                 // Khi có trận đấu thay đổi trạng thái, gọi lại hàm fetch để cập nhật danh sách
-                fetchAllMatches();
+                fetchAllMatches(true);
             }
         };
 
@@ -2184,7 +2189,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
         return <CreateNewMatchForm 
             onClose={() => setShowCreateForm(false)} 
             brokersList={brokersList} 
-            onCreateSuccess={fetchAllMatches}
+            onCreateSuccess={() => fetchAllMatches(true)}
             user={user} 
             onUserUpdate={onUserUpdate}
         />;
