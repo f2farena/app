@@ -2588,47 +2588,101 @@ const TextView = ({ title, content, onBack }) => (
 );
 
 // Sửa đổi trong file App.jsx, bên trong component ChatbotPage
-
-const ChatbotPage = () => {
-    const [messages, setMessages] = useState([
-        { text: "Xin chào! Tôi có thể giúp gì cho bạn về F2FArena?", sender: 'bot' }
-    ]);
+const ChatbotPage = ({ user }) => {
+    // State để lưu tin nhắn hiển thị trên UI
+    const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const messagesEndRef = useRef(null); // Sử dụng ref để cuộn
+    const messagesEndRef = useRef(null);
 
-    // Tự động cuộn xuống tin nhắn mới nhất
+    // Key để lưu cache trong sessionStorage
+    const chatHistoryKey = `chatbot_history_${user?.telegram_id}`;
+
+    // Load lịch sử khi component được mount
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+        const loadHistory = async () => {
+            if (!user?.telegram_id) return;
 
+            // 1. Kiểm tra sessionStorage trước
+            const cachedHistory = sessionStorage.getItem(chatHistoryKey);
+            if (cachedHistory) {
+                setMessages(JSON.parse(cachedHistory));
+                return;
+            }
+
+            // 2. Nếu không có cache, gọi API
+            setIsLoading(true);
+            try {
+                const response = await fetch(`https://f2farena.com/api/chatbot/history/${user.telegram_id}`);
+                if (!response.ok) throw new Error("Failed to fetch history");
+                const historyData = await response.json();
+
+                const formattedHistory = historyData.map(item => ({
+                    text: item.parts[0],
+                    sender: item.role === 'user' ? 'user' : 'bot'
+                }));
+                
+                // Nếu không có lịch sử, thêm tin nhắn chào mừng
+                if (formattedHistory.length === 0) {
+                    formattedHistory.push({ text: "Xin chào! Tôi có thể giúp gì cho bạn về F2FArena?", sender: 'bot' });
+                }
+
+                setMessages(formattedHistory);
+                sessionStorage.setItem(chatHistoryKey, JSON.stringify(formattedHistory));
+            } catch (error) {
+                console.error("Error loading chat history:", error);
+                setMessages([{ text: "Không thể tải lịch sử trò chuyện. Vui lòng thử lại.", sender: 'bot' }]);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadHistory();
+    }, [user]); // Chạy lại khi có user
+
+    // Tự động cuộn
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
 
     const sendMessage = async (e) => {
         e.preventDefault();
         const userQuestion = input.trim();
-        if (!userQuestion || isLoading) return;
+        if (!userQuestion || isLoading || !user?.telegram_id) return;
 
         const userMessage = { text: userQuestion, sender: 'user' };
-        setMessages(prev => [...prev, userMessage]);
+        
+        // Cập nhật state messages ngay lập tức để user thấy tin nhắn của mình
+        const newMessages = [...messages, userMessage];
+        setMessages(newMessages);
         setInput('');
         setIsLoading(true);
 
         try {
+            // Lấy 10 tin nhắn cuối cùng để làm context
+            const historyForPrompt = newMessages.slice(-10).map(msg => ({
+                role: msg.sender === 'user' ? 'user' : 'model',
+                parts: [msg.text]
+            }));
+
             const response = await fetch('https://f2farena.com/api/chatbot/ask', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ question: userQuestion }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    question: userQuestion,
+                    user_id: user.telegram_id,
+                    history: historyForPrompt
+                }),
             });
 
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-
+            if (!response.ok) throw new Error('Network response was not ok');
             const data = await response.json();
             const botMessage = { text: data.answer, sender: 'bot' };
-            setMessages(prev => [...prev, botMessage]);
+            
+            // Cập nhật state và sessionStorage với câu trả lời của bot
+            const finalMessages = [...newMessages, botMessage];
+            setMessages(finalMessages);
+            sessionStorage.setItem(chatHistoryKey, JSON.stringify(finalMessages));
 
         } catch (error) {
             console.error('Error fetching chatbot response:', error);
@@ -2638,43 +2692,42 @@ const ChatbotPage = () => {
             setIsLoading(false);
         }
     };
-
-    // Loại bỏ FixedSizeList để đơn giản hóa và sửa lỗi cuộn
+    
+    // Giao diện JSX không thay đổi nhiều
     return (
-        <div className="chatbot-container">
-            <div className="chatbot-messages">
-                {messages.map((msg, index) => (
-                    <div key={index} className={`message-bubble-row ${msg.sender}`}>
-                        <div className={`message-bubble ${msg.sender}`}>
-                            {msg.text}
-                        </div>
-                    </div>
-                ))}
-                {isLoading && (
-                    <div className="message-bubble-row bot">
-                        <div className="message-bubble bot loading-pulse">
-                            <span>.</span><span>.</span><span>.</span>
-                        </div>
-                    </div>
-                )}
-                {/* Ref để cuộn đến đây */}
-                <div ref={messagesEndRef} />
-            </div>
-            <form className="chatbot-input-area" onSubmit={sendMessage}>
-                <input
-                    type="text"
-                    className="chatbot-input form-input"
-                    placeholder="Nhập câu hỏi của bạn..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    disabled={isLoading}
-                />
-                <button type="submit" className="chatbot-send-btn btn btn-primary" disabled={isLoading || !input.trim()}>
-                    Send
-                </button>
-            </form>
-        </div>
-    );
+      <div className="chatbot-container">
+          <div className="chatbot-messages">
+              {messages.map((msg, index) => (
+                  <div key={index} className={`message-bubble-row ${msg.sender}`}>
+                      <div className={`message-bubble ${msg.sender}`}>
+                          {msg.text}
+                      </div>
+                  </div>
+              ))}
+              {isLoading && (
+                  <div className="message-bubble-row bot">
+                      <div className="message-bubble bot loading-pulse">
+                          <span>.</span><span>.</span><span>.</span>
+                      </div>
+                  </div>
+              )}
+              <div ref={messagesEndRef} />
+          </div>
+          <form className="chatbot-input-area" onSubmit={sendMessage}>
+              <input
+                  type="text"
+                  className="chatbot-input form-input"
+                  placeholder="Nhập câu hỏi của bạn..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  disabled={isLoading || !user}
+              />
+              <button type="submit" className="chatbot-send-btn btn btn-primary" disabled={isLoading || !input.trim() || !user}>
+                  Send
+              </button>
+          </form>
+      </div>
+  );
 };
 
 // ===================================================================================
@@ -2929,7 +2982,7 @@ useEffect(() => {
           <Route path="/arena/:id" element={<ArenaDetail />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/wallet" element={<WalletPage user={user} onUserUpdate={handleUserUpdate} />} />
-          <Route path="/chatbot" element={<ChatbotPage />} />
+          <Route path="/chatbot" element={<ChatbotPage user={user} />} />
           <Route path="/match/:id" element={<MatchDetail user={user} />} />
           <Route path="/accounts/validate-trading-account/:status" element={<TradingAccountValidationPage />} />
           <Route path="/" element={<HomePage />} />
