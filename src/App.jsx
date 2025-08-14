@@ -975,11 +975,11 @@ const LeaderboardPage = () => {
                       <img src={item.avatar} alt={item.name} className="trader-avatar" />
                       <span>{item.name}</span>
                   </div>
-                  <div className="text-center">{item.wins.toLocaleString()}</div>
+                  <div className="text-center">{(item.wins || 0).toLocaleString()}</div>
                   <div className="text-right profit-text">
                       {activeTab === 'tournament' 
-                          ? `+${item.profit.toLocaleString()}` 
-                          : item.score.toFixed(2)}
+                          ? `+${(item.profit || 0).toLocaleString()}` 
+                          : (item.score ?? 0).toFixed(2)}
                   </div>
               </div>
           ))}
