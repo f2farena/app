@@ -493,6 +493,14 @@ const MatchDetail = ({ user }) => {
             console.error('Error sending comment:', error);
         }
     };
+
+    useEffect(() => {
+        // Hàm cleanup sẽ được gọi khi người dùng rời khỏi trang MatchDetail
+        return () => {
+            console.log("Leaving MatchDetail page, clearing Arena's match cache.");
+            sessionStorage.removeItem('active_matches');
+        };
+    }, []);
     
     // JSX trả về
     if (!matchData) {
