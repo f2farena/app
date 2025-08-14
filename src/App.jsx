@@ -2587,79 +2587,94 @@ const TextView = ({ title, content, onBack }) => (
     </div>
 );
 
+// Sửa đổi trong file App.jsx, bên trong component ChatbotPage
+
 const ChatbotPage = () => {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isInputFocused, setIsInputFocused] = useState(false);
-  const listRef = useRef(null);
+    const [messages, setMessages] = useState([
+        { text: "Xin chào! Tôi có thể giúp gì cho bạn về F2FArena?", sender: 'bot' }
+    ]);
+    const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const messagesEndRef = useRef(null); // Sử dụng ref để cuộn
 
-  const Row = ({ index, style }) => {
-    const msg = messages[index];
+    // Tự động cuộn xuống tin nhắn mới nhất
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+
+    const sendMessage = async (e) => {
+        e.preventDefault();
+        const userQuestion = input.trim();
+        if (!userQuestion || isLoading) return;
+
+        const userMessage = { text: userQuestion, sender: 'user' };
+        setMessages(prev => [...prev, userMessage]);
+        setInput('');
+        setIsLoading(true);
+
+        try {
+            const response = await fetch('https://f2farena.com/api/chatbot/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ question: userQuestion }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            const data = await response.json();
+            const botMessage = { text: data.answer, sender: 'bot' };
+            setMessages(prev => [...prev, botMessage]);
+
+        } catch (error) {
+            console.error('Error fetching chatbot response:', error);
+            const errorMessage = { text: "Rất tiếc, tôi không thể kết nối đến máy chủ. Vui lòng thử lại sau.", sender: 'bot' };
+            setMessages(prev => [...prev, errorMessage]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Loại bỏ FixedSizeList để đơn giản hóa và sửa lỗi cuộn
     return (
-      <div style={style} className={`message-bubble-row ${msg.sender}`}>
-        <div className={`message-bubble ${msg.sender}`}>
-          {msg.text}
-        </div>
-      </div>
-    );
-  };
-
-  const sendMessage = async (e) => {
-    e.preventDefault();
-    const trimmedInput = input.trim();
-    if (!trimmedInput || !user || !user.telegram_id || !matchData) return;
-
-    const userMessage = { text: trimmedInput, sender: 'user' };
-    setMessages(prev => [...prev, userMessage].slice(-50)); // Giới hạn 50 tin nhắn
-    setInput('');
-    setIsLoading(true);
-
-    setTimeout(() => {
-      setMessages(prev => [...prev, { text: "Tính năng chat đang được cấu hình.", sender: 'bot' }].slice(-50));
-      setIsLoading(false);
-      listRef.current?.scrollToItem(messages.length, 'end');
-    }, 1000);
-  };
-
-  return (
-    <div className="chatbot-container" style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
-      <div className="chatbot-messages" style={{ flex: '1 1 auto', overflow: 'hidden' }}>
-        <FixedSizeList
-          height={window.innerHeight - 72 - 60} // Trừ header và input
-          itemCount={messages.length}
-          itemSize={60} // Ước lượng chiều cao mỗi tin nhắn
-          width="100%"
-          ref={listRef}
-        >
-          {Row}
-        </FixedSizeList>
-        {isLoading && (
-          <div className="message-bubble-row bot">
-            <div className="message-bubble bot loading-pulse">
-              <span>.</span><span>.</span><span>.</span>
+        <div className="chatbot-container">
+            <div className="chatbot-messages">
+                {messages.map((msg, index) => (
+                    <div key={index} className={`message-bubble-row ${msg.sender}`}>
+                        <div className={`message-bubble ${msg.sender}`}>
+                            {msg.text}
+                        </div>
+                    </div>
+                ))}
+                {isLoading && (
+                    <div className="message-bubble-row bot">
+                        <div className="message-bubble bot loading-pulse">
+                            <span>.</span><span>.</span><span>.</span>
+                        </div>
+                    </div>
+                )}
+                {/* Ref để cuộn đến đây */}
+                <div ref={messagesEndRef} />
             </div>
-          </div>
-        )}
-      </div>
-      <form className="chatbot-input-area" style={{ display: 'flex', alignItems: 'center', position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'var(--color-background)', zIndex: 20 }} onSubmit={sendMessage}>
-        <input
-          type="text"
-          className="chatbot-input form-input"
-          placeholder="Nhập thông tin..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onFocus={() => setIsInputFocused(true)}
-          onBlur={() => setIsInputFocused(false)}
-          disabled={isLoading}
-          style={{ flex: 1, marginRight: '0.5rem' }}
-        />
-        <button type="submit" className="chatbot-send-btn btn btn-primary" disabled={isLoading}>
-          Send
-        </button>
-      </form>
-    </div>
-  );
+            <form className="chatbot-input-area" onSubmit={sendMessage}>
+                <input
+                    type="text"
+                    className="chatbot-input form-input"
+                    placeholder="Nhập câu hỏi của bạn..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    disabled={isLoading}
+                />
+                <button type="submit" className="chatbot-send-btn btn btn-primary" disabled={isLoading || !input.trim()}>
+                    Send
+                </button>
+            </form>
+        </div>
+    );
 };
 
 // ===================================================================================
