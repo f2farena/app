@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './MatchDetail.css';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import defaultAvatar from '../assets/avatar.jpg';
 
 const MatchCountdownTimer = ({ startTime, durationHours, onFinish }) => {
     const [timeRemaining, setTimeRemaining] = useState("Calculating...");
@@ -51,6 +52,14 @@ const MatchCountdownTimer = ({ startTime, durationHours, onFinish }) => {
 };
 
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n => n[0]).join('') || 'NN').toUpperCase()}`;
+const getAvatarSource = (player) => {
+    // Kiểm tra xem player.avatar có phải là một chuỗi hợp lệ không
+    if (player && player.avatar && typeof player.avatar === 'string' && player.avatar.trim()) {
+        return player.avatar;
+    }
+    // Nếu không, tạo avatar thay thế
+    return generateAvatarUrl(player ? player.name : 'Unknown');
+};
 
 // Modal chờ đăng nhập
 const LoginConfirmationModal = ({ matchData, cancellationReason, navigate }) => {
@@ -91,14 +100,24 @@ const LoginConfirmationModal = ({ matchData, cancellationReason, navigate }) => 
                 <div className="player-status-list">
                     <div className="player-status-row">
                         <div className="player-info-modal">
-                            <img src={matchData.player1.avatar} alt={matchData.player1.name} className="player-avatar-modal" />
+                            <img 
+                                src={getAvatarSource(matchData.player1)} 
+                                alt={matchData.player1.name} 
+                                className="player-avatar-modal" 
+                                onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
+                            />
                             <span>{matchData.player1.name}</span>
                         </div>
                         <StatusIndicator isReady={player1Ready} />
                     </div>
                     <div className="player-status-row">
                         <div className="player-info-modal">
-                            <img src={matchData.player2.avatar} alt={matchData.player2.name} className="player-avatar-modal" />
+                            <img 
+                                src={getAvatarSource(matchData.player2)} 
+                                alt={matchData.player2.name} 
+                                className="player-avatar-modal" 
+                                onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
+                            />
                             <span>{matchData.player2.name}</span>
                         </div>
                         <StatusIndicator isReady={player2Ready} />
@@ -138,6 +157,8 @@ const MatchResultDisplay = ({ matchData, user }) => {
         </svg>
     );
 
+    const winnerAvatarUrl = getAvatarSource(winner);
+
     return (
         <div className="page-padding">
             <div className="winner-showcase">
@@ -149,7 +170,7 @@ const MatchResultDisplay = ({ matchData, user }) => {
                 <div 
                     className="winner-showcase-avatar" 
                     style={{
-                        backgroundImage: `url(${winner.avatar})`,
+                        backgroundImage: `url(${winnerAvatarUrl})`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center center',
                         backgroundRepeat: 'no-repeat',
@@ -526,7 +547,12 @@ const MatchDetail = ({ user }) => {
             <div className="match-detail-header">
                 <button className="icon-button back-button" onClick={() => navigate(-1)}>&lt;</button>
                 <div className="player-info">
-                    <img src={matchData.player1.avatar} alt={matchData.player1.name} className="player-avatar" />
+                    <img 
+                        src={getAvatarSource(matchData.player1)} 
+                        alt={matchData.player1.name} 
+                        className="player-avatar" 
+                        onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
+                    />
                     <span className="player-name">{matchData.player1.name}</span>
                     {matchData.player1.odds && <span className="player-odds">{matchData.player1.odds}</span>}
                 </div>
@@ -559,7 +585,12 @@ const MatchDetail = ({ user }) => {
                     <div className="vs-text">VS</div>
                 </div>
                 <div className="player-info">
-                    <img src={matchData.player2.avatar} alt={matchData.player2.name} className="player-avatar" />
+                    <img 
+                        src={getAvatarSource(matchData.player2)} 
+                        alt={matchData.player2.name} 
+                        className="player-avatar" 
+                        onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
+                    />
                     <span className="player-name">{matchData.player2.name}</span>
                     {matchData.player2.odds && <span className="player-odds">{matchData.player2.odds}</span>}
                 </div>
@@ -641,7 +672,12 @@ const MatchDetail = ({ user }) => {
                                     <div key={comment.id} className={`discussion-bubble-row ${comment.user === 'CurrentUser' ? 'user' : 'other'}`}>
                                         <div className="discussion-bubble-container">
                                             {comment.user !== 'CurrentUser' && (
-                                                <img src={generateAvatarUrl(comment.user)} alt={comment.user} className="discussion-avatar" />
+                                                <img 
+                                                    src={generateAvatarUrl(comment.user)} 
+                                                    alt={comment.user} 
+                                                    className="discussion-avatar" 
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
+                                                />
                                             )}
                                             <div className={`discussion-bubble ${comment.user === 'CurrentUser' ? 'user' : 'other'}`}>
                                                 {comment.user !== 'CurrentUser' && (
