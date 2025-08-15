@@ -26,6 +26,7 @@ import arrowIcon from './assets/arrow.png';
 import qrCode from './assets/QR-code.gif';
 import copyIcon1 from './assets/copy-1.png';
 import copyIcon2 from './assets/copy-2.png';
+import defaultAvatar from './assets/avatar.jpg';
 
 const Header = ({ onSettingsClick, onChatbotClick, showHeader }) => {
   const navigate = useNavigate();
@@ -132,7 +133,7 @@ const ErrorModal = ({ message, onClose }) => {
 // CÁC COMPONENT TRANG
 // ===================================================================================
 
-const generateAvatarUrl = (seed) => `https://ui-avatars.com/api/?name=${encodeURIComponent(seed || 'N N')}&background=random&color=fff&size=50`;
+const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n=>n[0]).join('') || 'NN').toUpperCase()}`;
 
 const EventBanner = ({ items }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -460,7 +461,7 @@ const HomePage = () => {
                                         className="player-avatar" 
                                         loading="lazy" 
                                         style={{ objectFit: 'cover' }} 
-                                        onError={(e) => { e.target.src = generateAvatarUrl(match.player1.name); }} 
+                                        onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
                                       />
                                   </LazyLoad>
                                   <span className="player-name">{match.player1.name}</span>
@@ -478,7 +479,7 @@ const HomePage = () => {
                                         className="player-avatar" 
                                         loading="lazy" 
                                         style={{ objectFit: 'cover' }} 
-                                        onError={(e) => { e.target.src = generateAvatarUrl(match.player2.name); }} 
+                                        onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
                                       />
                                   </LazyLoad>
                                   <span className="player-name">{match.player2.name}</span>
@@ -993,7 +994,12 @@ const LeaderboardPage = () => {
               <div key={item.id} className="leaderboard-row">
                   <div className={`leaderboard-rank ${item.rank <= 3 ? 'top-rank' : ''}`}>{item.rank}</div>
                   <div className="trader-info">
-                      <img src={item.avatar} alt={item.name} className="trader-avatar" />
+                      <img 
+                          src={item.avatar} 
+                          alt={item.name} 
+                          className="trader-avatar" 
+                          onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
+                      />
                       <span>{item.name}</span>
                   </div>
                   <div className="text-center">{(item.wins || 0).toLocaleString()}</div>
@@ -2342,7 +2348,12 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                     {filteredMatches.map(match => (
                         <div key={match.id} className="card arena-match-card">
                             <div className="challenger-info">
-                                <img src={match.player1.avatar || generateAvatarUrl(match.player1.name)} alt={match.player1.name} className="challenger-avatar" />
+                                <img 
+                                    src={match.player1.avatar || generateAvatarUrl(match.player1.name)} 
+                                    alt={match.player1.name} 
+                                    className="challenger-avatar" 
+                                    onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
+                                />
                                 <div>
                                     <p className="challenger-name">{match.player1.name}</p>
                                     <p className="challenger-country">{match.country}</p>
@@ -2565,7 +2576,12 @@ const PersonalInfoView = ({ onBack, user }) => {
                 <h3 className="sidebar-title">Personal Information</h3>
             </div>
             <div className="personal-info-header">
-                <img src={avatarUrl} alt="User Avatar" className="personal-info-avatar" />
+                <img 
+                    src={avatarUrl} 
+                    alt="User Avatar" 
+                    className="personal-info-avatar" 
+                    onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
+                />
                 <h4 className="personal-info-name">{user.fullname || user.username}</h4>
                 <p className="personal-info-id">@{user.username || user.telegram_id}</p>
             </div>
