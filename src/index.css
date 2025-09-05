@@ -1,3 +1,4 @@
+/* index.ccss */
 /* Thiết lập CSS Variables cho màu sắc và font chữ */
 :root {
   --color-background: #1a1a2e;
@@ -1372,4 +1373,547 @@ button, input, select, textarea { font-family: inherit; font-size: 100%; }
   color: #e53e3e; /* Màu đỏ */
   font-size: 0.875rem;
   margin-top: 0.5rem;
+}
+
+/* ======================================================= */
+/* === CSS CHO TRANG ONGOING TOURNAMENT DETAIL           === */
+/* ======================================================= */
+
+.ongoing-tournament .ongoing-header {
+  position: relative;
+  padding: 2rem 1rem 1.5rem;
+  background-size: cover;
+  background-position: center;
+  text-align: center;
+}
+
+.ongoing-tournament .header-info h1 {
+  margin: 0 0 1rem 0; /* Tăng khoảng cách dưới cho title */
+  font-size: 1.75rem;
+  color: var(--color-accent);
+}
+
+/* Container mới cho Vòng đấu và Countdown */
+.header-meta-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+}
+
+/* Style chung cho item trong meta-info */
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.meta-icon {
+  width: 1.25em;
+  height: 1.25em;
+  flex-shrink: 0;
+}
+
+/* Style cho Vòng đấu hiện tại */
+.current-round-text {
+  color: var(--color-primary);
+}
+.current-round-text .meta-icon {
+  color: var(--color-primary);
+}
+
+current-round-text {
+  display: inline-block;
+  background-color: rgba(0, 206, 201, 0.15);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+/* Cập nhật style cho Countdown để đồng bộ */
+.ongoing-tournament .tournament-countdown {
+  display: flex; /* Canh icon và text */
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  /* Bỏ các style cũ không cần thiết */
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* Thêm icon cho Countdown */
+.ongoing-tournament .tournament-countdown::before {
+  content: '';
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background-color: currentColor;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor'%3E%3Cpath fill-rule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.415L11 9.586V6z' clip-rule='evenodd' /%3E%3C/svg%3E");
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+.ongoing-tournament .tab-content {
+  padding-top: 0;
+}
+
+.my-matches-section {
+  border: 1px solid var(--color-accent);
+  margin-bottom: 1.5rem;
+}
+
+.my-match-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-hover-bg);
+}
+.my-match-item:last-child {
+  border-bottom: none;
+}
+
+.opponent-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.opponent-info span {
+  color: var(--color-secondary-text);
+}
+
+.opponent-info img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.match-time {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.day-schedule-card h4 {
+  margin: 0 0 1rem 0;
+  border-bottom: 1px solid var(--color-primary);
+  padding-bottom: 0.5rem;
+  color: var(--color-primary);
+}
+
+.schedule-match-row {
+  display: grid;
+  grid-template-columns: 2fr auto 2fr 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--color-hover-bg);
+}
+
+.schedule-match-row:last-child {
+  border-bottom: none;
+}
+
+.schedule-match-row .player {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.schedule-match-row .vs {
+  color: var(--color-secondary-text);
+}
+.schedule-match-row .time {
+  text-align: right;
+  font-weight: 500;
+}
+
+.results-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* Khoảng cách giữa các khối podium, kk, đồng đội */
+}
+
+/* --- Podium cho Top 3 --- */
+.top-prizes-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end; /* Quan trọng: căn các item xuống đáy để tạo bục */
+  gap: 0.5rem;
+  padding: 1rem;
+  min-height: 320px;
+}
+
+.prize-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1rem 0.5rem;
+  border-radius: 0.75rem;
+  background-image: linear-gradient(to bottom, #16224c, #0a1128);
+  border: 1px solid var(--color-hover-bg);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+/* Sử dụng order để sắp xếp lại vị trí (2-1-3) và padding để đẩy hạng 1 lên cao hơn */
+.prize-rank-1 {
+  order: 2;
+  padding-bottom: 2.5rem; /* Cao nhất */
+  border-color: var(--color-accent);
+}
+.prize-rank-2 {
+  order: 1;
+  padding-bottom: 1.5rem; /* Cao thứ hai */
+  border-color: #c0c0c0; /* Silver */
+}
+.prize-rank-3 {
+  order: 3;
+  border-color: #cd7f32; /* Bronze */
+}
+
+.prize-cup {
+  object-fit: contain;
+  margin-bottom: 0.75rem;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+}
+
+/* Chuẩn hóa kích thước cúp theo thứ hạng */
+.prize-rank-1 .prize-cup { height: 70px; }
+.prize-rank-2 .prize-cup { height: 60px; }
+.prize-rank-3 .prize-cup { height: 60px; }
+
+/* Chuẩn hóa kích thước avatar */
+.prize-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 3px solid var(--color-background);
+  margin-bottom: 0.5rem;
+}
+
+.prize-rank-1 .prize-avatar { border-color: var(--color-accent); }
+.prize-rank-2 .prize-avatar { border-color: #c0c0c0; }
+.prize-rank-3 .prize-avatar { border-color: #cd7f32; }
+
+
+.prize-winner-name {
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 0.5rem 0 0.25rem 0;
+  color: var(--color-text);
+}
+
+.prize-amount {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--color-accent);
+}
+
+/* --- Danh sách giải Khuyến khích & Đồng đội --- */
+.prize-list-card {
+  padding: 1.5rem;
+}
+
+.prize-list-card .section-title {
+  margin-top: 0;
+  text-align: center;
+}
+
+.prize-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.prize-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background-color: var(--color-background);
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.prize-list-item span:first-child {
+  font-weight: 500;
+  color: var(--color-secondary-text);
+}
+
+.prize-list-item .prize-amount {
+  font-size: 1rem;
+}
+
+/* 1. CSS cho cột Volume trong Leaderboard */
+.ongoing-leaderboard-header,
+.ongoing-leaderboard-row {
+  grid-template-columns: 1fr 4fr 2fr 2fr; /* Rank | Trader | Score | Volume */
+}
+
+/* 2. CSS cho "Your Matches" */
+.my-matches-section .section-title {
+  color: var(--color-accent); /* Đổi màu tiêu đề cho nổi bật */
+}
+
+.match-number {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-secondary-text);
+  width: 24px; /* Tạo không gian cố định */
+}
+
+.match-result {
+  text-align: right;
+}
+
+.match-result span {
+  font-size: 1rem;
+  font-weight: 700;
+  display: block;
+}
+
+.match-result p {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.match-result.win span,
+.match-result.win p {
+  color: var(--color-success);
+}
+
+.match-result.loss span,
+.match-result.loss p {
+  color: var(--color-danger);
+}
+
+/* ================================================================= */
+/* === CSS CHO DANH SÁCH VÒNG ĐẤU (ROUNDS LIST)                === */
+/* ================================================================= */
+.rounds-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.round-card {
+  padding: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.round-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 1rem;
+  background-color: transparent;
+  border: none;
+  color: var(--color-text);
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.round-header span {
+  color: var(--color-primary);
+}
+
+.participant-count {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-secondary-text);
+  background-color: var(--color-background);
+  padding: 0.25rem 0.6rem;
+  border-radius: 99px;
+}
+
+.round-header .filter-arrow {
+  flex-shrink: 0;
+}
+
+.round-participants {
+  padding: 1rem;
+  display: grid;
+  /* Giữ layout 2 cột trên màn hình lớn hơn 480px */
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  border-top: 1px solid var(--color-hover-bg);
+  animation: fade-in 0.5s ease;
+}
+
+/* Kích hoạt 2 cột cho màn hình rộng */
+@media (min-width: 480px) {
+  .round-participants {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Cấu trúc mới cho mỗi người chơi */
+.participant-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden; /* Ngăn text dài làm vỡ layout */
+}
+
+/* Chuẩn hóa kích thước avatar */
+.participant-item .trader-avatar {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.participant-details {
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* Canh giữa tên và điểm theo chiều dọc */
+  overflow: hidden; /* Đảm bảo text dài không tràn */
+}
+
+.participant-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.participant-score {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-secondary-text);
+}
+
+/* ================================================================= */
+/* === CSS CHO CÁC TRẬN ĐẤU LIVE TRONG TOURNAMENT              === */
+/* ================================================================= */
+.live-matches-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.live-tournament-match {
+  display: flex; /* SỬA LỖI: Thêm flex để các mục con nằm ngang */
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+}
+
+.live-match-player {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.25rem; /* Giảm gap để gọn hơn */
+}
+
+.live-match-player .trader-avatar {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 0.25rem; /* Thêm khoảng cách nhỏ dưới avatar */
+}
+
+.live-match-player-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* THÊM MỚI: Style cho điểm số */
+.live-match-score {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  margin: 0;
+}
+
+
+.live-match-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0 0.5rem; /* Giảm margin ngang */
+}
+
+.live-indicator {
+  color: var(--color-success);
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  animation: live-pulse 1.5s infinite;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+@keyframes live-pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.live-match-center .vs-text {
+  color: var(--color-accent);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.live-match-center .time-remaining {
+  font-size: 0.8rem;
+  color: var(--color-secondary-text);
+}
+
+/* ================================================================= */
+/* === CSS CHO USER STATS SUMMARY (LEADERBOARD TAB)            === */
+/* ================================================================= */
+.user-stats-summary {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem; /* Khoảng cách giữa các dòng */
+  border: 1px solid var(--color-primary); /* Viền để nổi bật */
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1rem;
+  color: var(--color-secondary-text);
+}
+
+.stat-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.stat-item .accent-value {
+  color: var(--color-accent);
+  font-weight: 700;
 }

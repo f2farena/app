@@ -1,3 +1,4 @@
+// src/components/ArenaDetail.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './ArenaDetail.css';
@@ -44,16 +45,6 @@ const ArenaDetail = () => {
                 }
                 const data = await response.json();
                 console.log('Fetched Arena match detail:', data);
-
-                // Prepend 'https://f2farena.com/server/' for avatar if path is relative
-                // The backend now sends 'server/pictures/...' so we just need the base URL.
-                if (data.player1 && data.player1.avatar && !data.player1.avatar.startsWith('http')) {
-                    data.player1.avatar = `https://f2farena.com/${data.player1.avatar}`;
-                }
-                // Handle player2 avatar similarly
-                if (data.player2 && data.player2.avatar && !data.player2.avatar.startsWith('http')) {
-                    data.player2.avatar = `https://f2farena.com/${data.player2.avatar}`;
-                }
                 
                 setMatchData(data);
                 setTimeRemaining(data.timeRemaining || "00:00:00");

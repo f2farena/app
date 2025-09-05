@@ -1,9 +1,11 @@
+// App.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import MatchDetail from './components/MatchDetail';
 import NewsDetail from './components/NewsDetail';
 import ArenaDetail from './components/ArenaDetail';
 import TournamentDetail from './components/TournamentDetail';
+import OngoingTournament from './components/OngoingTournament'; 
 import LazyLoad from 'react-lazyload';
 import { FixedSizeList } from 'react-window';
 import { notifyAdminOfDeposit, requestWithdrawal } from './services/telegramService';
@@ -27,6 +29,8 @@ import qrCode from './assets/QR-code.gif';
 import copyIcon1 from './assets/copy-1.png';
 import copyIcon2 from './assets/copy-2.png';
 import defaultAvatar from './assets/avatar.jpg';
+
+const DEFAULT_PLACEHOLDER_IMAGE = 'https://placehold.co/800x450/E1E1E1/B0B0B0?text=...';
 
 const Header = ({ onSettingsClick, onChatbotClick, showHeader }) => {
   const navigate = useNavigate();
@@ -230,15 +234,14 @@ const EventBanner = ({ items }) => {
           <div className="banner-slide" key={item.id} onClick={() => navigate(`/news/${item.id}`)}>
             <LazyLoad height={220} offset={100}>
               <img
-                src={item.thumbnail}
+                src={item.thumbnail || DEFAULT_PLACEHOLDER_IMAGE}
                 alt={`Event ${item.id}`}
                 className="banner-image"
                 loading="lazy"
                 onError={(e) => {
-                  console.error(`Img load error for src: ${item.thumbnail}`);  // Log error src
-                  e.target.src = 'https://placehold.co/500x220';
+                  e.target.onerror = null;
+                  e.target.src = DEFAULT_PLACEHOLDER_IMAGE;
                 }}
-                onLoad={() => console.log(`Img loaded successfully for src: ${item.thumbnail}`)}  // Log nếu load ok
               />
             </LazyLoad>
           </div>
@@ -345,12 +348,8 @@ const HomePage = () => {
           try {
               const response = await fetch('https://f2farena.com/api/events/banner');
               const data = await response.json();
-              const updatedData = data.map(item => ({
-                  ...item,
-                  thumbnail: `https://f2farena.com/${item.thumbnail}`
-              }));
-              setBannerItems(updatedData);
-              sessionStorage.setItem('banner_data', JSON.stringify(updatedData));
+              setBannerItems(data);
+              sessionStorage.setItem('banner_data', JSON.stringify(data));
           } catch (error) {
               console.error('Error fetching banner:', error);
           }
@@ -384,24 +383,39 @@ const HomePage = () => {
       };
 
       const fetchTournaments = async () => {
-          const cachedTournaments = sessionStorage.getItem('tournaments_home');
-          if (cachedTournaments) {
-              const parsedData = JSON.parse(cachedTournaments);
-              setTournaments(parsedData);
-              return;
-          }
           try {
-              const response = await fetch('https://f2farena.com/api/tournaments/?offset=0');
+              console.log("BẮT ĐẦU FETCH TOURNAMENTS...");
+              const response = await fetch('https://f2farena.com/api/tournaments/?offset=0&limit=5');
+              
+              if (!response.ok) {
+                  console.error("API request failed!", response.status, response.statusText);
+                  throw new Error('Failed to fetch tournaments');
+              }
+              
               const data = await response.json();
-              const updatedData = data.map(item => ({
-                  ...item,
-                  thumbnail: `https://f2farena.com/${item.thumbnail}`
-              }));
-              const limitedData = updatedData.slice(0, 5);
-              setTournaments(limitedData);
-              sessionStorage.setItem('tournaments_home', JSON.stringify(limitedData));
+
+              if (!Array.isArray(data)) {
+                  console.error("LỖI NGHIÊM TRỌNG: API không trả về một mảng. Dừng xử lý.");
+                  return;
+              }
+
+              const apiTournaments = data.map(item => {
+                  if (!item) {
+                      console.warn("Phát hiện một item RỖNG trong mảng data. Đây có thể là nguyên nhân.");
+                      return null; // Trả về null để lọc sau
+                  }
+                  return {
+                      ...item,
+                      participants: item.participants || 0,
+                      status: item.status ? item.status.toLowerCase() : 'upcoming'
+                  };
+              }).filter(Boolean);
+
+              setTournaments(apiTournaments);
+
           } catch (error) {
-              console.error('Error fetching tournaments for home:', error);
+              console.error('LỖI TRONG fetchTournaments:', error);
+              setTournaments([]);
           }
       };
 
@@ -439,7 +453,7 @@ const HomePage = () => {
       return () => {
           window.removeEventListener('websocket-message', handleWebSocketMessage);
       };
-  }, [ongoingMatches]);
+  }, []);
 
   return (
       <div>
@@ -521,48 +535,64 @@ const HomePage = () => {
                   );
               })}
               <h2 className="section-title">🏆 Tournaments</h2>
-              {tournaments.map(item => (
-                  <div key={item.id} className="card tournament-card">
-                      <div className="tournament-thumbnail-wrapper thumbnail-skeleton">
-                          <img
-                              src={item.thumbnail}
-                              alt={item.title}
-                              className="tournament-thumbnail"
-                              loading="lazy"
-                              onError={(e) => {
-                                  console.error(`Failed to load image: ${item.thumbnail}`);
-                                  e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
-                              }}
-                              onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }}
-                          />
-                          <TournamentStatus startTime={item.event_time} />
-                      </div>
-                      <div className="tournament-content">
-                          <h3 className="tournament-title">{item.title}</h3>
-                          <div className="tournament-details-grid">
-                              <div className="detail-item">
-                                  <span>Prize Pool</span>
-                                  <p className="detail-value accent">{item.prize_pool} USDT</p>
-                              </div>
-                              <div className="detail-item">
-                                  <span>Participants</span>
-                                  <p className="detail-value">{item.participants}</p>
-                              </div>
-                              <div className="detail-item">
-                                  <span>Symbol</span>
-                                  <p className="detail-value primary">{item.symbol}</p>
-                              </div>
+              {tournaments.map(item => {
+                  if (!item) {
+                      console.error("CRASH DỰ KIẾN: Item trong mảng tournaments là null/undefined.");
+                      return null; // Tránh crash
+                  }
+                  return (
+                      <div key={item.id} className="card tournament-card">
+                          <div className="tournament-thumbnail-wrapper thumbnail-skeleton">
+                              <img
+                                  src={item.thumbnail || DEFAULT_PLACEHOLDER_IMAGE}
+                                  alt={item.title}
+                                  className="tournament-thumbnail"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = DEFAULT_PLACEHOLDER_IMAGE;
+                                  }}
+                                  onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }}
+                              />
+                              <TournamentStatus 
+                                  startTime={item.event_time} 
+                                  endTime={item.end_time}
+                                  status={item.status}
+                              />
                           </div>
-                          <button
-                              className="btn btn-primary"
-                              style={{ width: '100%', marginTop: '1rem' }}
-                              onClick={() => navigate(`/tournament/${item.id}`)}
-                          >
-                              Detail
-                          </button>
+                          <div className="tournament-content">
+                              <h3 className="tournament-title">{item.title}</h3>
+                              <div className="tournament-details-grid">
+                                  <div className="detail-item">
+                                      <span>Prize Pool</span>
+                                      <p className="detail-value accent">{item.prize_pool} USDT</p>
+                                  </div>
+                                  <div className="detail-item">
+                                      <span>Participants</span>
+                                      <p className="detail-value">{item.participants}</p>
+                                  </div>
+                                  <div className="detail-item">
+                                      <span>Symbol</span>
+                                      <p className="detail-value primary">{item.symbol}</p>
+                                  </div>
+                              </div>
+                              <button
+                                className="btn btn-primary"
+                                style={{ width: '100%', marginTop: '1rem' }}
+                                onClick={() => {
+                                    if (item.status === 'ongoing') {
+                                        navigate(`/tournament/ongoing/${item.id}`);
+                                    } else {
+                                        navigate(`/tournament/${item.id}`);
+                                    }
+                                }}
+                              >
+                                  Detail
+                              </button>
+                          </div>
                       </div>
-                  </div>
-              ))}
+                  );
+              })}
           </div>
       </div>
   );
@@ -738,7 +768,7 @@ const NewsPage = ({ user }) => {
       yearsActive: broker.years,
       score: broker.average_star,
       summary: broker.description,
-      thumbnail: `https://f2farena.com/${broker.thumbnail}`,
+      thumbnail: broker.thumbnail,
       content: broker.description,
       ratings: { license: broker.star_1, insurance: broker.star_2, localization: broker.star_3, commission: broker.star_4, stability: broker.star_5, 'on-boarding': broker.star_6 }
     }));
@@ -849,15 +879,14 @@ const NewsPage = ({ user }) => {
         <div key={article.id} className="news-card" onClick={() => navigate(`/news/${article.id}`)} style={{ cursor: 'pointer' }}>
           <LazyLoad height={220} offset={100}>
             <img 
-              src={article.thumbnail} 
+              src={article.thumbnail || DEFAULT_PLACEHOLDER_IMAGE}
               alt={article.title} 
-              className="news-thumbnail" 
+              className="news-thumbnail"
               loading="lazy" 
               onError={(e) => {
-                console.error(`Broker thumbnail error: ${article.thumbnail}`);
-                e.target.src = 'https://placehold.co/500x220?text=Image+Error';
-              }} 
-              onLoad={() => console.log(`Broker thumbnail loaded: ${article.thumbnail}`)}
+                e.target.onerror = null;
+                e.target.src = DEFAULT_PLACEHOLDER_IMAGE;
+              }}
             />
           </LazyLoad>
           <div className="news-content review-card-content">
@@ -1855,62 +1884,96 @@ const JoinConfirmModal = ({ onClose, onConfirm, match, status }) => {
 };
 
 // Helper component để xử lý logic đếm ngược và hiển thị trạng thái
-const TournamentStatus = ({ startTime }) => {
-  const calculateTimeLeft = () => {
-    const difference = new Date(startTime) - new Date();
-    let timeLeft = {};
+const TournamentStatus = ({ startTime, endTime, status }) => {
+    const [currentTime, setCurrentTime] = useState(() => new Date());
 
-    if (difference > 0) {
-      timeLeft = {
-        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-        minutes: Math.floor((difference / 1000 / 60) % 60),
-        seconds: Math.floor((difference / 1000) % 60),
-      };
-    }
-    return { difference, timeLeft };
-  };
+    useEffect(() => {
+        // Timer chỉ để cập nhật lại component mỗi giây, không chứa logic tính toán phức tạp
+        const interval = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
 
-  const [timeInfo, setTimeInfo] = useState(calculateTimeLeft());
+    const normalizedStatus = status ? status.toLowerCase() : 'upcoming';
+    const start = new Date(startTime);
+    const end = new Date(endTime);
 
-  useEffect(() => {
-    if (timeInfo.difference <= 0) {
-      // Buộc kiểm tra lại khi trạng thái là "Finished" để kích hoạt LazyLoad
-      const forceUpdate = setTimeout(() => {
-        setTimeInfo(calculateTimeLeft()); // Cập nhật lại để kích hoạt render
-      }, 100);
-      return () => clearTimeout(forceUpdate);
+    // Trường hợp 1: Backend đã xác nhận 'completed'
+    if (normalizedStatus === 'completed' || normalizedStatus === 'finished') {
+        return (
+            <div className="tournament-status-overlay finished">
+                Finished
+            </div>
+        );
     }
 
-    const timer = setInterval(() => {
-      setTimeInfo(calculateTimeLeft());
-    }, 1000);
+    // Trường hợp 2: Giải đấu đang diễn ra ('ongoing')
+    if (normalizedStatus === 'ongoing') {
+        const difference = end - currentTime;
+        if (difference > 0) {
+            const totalSeconds = Math.floor(difference / 1000);
+            const days = Math.floor(totalSeconds / (3600 * 24));
+            const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600).toString().padStart(2, '0');
+            const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+            const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+            const timeString = `${days > 0 ? `${days}d ` : ''}${hours}:${minutes}:${seconds}`;
 
-    return () => clearInterval(timer);
-  }, [startTime, timeInfo.difference]);
+            return (
+                <div className="tournament-status-overlay live">
+                    <svg className="status-overlay-icon" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.415L11 9.586V6z" clipRule="evenodd" />
+                    </svg>
+                    <span>Ends in: {timeString}</span>
+                </div>
+            );
+        } else {
+            // Hết giờ nhưng backend chưa cập nhật, hiển thị 00:00:00
+            return (
+                <div className="tournament-status-overlay live">
+                     <svg className="status-overlay-icon" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.415L11 9.586V6z" clipRule="evenodd" />
+                    </svg>
+                    <span>Ends in: 00:00:00</span>
+                </div>
+            );
+        }
+    }
 
-  const { difference, timeLeft } = timeInfo;
+    // Trường hợp 3: Sắp diễn ra ('upcoming')
+    if (normalizedStatus === 'upcoming') {
+        const difference = start - currentTime;
+        if (difference > 0) {
+            const totalSeconds = Math.floor(difference / 1000);
+            const days = Math.floor(totalSeconds / (3600 * 24));
+            const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600).toString().padStart(2, '0');
+            const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+            const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+            const timeString = `${days > 0 ? `${days}d ` : ''}${hours}:${minutes}:${seconds}`;
 
-  if (difference <= 0) {
-    return (
-      <div className="tournament-status-overlay finished">
-        Finished
-      </div>
-    );
-  }
+            return (
+                <div className="tournament-status-overlay upcoming">
+                     <svg className="status-overlay-icon" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.415L11 9.586V6z" clipRule="evenodd" />
+                    </svg>
+                    <span>Starts in: {timeString}</span>
+                </div>
+            );
+        } else {
+            // Đã qua giờ bắt đầu nhưng backend chưa chuyển sang 'ongoing'
+            return (
+                <div className="tournament-status-overlay live">
+                     <svg className="status-overlay-icon" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.415L11 9.586V6z" clipRule="evenodd" />
+                    </svg>
+                    <span>Starting...</span>
+                </div>
+            );
+        }
+    }
 
-  const formattedTime = `${String(timeLeft.hours).padStart(2, '0')}:${String(timeLeft.minutes).padStart(2, '0')}:${String(timeLeft.seconds).padStart(2, '0')}`;
-
-  return (
-    <div className="tournament-status-overlay">
-      <svg className="status-overlay-icon" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.415L11 9.586V6z" clipRule="evenodd" />
-      </svg>
-      <span>
-        Starts in: {timeLeft.days > 0 && `${timeLeft.days}d `}{formattedTime}
-      </span>
-    </div>
-  );
+    // Trường hợp mặc định nếu không có status
+    return null;
 };
 
 const JoinMatchFormModal = ({ onClose, onConfirm, match, user }) => {
@@ -2142,25 +2205,35 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     };
 
     const fetchTournaments = async () => {
-      const cachedTournaments = sessionStorage.getItem('tournaments_data');
-      if (cachedTournaments) {
-          setTournamentItems(JSON.parse(cachedTournaments));
-          return;
-      }
-      try {
-          const response = await fetch(`https://f2farena.com/api/tournaments/`);
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-          const data = await response.json();
-          const mappedData = data.map(t => ({
-              ...t,
-              thumbnail: `https://f2farena.com/${t.thumbnail}`,
-              prizePool: `${t.prize_pool} USDT`
-          }));
-          setTournamentItems(mappedData);
-          sessionStorage.setItem('tournaments_data', JSON.stringify(mappedData));
-      } catch (error) {
-          console.error('Error fetching tournaments:', error.message);
-      }
+        const cacheKey = 'tournaments_arena';
+        const cachedTournaments = sessionStorage.getItem(cacheKey);
+
+        if (cachedTournaments) {
+            setTournamentItems(JSON.parse(cachedTournaments));
+            return;
+        }
+
+        try {
+            const response = await fetch(`https://f2farena.com/api/tournaments/`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const data = await response.json();
+            const apiTournaments = data.map((t) => ({
+                ...t,
+                thumbnail: t.thumbnail, 
+                prizePool: `${t.prize_pool} USDT`,
+                participants: t.participants, // Map đúng key
+                // Thêm trường status để điều hướng
+                status: t.status ? t.status.toLowerCase() : 'upcoming' 
+            }));
+            console.log("ArenaPage processed tournaments for state:", apiTournaments);
+   
+            setTournamentItems(apiTournaments);
+            sessionStorage.setItem(cacheKey, JSON.stringify(apiTournaments));
+        } catch (error) {
+            console.error('Error fetching tournaments for Arena:', error.message);
+            setTournamentItems([]);
+        }
     };
 
     const fetchBrokersForArena = async () => {
@@ -2291,11 +2364,15 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                         {tournamentItems.filter(item => (tournamentFilter === 'all' || item.type === tournamentFilter)).map(item => (
                             <div key={item.id} className="card tournament-card">
                                 <div className="tournament-thumbnail-wrapper">
-                                    <img src={item.thumbnail} alt={item.title} className="tournament-thumbnail" loading="lazy" onError={(e) => {
-                                        console.error(`Failed to load image: ${item.thumbnail}`);
-                                        e.target.src = 'https://placehold.co/500x220?text=Image+Not+Found';
+                                    <img src={item.thumbnail || DEFAULT_PLACEHOLDER_IMAGE} alt={item.title} className="tournament-thumbnail" loading="lazy" onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = DEFAULT_PLACEHOLDER_IMAGE;
                                     }} onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }} />
-                                    <TournamentStatus startTime={item.event_time} />
+                                    <TournamentStatus 
+                                        startTime={item.event_time} 
+                                        endTime={item.end_time}
+                                        status={item.status}
+                                    />
                                 </div>
                                 <div className="tournament-content">
                                     <h3 className="tournament-title">{item.title}</h3>
@@ -2304,9 +2381,20 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                                         <div className="detail-item"><span>Participants</span><p className="detail-value">{item.participants}</p></div>
                                         <div className="detail-item"><span>Symbol</span><p className="detail-value primary">{item.symbol}</p></div>
                                     </div>
-                                    <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} onClick={() => navigate(`/tournament/${item.id}`)}>
-                                        Detail
-                                    </button>
+                                    <button
+                                      className="btn btn-primary"
+                                      style={{ width: '100%', marginTop: '1rem' }}
+                                      onClick={() => {
+                                          // Điều hướng dựa trên trạng thái của giải đấu
+                                          if (item.status === 'ongoing') {
+                                              navigate(`/tournament/ongoing/${item.id}`);
+                                          } else {
+                                              navigate(`/tournament/${item.id}`);
+                                          }
+                                      }}
+                                  >
+                                      Detail
+                                  </button>
                                 </div>
                             </div>
                         ))}
@@ -2559,7 +2647,7 @@ const PersonalInfoView = ({ onBack, user }) => {
     
     // Ưu tiên avatar thật, nếu không có thì tạo placeholder
     const avatarUrl = user.avatar 
-        ? `https://f2farena.com/${user.avatar}` 
+        ? user.avatar
         : generateAvatarUrl(user.fullname || user.username || 'User');
 
     return (
@@ -3083,6 +3171,7 @@ useEffect(() => {
           <Route path="/news/:id" element={<NewsDetail user={user} />} />
           <Route path="/arena" element={<ArenaPage user={user} onUserUpdate={handleUserUpdate} />} />
           <Route path="/tournament/:id" element={<TournamentDetail user={user} walletData={walletData} onUserUpdate={handleUserUpdate} />} />
+          <Route path="/tournament/ongoing/:id" element={<OngoingTournament user={user} />} />
           <Route path="/arena/:id" element={<ArenaDetail />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/wallet" element={<WalletPage user={user} onUserUpdate={handleUserUpdate} />} />

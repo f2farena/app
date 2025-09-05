@@ -1,3 +1,4 @@
+// src/components/MatchDetail.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './MatchDetail.css';
@@ -53,12 +54,7 @@ const MatchCountdownTimer = ({ startTime, durationHours, onFinish }) => {
 
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n => n[0]).join('') || 'NN').toUpperCase()}`;
 const getAvatarSource = (player) => {
-    // Kiểm tra xem player.avatar có phải là một chuỗi hợp lệ không
-    if (player && player.avatar && typeof player.avatar === 'string' && player.avatar.trim()) {
-        return player.avatar;
-    }
-    // Nếu không, tạo avatar thay thế
-    return generateAvatarUrl(player ? player.name : 'Unknown');
+    return player?.avatar || generateAvatarUrl(player ? player.name : 'Unknown');
 };
 
 // Modal chờ đăng nhập
@@ -246,22 +242,6 @@ const MatchDetail = ({ user }) => {
             const data = await response.json();
             console.log('Fetched match detail:', data);
 
-            const updatedData = {
-                ...data,
-                player1: {
-                    ...data.player1,
-                    avatar: data.player1.avatar && !data.player1.avatar.startsWith('http')
-                        ? `https://f2farena.com/${data.player1.avatar}`
-                        : data.player1.avatar
-                },
-                player2: {
-                    ...data.player2,
-                    avatar: data.player2.avatar && !data.player2.avatar.startsWith('http')
-                        ? `https://f2farena.com/${data.player2.avatar}`
-                        : data.player2.avatar
-                },
-            };
-            
             setMatchData(updatedData);
             sessionStorage.setItem(`match_detail_${id}`, JSON.stringify(updatedData));
 
@@ -650,7 +630,7 @@ const MatchDetail = ({ user }) => {
                             <div className="timeline-container">
                                 <div className="timeline">
                                     {trades.map((trade, index) => (
-                                        <div key={trade.id || index} className={`trade-box ${trade.player_id === matchData.player1.id ? 'left' : 'right'}`}>
+                                        <div key={trade.id || index} className={`trade-box ${Number(trade.player_id) === Number(matchData.player1.id) ? 'left' : 'right'}`}>
                                             <div className="trade-info">
                                                 <span className="trade-type">{trade.type}</span>
                                                 <span className="trade-amount">{trade.amount} {matchData.symbol?.split('/')[0] || matchData.symbol}</span>

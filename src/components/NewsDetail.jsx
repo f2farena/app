@@ -58,7 +58,7 @@ const NewsDetail = ({ user }) => {
           date: '10/06/2025', // Giữ hardcode hoặc thêm field ở backend
           author: 'TradeChallenge Team',
           summary: data.description,
-          thumbnail: `https://f2farena.com/${data.thumbnail}`,
+          thumbnail: data.thumbnail,
           content: data.pk_review,
           ratings: { license: data.star_1, insurance: data.star_2, localization: data.star_3, commission: data.star_4, stability: data.star_5, onboarding: data.star_6 }
         };
@@ -216,7 +216,7 @@ const NewsDetail = ({ user }) => {
             />
             {article.logo && (  // Nếu backend return logo field, add img (giả sử)
                 <img
-                src={`https://f2farena.com/${article.logo}`}  // Prepend
+                src={article.logo} 
                 alt="Broker Logo"
                 style={{ position: 'absolute', top: '10px', left: '10px', width: '50px', height: '50px' }}  // Style tùy ý
                 onError={(e) => console.error(`Logo error: ${article.logo}`)}
