@@ -383,41 +383,51 @@ const HomePage = () => {
       };
 
       const fetchTournaments = async () => {
-          try {
-              console.log("BẮT ĐẦU FETCH TOURNAMENTS...");
-              const response = await fetch('https://f2farena.com/api/tournaments/?offset=0&limit=5');
-              
-              if (!response.ok) {
-                  console.error("API request failed!", response.status, response.statusText);
-                  throw new Error('Failed to fetch tournaments');
-              }
-              
-              const data = await response.json();
+        const homeCacheKey = 'tournaments_shared_cache'; // Dùng một key cache chung
+        const cachedData = sessionStorage.getItem(homeCacheKey);
 
-              if (!Array.isArray(data)) {
-                  console.error("LỖI NGHIÊM TRỌNG: API không trả về một mảng. Dừng xử lý.");
-                  return;
-              }
+        if (cachedData) {
+            console.log("[HomePage] Sử dụng dữ liệu Tournament từ cache.");
+            setTournaments(JSON.parse(cachedData));
+            return;
+        }
+          try {
+              console.log("BẮT ĐẦU FETCH TOURNAMENTS...");
+              const response = await fetch('https://f2farena.com/api/tournaments/?offset=0&limit=5');
+              
+              if (!response.ok) {
+                  console.error("API request failed!", response.status, response.statusText);
+                  throw new Error('Failed to fetch tournaments');
+              }
+              
+              const data = await response.json();
 
-              const apiTournaments = data.map(item => {
-                  if (!item) {
-                      console.warn("Phát hiện một item RỖNG trong mảng data. Đây có thể là nguyên nhân.");
-                      return null; // Trả về null để lọc sau
-                  }
-                  return {
-                      ...item,
-                      participants: item.participants || 0,
-                      status: item.status ? item.status.toLowerCase() : 'upcoming'
-                  };
-              }).filter(Boolean);
+              if (!Array.isArray(data)) {
+                  console.error("LỖI NGHIÊM TRỌNG: API không trả về một mảng. Dừng xử lý.");
+                  return;
+              }
 
-              setTournaments(apiTournaments);
+              const apiTournaments = data.map(item => {
+                  if (!item) {
+                      console.warn("Phát hiện một item RỖNG trong mảng data. Đây có thể là nguyên nhân.");
+                      return null; // Trả về null để lọc sau
+                  }
+                  return {
+                      ...item,
+                      participants: item.participants || 0,
+                      status: item.status ? item.status.toLowerCase() : 'upcoming'
+                  };
+              }).filter(Boolean);
 
-          } catch (error) {
-              console.error('LỖI TRONG fetchTournaments:', error);
-              setTournaments([]);
-          }
-      };
+              setTournaments(apiTournaments);
+              // Lưu vào key chung để Arena có thể dùng
+              sessionStorage.setItem(homeCacheKey, JSON.stringify(apiTournaments)); 
+
+          } catch (error) {
+              console.error('LỖI TRONG fetchTournaments:', error);
+              setTournaments([]);
+          }
+      };
 
       fetchBanner();
       fetchLiveMatchesFromActive();
@@ -425,35 +435,31 @@ const HomePage = () => {
   }, []);
 
   useEffect(() => {
-      const handleWebSocketMessage = (event) => {
-          const message = event.detail;
+      const handleWebSocketMessage = (event) => {
+          const message = event.detail;
 
-          // Tạo một bản sao mới của mảng để xử lý
-          const updatedMatches = ongoingMatches.map(match => {
-              if (match.id !== message.match_id) {
-                  return match;
-              }
+          setOngoingMatches(currentMatches => { // <-- SỬ DỤNG CALLBACK FORM
+              return currentMatches.map(match => {
+                  if (match.id !== message.match_id) {
+                      return match;
+                  }
+                  let updatedMatch = { ...match };
+                  if (message.type === "SCORE_UPDATE") {
+                      updatedMatch.player1 = { ...match.player1, score: message.data.player1_score };
+                      updatedMatch.player2 = { ...match.player2, score: message.data.player2_score };
+                  } else if (message.type === "VIEW_COUNT_UPDATE") {
+                      updatedMatch.views = message.data.views;
+                  }
+                  return updatedMatch;
+              });
+          });
+      };
 
-              // Xử lý cập nhật cho trận đấu tương ứng
-              let updatedMatch = { ...match };
-              if (message.type === "SCORE_UPDATE") {
-                  console.log(`[HomePage] Updating score for match ${match.id}`);
-                  updatedMatch.player1 = { ...match.player1, score: message.data.player1_score };
-                  updatedMatch.player2 = { ...match.player2, score: message.data.player2_score };
-              } else if (message.type === "VIEW_COUNT_UPDATE") {
-                  console.log(`[HomePage] Updating views for match ${match.id}`);
-                  updatedMatch.views = message.data.views;
-              }
-              return updatedMatch;
-          });
-          setOngoingMatches(updatedMatches);
-      };
-
-      window.addEventListener('websocket-message', handleWebSocketMessage);
-      return () => {
-          window.removeEventListener('websocket-message', handleWebSocketMessage);
-      };
-  }, []);
+      window.addEventListener('websocket-message', handleWebSocketMessage);
+      return () => {
+          window.removeEventListener('websocket-message', handleWebSocketMessage);
+      };
+  }, []);
 
   return (
       <div>
@@ -479,7 +485,7 @@ const HomePage = () => {
                                   }}
                                   onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }}
                               />
-                              <TournamentStatus 
+                              <TournamentStatus
                                   startTime={item.event_time} 
                                   endTime={item.end_time}
                                   status={item.status}
@@ -1899,8 +1905,8 @@ const TournamentStatus = ({ startTime, endTime, status }) => {
     }, []);
 
     const normalizedStatus = status ? status.toLowerCase() : 'upcoming';
-    const start = new Date(startTime.endsWith('Z') ? startTime : startTime + 'Z');
-    const end = new Date(endTime.endsWith('Z') ? endTime : endTime + 'Z');
+    const start = new Date(startTime);
+    const end = new Date(endTime);
 
     // Trường hợp 1: Backend đã xác nhận 'completed'
     if (normalizedStatus === 'completed' || normalizedStatus === 'finished') {
@@ -2208,36 +2214,37 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     };
 
     const fetchTournaments = async () => {
-        const cacheKey = 'tournaments_arena';
-        const cachedTournaments = sessionStorage.getItem(cacheKey);
+        const sharedCacheKey = 'tournaments_shared_cache'; // Dùng key chung với HomePage
+        const cachedData = sessionStorage.getItem(sharedCacheKey);
 
-        if (cachedTournaments) {
-            setTournamentItems(JSON.parse(cachedTournaments));
-            return;
-        }
+        if (cachedData) {
+            console.log("[ArenaPage] Lấy dữ liệu Tournament từ cache chung.");
+            setTournamentItems(JSON.parse(cachedData));
+            return;
+        }
 
-        try {
-            const response = await fetch(`https://f2farena.com/api/tournaments/`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        // Nếu không có cache (ví dụ: người dùng vào thẳng trang Arena), thì tự fetch
+        try {
+            console.log("[ArenaPage] Không có cache chung, tự fetch dữ liệu.");
+            const response = await fetch(`https://f2farena.com/api/tournaments/`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-            const data = await response.json();
-            const apiTournaments = data.map((t) => ({
-                ...t,
-                thumbnail: t.thumbnail, 
-                prizePool: `${t.prize_pool} USDT`,
-                participants: t.participants, // Map đúng key
-                // Thêm trường status để điều hướng
-                status: t.status ? t.status.toLowerCase() : 'upcoming' 
-            }));
-            console.log("ArenaPage processed tournaments for state:", apiTournaments);
-   
-            setTournamentItems(apiTournaments);
-            sessionStorage.setItem(cacheKey, JSON.stringify(apiTournaments));
-        } catch (error) {
-            console.error('Error fetching tournaments for Arena:', error.message);
-            setTournamentItems([]);
-        }
-    };
+            const data = await response.json();
+            const apiTournaments = data.map((t) => ({
+                ...t,
+                thumbnail: t.thumbnail, 
+                prizePool: `${t.prize_pool} USDT`,
+                participants: t.participants,
+                status: t.status ? t.status.toLowerCase() : 'upcoming' 
+            }));
+   
+            setTournamentItems(apiTournaments);
+            sessionStorage.setItem(sharedCacheKey, JSON.stringify(apiTournaments));
+        } catch (error) {
+            console.error('Error fetching tournaments for Arena:', error.message);
+            setTournamentItems([]);
+        }
+    };
 
     const fetchBrokersForArena = async () => {
       const cached = sessionStorage.getItem('brokers_data');
@@ -2371,7 +2378,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                                         e.target.onerror = null;
                                         e.target.src = DEFAULT_PLACEHOLDER_IMAGE;
                                     }} onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }} />
-                                    <TournamentStatus 
+                                    <TournamentStatus
                                         startTime={item.event_time} 
                                         endTime={item.end_time}
                                         status={item.status}
