@@ -459,6 +459,65 @@ const HomePage = () => {
       <div>
           <EventBanner items={bannerItems} />
           <div className="page-padding">
+              <h2 className="section-title">🏆 Tournaments</h2>
+              {tournaments.map(item => {
+                  if (!item) {
+                      console.error("CRASH DỰ KIẾN: Item trong mảng tournaments là null/undefined.");
+                      return null; // Tránh crash
+                  }
+                  return (
+                      <div key={item.id} className="card tournament-card">
+                          <div className="tournament-thumbnail-wrapper thumbnail-skeleton">
+                              <img
+                                  src={item.thumbnail || DEFAULT_PLACEHOLDER_IMAGE}
+                                  alt={item.title}
+                                  className="tournament-thumbnail"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = DEFAULT_PLACEHOLDER_IMAGE;
+                                  }}
+                                  onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }}
+                              />
+                              <TournamentStatus 
+                                  startTime={item.event_time} 
+                                  endTime={item.end_time}
+                                  status={item.status}
+                              />
+                          </div>
+                          <div className="tournament-content">
+                              <h3 className="tournament-title">{item.title}</h3>
+                              <div className="tournament-details-grid">
+                                  <div className="detail-item">
+                                      <span>Prize Pool</span>
+                                      <p className="detail-value accent">{item.prize_pool} USDT</p>
+                                  </div>
+                                  <div className="detail-item">
+                                      <span>Participants</span>
+                                      <p className="detail-value">{item.participants}</p>
+                                  </div>
+                                  <div className="detail-item">
+                                      <span>Symbol</span>
+                                      <p className="detail-value primary">{item.symbol}</p>
+                                  </div>
+                              </div>
+                              <button
+                                className="btn btn-primary"
+                                style={{ width: '100%', marginTop: '1rem' }}
+                                onClick={() => {
+                                    if (item.status === 'ongoing') {
+                                        navigate(`/tournament/ongoing/${item.id}`);
+                                    } else {
+                                        navigate(`/tournament/${item.id}`);
+                                    }
+                                }}
+                              >
+                                  Detail
+                              </button>
+                          </div>
+                      </div>
+                  );
+              })}
               <h2 className="section-title">⚔️ Live Matches</h2>
               {ongoingMatches.map((match) => {
                   const player1Width = (match.player1.score / (match.player1.score + match.player2.score)) * 100;
@@ -530,65 +589,6 @@ const HomePage = () => {
                                       <span>{match.outsideBetsTotal} USDT</span>
                                   </div>
                               </div>
-                          </div>
-                      </div>
-                  );
-              })}
-              <h2 className="section-title">🏆 Tournaments</h2>
-              {tournaments.map(item => {
-                  if (!item) {
-                      console.error("CRASH DỰ KIẾN: Item trong mảng tournaments là null/undefined.");
-                      return null; // Tránh crash
-                  }
-                  return (
-                      <div key={item.id} className="card tournament-card">
-                          <div className="tournament-thumbnail-wrapper thumbnail-skeleton">
-                              <img
-                                  src={item.thumbnail || DEFAULT_PLACEHOLDER_IMAGE}
-                                  alt={item.title}
-                                  className="tournament-thumbnail"
-                                  loading="lazy"
-                                  onError={(e) => {
-                                      e.target.onerror = null;
-                                      e.target.src = DEFAULT_PLACEHOLDER_IMAGE;
-                                  }}
-                                  onLoad={(e) => { e.target.parentNode.classList.add('loaded'); }}
-                              />
-                              <TournamentStatus 
-                                  startTime={item.event_time} 
-                                  endTime={item.end_time}
-                                  status={item.status}
-                              />
-                          </div>
-                          <div className="tournament-content">
-                              <h3 className="tournament-title">{item.title}</h3>
-                              <div className="tournament-details-grid">
-                                  <div className="detail-item">
-                                      <span>Prize Pool</span>
-                                      <p className="detail-value accent">{item.prize_pool} USDT</p>
-                                  </div>
-                                  <div className="detail-item">
-                                      <span>Participants</span>
-                                      <p className="detail-value">{item.participants}</p>
-                                  </div>
-                                  <div className="detail-item">
-                                      <span>Symbol</span>
-                                      <p className="detail-value primary">{item.symbol}</p>
-                                  </div>
-                              </div>
-                              <button
-                                className="btn btn-primary"
-                                style={{ width: '100%', marginTop: '1rem' }}
-                                onClick={() => {
-                                    if (item.status === 'ongoing') {
-                                        navigate(`/tournament/ongoing/${item.id}`);
-                                    } else {
-                                        navigate(`/tournament/${item.id}`);
-                                    }
-                                }}
-                              >
-                                  Detail
-                              </button>
                           </div>
                       </div>
                   );
@@ -1217,7 +1217,7 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
     const [tradingSymbol, setTradingSymbol] = useState('');
     const [challengeMode, setChallengeMode] = useState('waiting');
     const [opponentId, setOpponentId] = useState('');
-    const [durationTime, setDurationTime] = useState(1);
+    const [durationMinutes, setDurationMinutes] = useState(15);
     const [selectedBroker, setSelectedBroker] = useState('');
     const [showConfirmation, setShowConfirmation] = useState(false);
     const [supportedSymbols, setSupportedSymbols] = useState([]);
@@ -1277,7 +1277,7 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
                     symbol: tradingSymbol,
                     player1_id: user?.telegram_id,
                     player2_id: challengeMode === 'waiting' ? null : Number(opponentId),
-                    duration_time: durationTime,
+                    duration_minutes: durationMinutes,
                     broker_id: parseInt(selectedBroker),
                     name_account: nameAccount,
                     password_account: passwordAccount,
@@ -1351,9 +1351,12 @@ const CreateNewMatchForm = ({ onClose, brokersList, user, onCreateSuccess, onUse
                         </div>
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Duration Time (hours)</label>
-                        <select className="form-input" value={durationTime} onChange={(e) => setDurationTime(Number(e.target.value))} required>
-                            <option value={1}>1 hour</option><option value={4}>4 hours</option><option value={8}>8 hours</option>
+                        <label className="form-label">Duration Time (minutes)</label> {/* Đổi label */}
+                        <select className="form-input" value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))} required>
+                            <option value={15}>15 minutes</option>
+                            <option value={30}>30 minutes</option>
+                            <option value={60}>1 hour</option>
+                            <option value={240}>4 hours</option>
                         </select>
                     </div>
                     <div className="form-group">
@@ -1896,8 +1899,8 @@ const TournamentStatus = ({ startTime, endTime, status }) => {
     }, []);
 
     const normalizedStatus = status ? status.toLowerCase() : 'upcoming';
-    const start = new Date(startTime);
-    const end = new Date(endTime);
+    const start = new Date(startTime.endsWith('Z') ? startTime : startTime + 'Z');
+    const end = new Date(endTime.endsWith('Z') ? endTime : endTime + 'Z');
 
     // Trường hợp 1: Backend đã xác nhận 'completed'
     if (normalizedStatus === 'completed' || normalizedStatus === 'finished') {
@@ -2976,6 +2979,10 @@ const AppContent = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const lastScrollY = useRef(0);
+  const [upcomingTournamentMatches, setUpcomingTournamentMatches] = useState([]);
+  const [matchToConfirm, setMatchToConfirm] = useState(null);
+  const [showLoginWaitingModal, setShowLoginWaitingModal] = useState(false);
+  const [loginWaitingMatchData, setLoginWaitingMatchData] = useState(null);
 
   const [walletData, setWalletData] = useState({
         currentBalance: '0.00 USDT',
@@ -3022,27 +3029,66 @@ const AppContent = () => {
     } catch (error) {
         console.error('Error fetching user data:', error);
     }
-};
+  };
 
-// Hàm onUserUpdate mới sẽ luôn gọi fetchAndSetUser để lấy dữ liệu mới nhất
-const handleUserUpdate = async () => {
-    console.log("Updating user data by re-fetching from server...");
-    await fetchAndSetUser();
-};
+  // Fetch các trận tournament sắp tới của user
+  useEffect(() => {
+      if (!user?.telegram_id) return;
 
-// useEffect ban đầu giờ chỉ dùng để load user lần đầu (từ cache hoặc fetch mới)
-useEffect(() => {
-    const loadUserFromCacheOrFetch = async () => {
-        const cachedUser = sessionStorage.getItem('user_data');
-        if (cachedUser) {
-            console.log('Loaded user from sessionStorage:', cachedUser);
-            setUser(JSON.parse(cachedUser));
-        } else {
-            await fetchAndSetUser();
-        }
-    };
-    loadUserFromCacheOrFetch();
-}, [location.search]);
+      const fetchUpcomingMatches = async () => {
+          try {
+              // Backend sẽ cần cung cấp endpoint này
+              const response = await fetch(`https://f2farena.com/api/tournaments/my-upcoming-matches/${user.telegram_id}`);
+              if (response.ok) {
+                  const data = await response.json();
+                  setUpcomingTournamentMatches(data);
+              }
+          } catch (error) {
+              console.error("Failed to fetch upcoming tournament matches:", error);
+          }
+      };
+
+      fetchUpcomingMatches();
+  }, [user]);
+
+  // Kiểm tra thời gian các trận đấu mỗi giây
+  useEffect(() => {
+      if (upcomingTournamentMatches.length === 0 || matchToConfirm) return;
+
+      const interval = setInterval(() => {
+          const now = new Date();
+          for (const match of upcomingTournamentMatches) {
+              const matchTime = new Date(match.time);
+              // Kích hoạt khi đến giờ hoặc đã qua 10 giây (đề phòng trễ)
+              if (now >= matchTime && now <= new Date(matchTime.getTime() + 10000)) {
+                  setMatchToConfirm(match);
+                  break; 
+              }
+          }
+      }, 1000);
+
+      return () => clearInterval(interval);
+  }, [upcomingTournamentMatches, matchToConfirm]);
+
+  // Hàm onUserUpdate mới sẽ luôn gọi fetchAndSetUser để lấy dữ liệu mới nhất
+  const handleUserUpdate = async () => {
+      console.log("Updating user data by re-fetching from server...");
+      await fetchAndSetUser();
+  };
+
+  // useEffect ban đầu giờ chỉ dùng để load user lần đầu (từ cache hoặc fetch mới)
+  useEffect(() => {
+      const loadUserFromCacheOrFetch = async () => {
+          const cachedUser = sessionStorage.getItem('user_data');
+          if (cachedUser) {
+              console.log('Loaded user from sessionStorage:', cachedUser);
+              setUser(JSON.parse(cachedUser));
+          } else {
+              await fetchAndSetUser();
+          }
+      };
+      loadUserFromCacheOrFetch();
+  }, [location.search]);
 
   useEffect(() => {
     const path = location.pathname.substring(1);
@@ -3152,6 +3198,57 @@ useEffect(() => {
     paddingBottom: shouldRenderFooter ? '62px' : '0',
   };
 
+  const handleConfirmTournamentJoin = async () => {
+      if (!matchToConfirm) return;
+
+      try {
+          // Gọi API để báo cho backend biết user đã sẵn sàng
+          const response = await fetch(`https://f2farena.com/api/tournaments/matches/${matchToConfirm.id}/confirm-entry`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_id: user.telegram_id })
+          });
+
+          if (!response.ok) {
+              const err = await response.json();
+              throw new Error(err.detail || "Failed to confirm entry");
+          }
+          
+          // Sau khi xác nhận, backend sẽ xử lý logic và gửi WebSocket
+          // Frontend chuyển qua màn hình chờ của MatchDetail
+          navigate(`/match/${matchToConfirm.id}`, { state: { matchType: 'tournament' } });
+          const confirmedMatchId = matchToConfirm.id;
+          setUpcomingTournamentMatches(prevMatches => prevMatches.filter(m => m.id !== confirmedMatchId));
+          setMatchToConfirm(null); 
+
+      } catch (error) {
+          console.error("Error confirming match entry:", error);
+          alert(error.message);
+          setMatchToConfirm(null);
+      }
+  };
+
+  const TournamentConfirmationModal = ({ match, onConfirm, onCancel }) => {
+      if (!match) return null;
+      return (
+          <>
+              <div className="confirmation-overlay" onClick={onCancel}></div>
+              <div className="confirmation-modal card">
+                  <h4>⚔️ Match Starting!</h4>
+                  <p style={{ marginTop: '1rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                      Your tournament match against <strong>{match.opponent_name}</strong> is about to begin.
+                      <br/>
+                      Please confirm to enter the match.
+                  </p>
+                  <div className="confirmation-buttons">
+                      <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+                      <button className="btn btn-primary" onClick={onConfirm}>Confirm & Join</button>
+                  </div>
+              </div>
+          </>
+      );
+  };
+
   return (
     <WebSocketProvider user={user}>
         <div className="app-container">
@@ -3192,6 +3289,11 @@ useEffect(() => {
         setActivePage={setActivePage}
         showFooter={showFooter}
       />}
+      <TournamentConfirmationModal
+          match={matchToConfirm}
+          onConfirm={handleConfirmTournamentJoin}
+          onCancel={() => setMatchToConfirm(null)}
+      />
       <SettingsSidebar 
         user={user}
         show={showSettingsSidebar} 

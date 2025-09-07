@@ -6,6 +6,37 @@ import silverCup from '../assets/silver-cup.png';
 import bronzeCup from '../assets/bronze-cup.png';
 import tournamentBanner from '../assets/banner-tournament.jpg';
 
+const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(String(seed).split(' ').map(n=>n[0]).join('') || 'NN').toUpperCase()}`;
+
+const UpcomingMatchCountdown = ({ matchTime, onTimeUp }) => {
+    const [timeLeft, setTimeLeft] = useState('');
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = new Date().getTime();
+            const targetTime = new Date(matchTime).getTime();
+            const difference = targetTime - now;
+
+            if (difference <= 0) {
+                setTimeLeft("Starting...");
+                clearInterval(interval);
+                onTimeUp(); // Gọi callback khi hết giờ
+                return;
+            }
+
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000).toString().padStart(2, '0');
+
+            setTimeLeft(`${hours}:${minutes}:${seconds}`);
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [matchTime, onTimeUp]);
+
+    return <div className="match-time accent">{timeLeft || 'Calculating...'}</div>;
+};
+
 // --- Component Countdown Timer ---
 const TournamentCountdown = ({ endTime }) => {
   const [timeLeft, setTimeLeft] = useState('');
@@ -189,26 +220,35 @@ const RoundsTab = ({ rounds, currentDay }) => {
 
 // --- Component cho các trận đấu Live ---
 const LiveMatchCard = ({ match }) => {
-    const { player1, player2, startTime, durationHours } = match;
-    return (
-        <div className="live-tournament-match card">
-            <div className="live-match-player">
-                <img src={player1.avatar} alt={player1.name} className="trader-avatar" />
-                <span className="live-match-player-name">{player1.name}</span>
-                <p className="live-match-score">{player1.score.toLocaleString()} pts</p>
-            </div>
-            <div className="live-match-center">
-                <div className="live-indicator">Live</div>
-                <div className="vs-text">VS</div>
-                <MatchCountdownTimer startTime={startTime} durationHours={durationHours} />
-            </div>
-            <div className="live-match-player">
-                <img src={player2.avatar} alt={player2.name} className="trader-avatar" />
-                <span className="live-match-player-name">{player2.name}</span>
-                <p className="live-match-score">{player2.score.toLocaleString()} pts</p>
-            </div>
-        </div>
-    );
+    const navigate = useNavigate(); // Thêm hook useNavigate
+    const { player1, player2, startTime, durationMinutes } = match; // Đổi durationHours thành durationMinutes cho nhất quán
+    
+    // Hàm phụ trợ để lấy avatar an toàn
+    const getAvatar = (player) => player?.avatar || generateAvatarUrl(player?.name || '?');
+
+    return (
+        // Bọc component trong một thẻ div có thể click
+        <div className="live-tournament-match card" onClick={() => navigate(`/match/${match.id}`, { state: { matchType: 'tournament' } })} style={{cursor: 'pointer'}}>
+            <div className="live-match-player">
+                {/* Sử dụng hàm getAvatar */}
+                <img src={getAvatar(player1)} alt={player1.name} className="trader-avatar" />
+                <span className="live-match-player-name">{player1.name}</span>
+                <p className="live-match-score">{player1.score.toLocaleString()} pts</p>
+            </div>
+            <div className="live-match-center">
+                <div className="live-indicator">Live</div>
+                <div className="vs-text">VS</div>
+                {/* Sửa lại prop cho đúng */}
+                <MatchCountdownTimer startTime={startTime} durationHours={durationMinutes / 60} />
+            </div>
+            <div className="live-match-player">
+                {/* Sử dụng hàm getAvatar */}
+                <img src={getAvatar(player2)} alt={player2.name} className="trader-avatar" />
+                <span className="live-match-player-name">{player2.name}</span>
+                <p className="live-match-score">{player2.score.toLocaleString()} pts</p>
+            </div>
+        </div>
+    );
 };
 
 // --- Component cho tab Match Schedule mới ---
@@ -239,10 +279,17 @@ const MatchScheduleTab = ({ myMatches, liveMatches, currentUser }) => {
                                             <span>{isWinner ? 'Win' : 'Loss'}</span>
                                             <p>{isWinner ? `+${match.scoreChange}` : `${match.scoreChange}`} pts</p>
                                         </div>
-                                    ) : (
-                                        <div className="match-time">
-                                            {new Date(match.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </div>
+                                    ) : (                                        
+                                        myMatches.filter(m => m.status === 'upcoming')[0].id === match.id ? (
+                                            <UpcomingMatchCountdown 
+                                                matchTime={match.time} 
+                                                onTimeUp={() => { /* Logic được quản lý ở App.jsx */ }} 
+                                            />
+                                        ) : (
+                                            <div className="match-time">
+                                                {new Date(match.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                        )
                                     )}
                                 </div>
                             );

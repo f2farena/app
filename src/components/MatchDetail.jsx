@@ -1,21 +1,21 @@
 // src/components/MatchDetail.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import './MatchDetail.css';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import defaultAvatar from '../assets/avatar.jpg';
 
-const MatchCountdownTimer = ({ startTime, durationHours, onFinish }) => {
+const MatchCountdownTimer = ({ startTime, durationMinutes, onFinish }) => {
     const [timeRemaining, setTimeRemaining] = useState("Calculating...");
     const onFinishCalled = useRef(false);
 
     useEffect(() => {
-        if (!startTime || !durationHours) {
+        if (!startTime || !durationMinutes) {
             setTimeRemaining("Finished");
             return;
         }
 
-        const endTime = new Date(startTime).getTime() + durationHours * 3600 * 1000;
+        const endTime = new Date(startTime).getTime() + durationMinutes * 60 * 1000;
 
         const calculateAndSetRemaining = () => {
             const now = new Date().getTime();
@@ -47,7 +47,7 @@ const MatchCountdownTimer = ({ startTime, durationHours, onFinish }) => {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [startTime, durationHours, onFinish]);
+    }, [startTime, durationMinutes, onFinish]);
 
     return <>{timeRemaining}</>;
 };
@@ -210,6 +210,7 @@ const WaitingForResultModal = () => (
 const MatchDetail = ({ user }) => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation(); 
     const { sendMessage, isConnected } = useWebSocket();
 
     const widgetRef = useRef(null);
@@ -234,23 +235,32 @@ const MatchDetail = ({ user }) => {
     // BƯỚC 1: ĐỊNH NGHĨA fetchMatchDetail BẰNG useCallback
     // =================================================================
     const fetchMatchDetail = useCallback(async () => {
+        // Xác định loại trận đấu từ state được truyền qua navigate
+        const matchType = location.state?.matchType || 'personal'; // Mặc định là 'personal' (1vs1)
+        
+        // Xây dựng URL API động
+        const apiUrl = matchType === 'tournament'
+            ? `https://f2farena.com/api/tournaments/matches/${id}`
+            : `https://f2farena.com/api/matches/${id}`;
+
+        console.log(`Fetching ${matchType} match detail from: ${apiUrl}`);
+
         try {
-            const response = await fetch(`https://f2farena.com/api/matches/${id}`);
+            const response = await fetch(apiUrl);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
             console.log('Fetched match detail:', data);
 
-            setMatchData(updatedData);
-            sessionStorage.setItem(`match_detail_${id}`, JSON.stringify(updatedData));
+            setMatchData(data); // Sửa lại từ updatedData thành data
+            sessionStorage.setItem(`match_detail_${id}`, JSON.stringify(data));
 
         } catch (error) {
             console.error('Error fetching match detail:', error);
             setMatchData(null);
         }
-    }, [id]);
-
+    }, [id, location.state]);
 
     // =================================================================
     // BƯỚC 2: SỬA LẠI CÁC useEffect
@@ -540,9 +550,9 @@ const MatchDetail = ({ user }) => {
                     <div className="time-remaining">
                         {matchData.status === 'live'
                             ?   <MatchCountdownTimer 
-                                    startTime={matchData.start_time} 
-                                    durationHours={matchData.duration_time} 
-                                    onFinish={() => {
+                                    startTime={matchData.start_time} 
+                                    durationMinutes={matchData.duration_minutes}
+                                    onFinish={() => {
                                         // Khi timer về 0, kiểm tra ngay lập tức
                                         // Dùng `setMatchResultFromSocket` với một callback để lấy giá trị state mới nhất
                                         setMatchResultFromSocket(currentResult => {
@@ -611,7 +621,9 @@ const MatchDetail = ({ user }) => {
                 <MatchResultDisplay matchData={matchData} user={user} />
             ) : (
                 <>
-                    {matchData.status === 'pending_confirmation' && <LoginConfirmationModal matchData={matchData} cancellationReason={cancellationReason} navigate={navigate} />}
+                    {(matchData.status === 'pending_confirmation' || (matchData.type === 'tournament' && matchData.status === 'upcoming')) && (
+                        <LoginConfirmationModal matchData={matchData} cancellationReason={cancellationReason} navigate={navigate} />
+                    )}
                     
                     <div className="tab-buttons">
                         <button className={`tab-button ${activeTab === 'matching' ? 'active' : ''}`} onClick={() => setActiveTab('matching')}>

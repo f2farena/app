@@ -222,6 +222,7 @@ const TournamentDetail = ({ user, onUserUpdate }) => {
                     description: data.description,
                     prizePool: data.prize_pool + ' USDT',
                     participants: data.participants,
+                    max_participants: data.max_participants,
                     symbol: data.symbol,
                     startTime: data.event_time,
                     broker_id: data.broker_id,
@@ -245,6 +246,7 @@ const TournamentDetail = ({ user, onUserUpdate }) => {
     const tournamentId = Number(id);
     const isRegistered = user?.registeredTournaments?.includes(tournamentId);
     const isTournamentEnded = new Date(tournament.startTime) < new Date();
+    const isFull = tournament.max_participants > 0 && tournament.participants >= tournament.max_participants;
 
     return (
         <div className="detail-page-container">
@@ -288,12 +290,14 @@ const TournamentDetail = ({ user, onUserUpdate }) => {
             {!isTournamentEnded && (
                 <footer className="detail-page-footer">
                     {isRegistered ? (
-                        <button className="btn btn-secondary" style={{ width: '90%', maxWidth: '400px' }} disabled>Registered</button>
-                    ) : (
-                        <button className="btn btn-accent" style={{ width: '90%', maxWidth: '400px' }} onClick={() => setShowRegisterModal(true)}>
-                            Register Now
-                        </button>
-                    )}
+                        <button className="btn btn-secondary" style={{ width: '90%', maxWidth: '400px' }} disabled>Registered</button>
+                    ) : isFull ? (
+                        <button className="btn btn-secondary" style={{ width: '90%', maxWidth: '400px' }} disabled>Tournament Full</button>
+                    ) : (
+                        <button className="btn btn-accent" style={{ width: '90%', maxWidth: '400px' }} onClick={() => setShowRegisterModal(true)}>
+                            Register Now
+                        </button>
+                    )}
                 </footer>
             )}
 
