@@ -3256,6 +3256,28 @@ const AppContent = () => {
       );
   };
 
+  const handleCancelTournamentJoin = async () => {
+      if (!matchToConfirm || !user) return;
+
+      try {
+          await fetch(`https://f2farena.com/api/tournaments/matches/${matchToConfirm.id}/cancel-entry`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_id: user.telegram_id })
+          });
+          // Sau khi gọi API, xóa trận đấu khỏi danh sách chờ của user để không hiện lại
+          const canceledMatchId = matchToConfirm.id;
+          setUpcomingTournamentMatches(prevMatches => prevMatches.filter(m => m.id !== canceledMatchId));
+
+      } catch (error) {
+          console.error("Error canceling match entry:", error);
+          // Có thể hiện thông báo lỗi nếu cần
+      } finally {
+          // Luôn đóng modal dù API thành công hay thất bại
+          setMatchToConfirm(null);
+      }
+  };
+
   return (
     <WebSocketProvider user={user}>
         <div className="app-container">
@@ -3299,7 +3321,7 @@ const AppContent = () => {
       <TournamentConfirmationModal
           match={matchToConfirm}
           onConfirm={handleConfirmTournamentJoin}
-          onCancel={() => setMatchToConfirm(null)}
+          onCancel={handleCancelTournamentJoin}
       />
       <SettingsSidebar 
         user={user}

@@ -384,10 +384,16 @@ const MatchDetail = ({ user }) => {
     }, [id, matchData?.player1, matchData?.player2]);
 
     useEffect(() => {
-        const fetchComments = async () => {
-            if (!matchData) return;
-            try {
-                const response = await fetch(`https://f2farena.com/api/matches/${id}/comments`);
+        const fetchComments = async () => {
+            if (!matchData) return;
+
+            const matchType = location.state?.matchType || 'personal';
+            const apiUrl = matchType === 'tournament'
+                ? `https://f2farena.com/api/tournaments/matches/${id}/comments`
+                : `https://f2farena.com/api/matches/${id}/comments`;
+
+            try {
+                const response = await fetch(apiUrl);
                 if (!response.ok) {
                     throw new Error('Failed to fetch comments');
                 }
@@ -485,8 +491,13 @@ const MatchDetail = ({ user }) => {
         const trimmedInput = commentInput.trim();
         if (!trimmedInput || !user || !user.telegram_id || !matchData) return;
 
+        const matchType = location.state?.matchType || 'personal';
+        const apiUrl = matchType === 'tournament'
+            ? `https://f2farena.com/api/tournaments/matches/comment`
+            : `https://f2farena.com/api/matches/comment`;
+
         try {
-            const response = await fetch(`https://f2farena.com/api/matches/comment`, {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
