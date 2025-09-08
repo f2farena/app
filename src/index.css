@@ -1930,3 +1930,12 @@ current-round-text {
     border-radius: 8px;
     margin-bottom: 0.75rem;
 }
+
+.my-match-item.clickable {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.my-match-item.clickable:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}

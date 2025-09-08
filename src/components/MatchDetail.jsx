@@ -114,44 +114,51 @@ const LoginConfirmationModal = ({ matchData, cancellationReason, navigate }) => 
 
 // Component hiển thị kết quả trận đấu
 const MatchResultDisplay = ({ matchData, user }) => {
-    // ... (Giữ nguyên nội dung component này, không cần thay đổi)
     const { result } = matchData;
-    if (!result) return null;
+    // Nếu không có object 'result' thì không hiển thị gì cả
+    if (!result) {
+        console.error("MatchResultDisplay missing 'result' object in matchData", matchData);
+        return <div className="page-padding"><h2>Result data is not available.</h2></div>;
+    }
 
-    const isDraw = result.winner_id === 'draw';
+    const isDraw = result.winner_id === null || result.winner_id === 'draw';
 
-    if (isDraw) {
-        return (
-            <div className="card match-result-card" style={{ textAlign: 'center', margin: '1rem' }}>
-                <h3 className="result-title">Match Result</h3>
-                <div className="result-draw">
-                    <p className="result-status-text">DRAW</p>
-                    <p>Both players had the same score. The bet amount has been refunded.</p>
-                </div>
-            </div>
-        );
-    }
+    if (isDraw) {
+        return (
+            <div className="card match-result-card" style={{ textAlign: 'center', margin: '1rem' }}>
+                <h3 className="result-title">Match Result</h3>
+                <div className="result-draw">
+                    <p className="result-status-text">DRAW</p>
+                    <p>Both players had the same score.</p>
+                </div>
+            </div>
+        );
+    }
 
-    const winner = result.winner_id === matchData.player1.id ? matchData.player1 : matchData.player2;
-    const isCurrentUserWinner = user?.telegram_id === result.winner_id;
+    // Xác định người thắng và người thua
+    const winnerInfo = result.winner_id === matchData.player1.id ? matchData.player1 : matchData.player2;
+    // Lấy điểm số cuối cùng của người thắng từ dữ liệu player tương ứng
+    const winnerFinalScore = result.winner_id === matchData.player1.id ? matchData.player1.score : matchData.player2.score;
 
-    const StarIcon = (props) => (
-        <svg className="winner-star-icon" viewBox="0 0 24 24" fill="currentColor" {...props}>
-            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-        </svg>
-    );
+    const isCurrentUserWinner = user?.telegram_id === result.winner_id;
 
-    const winnerAvatarUrl = getAvatarSource(winner);
+    const StarIcon = (props) => (
+        <svg className="winner-star-icon" viewBox="0 0 24 24" fill="currentColor" {...props}>
+            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+        </svg>
+    );
 
-    return (
-        <div className="page-padding">
-            <div className="winner-showcase">
-                <div className="winner-stars">
-                    <StarIcon style={{ animationDelay: '0.2s' }} />
-                    <StarIcon style={{ transform: 'scale(1.3)', animationDelay: '0s' }} />
-                    <StarIcon style={{ animationDelay: '0.4s' }}/>
-                </div>
-                <div 
+    const winnerAvatarUrl = getAvatarSource(winnerInfo);
+
+    return (
+        <div className="page-padding">
+            <div className="winner-showcase">
+                <div className="winner-stars">
+                    <StarIcon style={{ animationDelay: '0.2s' }} />
+                    <StarIcon style={{ transform: 'scale(1.3)', animationDelay: '0s' }} />
+                    <StarIcon style={{ animationDelay: '0.4s' }}/>
+                </div>
+                <div 
                     className="winner-showcase-avatar" 
                     style={{
                         backgroundImage: `url(${winnerAvatarUrl})`,
@@ -160,26 +167,32 @@ const MatchResultDisplay = ({ matchData, user }) => {
                         backgroundRepeat: 'no-repeat',
                     }}
                     role="img"
-                    aria-label={winner.name}
+                    aria-label={winnerInfo.name}
                 ></div>
-                <h2 className="winner-showcase-label">VICTORIOUS</h2>
-                <h3 className="winner-showcase-name">{winner.name}</h3>
-                <div className="winner-final-stats">
-                    <div className="winner-stat-item">
-                        <span>Final Score</span>
-                        <p>{winner.score.toFixed(2)}</p>
-                    </div>
-                    <div className="winner-stat-item">
-                        <span>Winnings</span>
-                        <p>{result.winning_amount.toFixed(2)} USDT</p>
-                    </div>
-                </div>
-                {isCurrentUserWinner && (
-                    <p className="congrats-message">Congratulations! The winnings have been added to your wallet.</p>
-                )}
-            </div>
-        </div>
-    );
+                <h2 className="winner-showcase-label">VICTORIOUS</h2>
+                <h3 className="winner-showcase-name">{winnerInfo.name}</h3>
+                <div className="winner-final-stats">
+                    <div className="winner-stat-item">
+                        <span>Final Score</span>
+                        {/* Sử dụng điểm số đã xác định ở trên */}
+                        <p>{winnerFinalScore.toFixed(2)}</p>
+                    </div>
+                    <div className="winner-stat-item">
+                        <span>{matchData.type === 'tournament' ? 'Score Change' : 'Winnings'}</span>
+                        <p>
+                            {matchData.type === 'tournament' 
+                                ? `${result.winning_amount > 0 ? '+' : ''}${result.winning_amount.toFixed(2)} pts`
+                                : `${result.winning_amount.toFixed(2)} USDT`
+                            }
+                        </p>
+                    </div>
+                </div>
+                {isCurrentUserWinner && (
+                    <p className="congrats-message">Congratulations! The winnings have been added to your wallet.</p>
+                )}
+            </div>
+        </div>
+    );
 };
 
 const WaitingForResultModal = () => (
@@ -681,14 +694,6 @@ const MatchDetail = ({ user }) => {
                 </>
             )}
             
-            {showResultModal && matchResult && (
-                // ... (Giữ nguyên component ResultModal đã có)
-                <div className="modal-overlay">
-                    <div className="modal-content card">
-                        {/* Nội dung modal kết quả */}
-                    </div>
-                </div>
-            )}
             {showWaitingModal && <WaitingForResultModal />}
         </div>
     );

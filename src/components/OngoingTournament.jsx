@@ -252,7 +252,7 @@ const LiveMatchCard = ({ match }) => {
 };
 
 // --- Component cho tab Match Schedule mới ---
-const MatchScheduleTab = ({ myMatches, liveMatches, currentUser }) => {
+const MatchScheduleTab = ({ myMatches, liveMatches, currentUser, navigate })  => {
     const matchesByDay = myMatches.reduce((acc, match) => {
         // Lấy ngày từ 'time' của trận đấu và chuyển thành một chuỗi định dạng dễ đọc
         // Ví dụ: 'September 7, 2025'
@@ -271,7 +271,7 @@ const MatchScheduleTab = ({ myMatches, liveMatches, currentUser }) => {
         acc[matchDate].push(match);
         return acc;
     }, {});
-    
+
     return (
         <div>
             {currentUser && (
@@ -289,7 +289,11 @@ const MatchScheduleTab = ({ myMatches, liveMatches, currentUser }) => {
                                 const isCompleted = match.status === 'completed';
                                 const isWinner = isCompleted && match.winner === currentUser.id;
                                 return (
-                                    <div key={match.id} className="my-match-item">
+                                    <div 
+                                        key={match.id} 
+                                        className="my-match-item clickable" // Thêm class để tạo hiệu ứng hover
+                                        onClick={() => navigate(`/match/${match.id}`, { state: { matchType: 'tournament' } })}
+                                    >
                                         <div className="opponent-info">
                                             <span className="match-number">{index + 1}.</span>
                                             <img 
@@ -422,9 +426,14 @@ const OngoingTournament = ({ user }) => {
             </div>
 
             <div className="tab-content page-padding">
-                {activeTab === 'schedule' && (
-                    <MatchScheduleTab myMatches={myMatches} liveMatches={liveMatches} currentUser={currentUser} />
-                )}
+                 {activeTab === 'schedule' && (
+                    <MatchScheduleTab 
+                        myMatches={myMatches} 
+                        liveMatches={liveMatches} 
+                        currentUser={currentUser} 
+                        navigate={navigate}
+                    />
+                )}
 
                 {activeTab === 'rounds' && (
                     <RoundsTab rounds={rounds} currentDay={currentDay} />
