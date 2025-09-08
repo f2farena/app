@@ -5,51 +5,39 @@ import './MatchDetail.css';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import defaultAvatar from '../assets/avatar.jpg';
 
-const MatchCountdownTimer = ({ startTime, durationMinutes, onFinish }) => {
-    const [timeRemaining, setTimeRemaining] = useState("Calculating...");
+const MatchCountdownTimer = ({ initialSeconds, onFinish }) => {
+    const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
     const onFinishCalled = useRef(false);
 
     useEffect(() => {
-        if (!startTime || !durationMinutes) {
-            setTimeRemaining("Finished");
+        // Nếu không có số giây ban đầu hoặc đã hết giờ, thì dừng lại
+        if (typeof secondsLeft !== 'number' || secondsLeft < 0) {
             return;
         }
 
-        const endTime = new Date(startTime).getTime() + durationMinutes * 60 * 1000;
-
-        const calculateAndSetRemaining = () => {
-            const now = new Date().getTime();
-            const remainingMilliseconds = endTime - now;
-            
-            if (remainingMilliseconds <= 0) {
-                setTimeRemaining("00:00:00");
-                if (onFinish && !onFinishCalled.current) {
-                    onFinish();
-                    onFinishCalled.current = true;
-                }
-                return 0;
+        // Nếu đếm về 0, gọi onFinish và dừng
+        if (secondsLeft === 0) {
+            if (onFinish && !onFinishCalled.current) {
+                onFinish();
+                onFinishCalled.current = true;
             }
+            return;
+        }
 
-            const totalSeconds = Math.floor(remainingMilliseconds / 1000);
-            const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
-            const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-            const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-            
-            setTimeRemaining(`${hours}:${minutes}:${seconds}`);
-            return remainingMilliseconds;
-        };
-
-        if (calculateAndSetRemaining() <= 0) return;
+        // Thiết lập bộ đếm ngược mỗi giây
         const interval = setInterval(() => {
-            if (calculateAndSetRemaining() <= 0) {
-                clearInterval(interval);
-            }
+            setSecondsLeft(prev => prev - 1);
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [startTime, durationMinutes, onFinish]);
+    }, [secondsLeft, onFinish]); // Phụ thuộc vào secondsLeft để chạy lại mỗi khi nó thay đổi
 
-    return <>{timeRemaining}</>;
+    // Định dạng lại thời gian từ số giây
+    const hours = Math.floor(secondsLeft / 3600).toString().padStart(2, '0');
+    const minutes = Math.floor((secondsLeft % 3600) / 60).toString().padStart(2, '0');
+    const seconds = (secondsLeft % 60).toString().padStart(2, '0');
+    
+    return <>{`${hours}:${minutes}:${seconds}`}</>;
 };
 
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n => n[0]).join('') || 'NN').toUpperCase()}`;
@@ -548,29 +536,28 @@ const MatchDetail = ({ user }) => {
                 </div>
                 <div className="center-details">
                     <div className="time-remaining">
-                        {matchData.status === 'live'
+                        {matchData.status === 'live' && typeof matchData.timeRemaining === 'number'
                             ?   <MatchCountdownTimer 
-                                    startTime={matchData.start_time} 
-                                    durationMinutes={matchData.duration_minutes}
-                                    onFinish={() => {
-                                        // Khi timer về 0, kiểm tra ngay lập tức
-                                        // Dùng `setMatchResultFromSocket` với một callback để lấy giá trị state mới nhất
-                                        setMatchResultFromSocket(currentResult => {
-                                            if (currentResult) {
-                                                // Nếu đã có kết quả -> gọi fetch để cập nhật UI
-                                                console.log("Timer finished. Result was already received. Fetching details.");
-                                                fetchMatchDetail(); 
-                                            } else {
-                                                // Nếu chưa có kết quả -> hiện modal chờ
-                                                console.log("Timer finished. No result yet. Showing waiting modal.");
-                                                setShowWaitingModal(true);
-                                            }
-                                            return currentResult; // return lại state không đổi
-                                        });
-                                    }} 
-                                />
-                            : (matchData.status === 'done' ? 'Finished' : 'Pending') 
-                        }
+                                    initialSeconds={matchData.timeRemaining} // <-- SỬA PROP TẠI ĐÂY
+                                    onFinish={() => {
+                                        // Khi timer về 0, kiểm tra ngay lập tức
+                                        // Dùng `setMatchResultFromSocket` với một callback để lấy giá trị state mới nhất
+                                        setMatchResultFromSocket(currentResult => {
+                                            if (currentResult) {
+                                                // Nếu đã có kết quả -> gọi fetch để cập nhật UI
+                                                console.log("Timer finished. Result was already received. Fetching details.");
+                                                fetchMatchDetail(); 
+                                            } else {
+                                                // Nếu chưa có kết quả -> hiện modal chờ
+                                                console.log("Timer finished. No result yet. Showing waiting modal.");
+                                                setShowWaitingModal(true);
+                                            }
+                                            return currentResult; // return lại state không đổi
+                                        });
+                                    }} 
+                                />
+                            : (matchData.status === 'completed' || matchData.status === 'done' ? 'Finished' : 'Pending') 
+                        }
                     </div>
                     <div className="vs-text">VS</div>
                 </div>
@@ -617,7 +604,7 @@ const MatchDetail = ({ user }) => {
             </div>
             
             {/* Main Content */}
-            {matchData.status === 'done' ? (
+            {matchData.status === 'completed' || matchData.status === 'done' ? (
                 <MatchResultDisplay matchData={matchData} user={user} />
             ) : (
                 <>

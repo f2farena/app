@@ -1917,3 +1917,16 @@ current-round-text {
   color: var(--color-accent);
   font-weight: 700;
 }
+
+.match-day-group {
+    margin-bottom: 1rem;
+}
+
+.match-day-header {
+    font-size: 0.9rem;
+    color: var(--color-secondary-text);
+    padding: 0.5rem 1rem;
+    background-color: var(--color-background-secondary);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}

@@ -253,52 +253,79 @@ const LiveMatchCard = ({ match }) => {
 
 // --- Component cho tab Match Schedule mới ---
 const MatchScheduleTab = ({ myMatches, liveMatches, currentUser }) => {
+    const matchesByDay = myMatches.reduce((acc, match) => {
+        // Lấy ngày từ 'time' của trận đấu và chuyển thành một chuỗi định dạng dễ đọc
+        // Ví dụ: 'September 7, 2025'
+        const matchDate = new Date(match.time).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        // Nếu ngày này chưa có trong accumulator, tạo một mảng rỗng cho nó
+        if (!acc[matchDate]) {
+            acc[matchDate] = [];
+        }
+
+        // Thêm trận đấu hiện tại vào mảng của ngày tương ứng
+        acc[matchDate].push(match);
+        return acc;
+    }, {});
+    
     return (
         <div>
             {currentUser && (
-                <div className="my-matches-section card">
-                    <h3 className="section-title">⚔️ Your Matches</h3>
-                    {myMatches.length > 0 ? (
-                        myMatches.map((match, index) => {
-                            const opponent = match.player1.id === currentUser.id ? match.player2 : match.player1;
-                            const isCompleted = match.status === 'completed';
-                            const isWinner = isCompleted && match.winner === currentUser.id;
-                            return (
-                                <div key={match.id} className="my-match-item">
-                                    <div className="opponent-info">
-                                        <span className="match-number">{index + 1}.</span>
-                                        <img 
-                                            src={opponent.avatar || 'https://i.imgur.com/6VBx3io.png'} 
-                                            alt="Opponent" 
-                                            onError={(e) => { e.target.onerror = null; e.target.src = 'https://i.imgur.com/6VBx3io.png'; }}
-                                        />
-                                        <strong>{opponent.name}</strong>
-                                    </div>
-                                    {isCompleted ? (
-                                        <div className={`match-result ${isWinner ? 'win' : 'loss'}`}>
-                                            <span>{isWinner ? 'Win' : 'Loss'}</span>
-                                            <p>{isWinner ? `+${match.scoreChange}` : `${match.scoreChange}`} pts</p>
-                                        </div>
-                                    ) : (                                        
-                                        myMatches.filter(m => m.status === 'upcoming')[0].id === match.id ? (
-                                            <UpcomingMatchCountdown 
-                                                matchTime={match.time} 
-                                                onTimeUp={() => { /* Logic được quản lý ở App.jsx */ }} 
-                                            />
-                                        ) : (
-                                            <div className="match-time">
-                                                {new Date(match.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </div>
-                                        )
-                                    )}
-                                </div>
-                            );
-                        })
-                    ) : (
-                        <p className="no-data-message">You have no upcoming or completed matches in this tournament.</p>
-                    )}
-                </div>
-            )}
+                <div className="my-matches-section card">
+                    <h3 className="section-title">⚔️ Your Matches</h3>
+                    {/* GHI CHÚ: Thay đổi logic render từ lặp qua mảng phẳng sang lặp qua đối tượng đã nhóm */}
+                    {Object.keys(matchesByDay).length > 0 ? (
+                        // Dùng Object.entries để lặp qua cả key (ngày) và value (mảng trận đấu)
+                        Object.entries(matchesByDay).map(([date, matchesOnDate]) => (
+                            <div key={date} className="match-day-group">
+                                {/* Hiển thị tiêu đề cho mỗi ngày */}
+                                <h4 className="match-day-header">{date}</h4>
+                                {matchesOnDate.map((match, index) => {
+                                const opponent = match.player1.id === currentUser.id ? match.player2 : match.player1;
+                                const isCompleted = match.status === 'completed';
+                                const isWinner = isCompleted && match.winner === currentUser.id;
+                                return (
+                                    <div key={match.id} className="my-match-item">
+                                        <div className="opponent-info">
+                                            <span className="match-number">{index + 1}.</span>
+                                            <img 
+                                                src={opponent.avatar || 'https://i.imgur.com/6VBx3io.png'} 
+                                                alt="Opponent" 
+                                                onError={(e) => { e.target.onerror = null; e.target.src = 'https://i.imgur.com/6VBx3io.png'; }}
+                                            />
+                                            <strong>{opponent.name}</strong>
+                                        </div>
+                                        {isCompleted ? (
+                                            <div className={`match-result ${isWinner ? 'win' : 'loss'}`}>
+                                                <span>{isWinner ? 'Win' : 'Loss'}</span>
+                                                <p>{isWinner ? `+${match.scoreChange}` : `${match.scoreChange}`} pts</p>
+                                            </div>
+                                        ) : ( 
+                                            myMatches.filter(m => m.status === 'upcoming')[0]?.id === match.id ? (
+                                                <UpcomingMatchCountdown 
+                                                    matchTime={match.time} 
+                                                    onTimeUp={() => { /* Logic được quản lý ở App.jsx */ }} 
+                                                />
+                                            ) : (
+                                                <div className="match-time">
+                                                    {new Date(match.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
+                                );
+                                })}
+                            </div>
+                        ))
+                    ) : (
+                        <p className="no-data-message">You have no upcoming or completed matches in this tournament.</p>
+                    )}
+                </div>
+            )}
             
             <h3 className="section-title" style={{ marginTop: '1.5rem' }}>🔵 Live Matches</h3>
             <div className="live-matches-container">
