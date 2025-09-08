@@ -321,16 +321,27 @@ const MatchDetail = ({ user }) => {
 
                 case "NEW_TRADE":
                     setTrades(prevTrades => {
-                        const playerName = matchData
-                            ? (message.data.player_id === matchData.player1.id ? matchData.player1.name : matchData.player2.name)
-                            : 'Unknown Player';
-                        
-                        const newTrade = { ...message.data, player: playerName };
+                        const newTrade = { ...message.data, player: message.data.player };
                         return [...prevTrades, newTrade];
                     });
                     break;
                 case "NEW_COMMENT":
-                    setComments(prev => [...prev, { id: prev.length + 1, ...message.data }].slice(-50));
+                case "NEW_TOURNAMENT_COMMENT":
+                    const newCommentData = message.data;
+                    const commentUser = newCommentData.user_name || newCommentData.user || 'Guest';
+                    const commentAvatar = newCommentData.user_avatar || generateAvatarUrl(commentUser);
+                    const isCurrentUser = user && user.telegram_id === newCommentData.user_id;
+
+                    const newComment = {
+                        id: newCommentData.id,
+                        user: commentUser,
+                        avatar: commentAvatar,
+                        comment: newCommentData.comment,
+                        timestamp: newCommentData.created_at || newCommentData.timestamp,
+                        isCurrentUser: isCurrentUser
+                    };
+                    
+                    setComments(prev => [...prev, newComment].slice(-50));
                     break;
                 case "SCORE_UPDATE":
                     setMatchData(prevData => {
@@ -386,26 +397,40 @@ const MatchDetail = ({ user }) => {
     useEffect(() => {
         const fetchComments = async () => {
             if (!matchData) return;
-
-            const matchType = location.state?.matchType || 'personal';
+            const matchType = matchData.type;
             const apiUrl = matchType === 'tournament'
                 ? `https://f2farena.com/api/tournaments/matches/${id}/comments`
                 : `https://f2farena.com/api/matches/${id}/comments`;
 
+            console.log(`Fetching initial comments from: ${apiUrl}`);
+
             try {
                 const response = await fetch(apiUrl);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch comments');
-                }
-                const data = await response.json();
-                setComments(data);
-            } catch (error) {
-                console.error("Error fetching comments history:", error);
-            }
-        };
+                if (!response.ok) throw new Error('Failed to fetch comments');
+                const data = await response.json();
+                
+                // Chuẩn hóa dữ liệu nhận được trước khi lưu vào state
+                const formattedComments = data.map(comment => ({
+                    id: comment.id,
+                    // Lấy user_name cho tournament, hoặc username cho 1vs1
+                    user: comment.user_name || comment.username || `User_${comment.user_id}`,
+                    avatar: comment.user_avatar || generateAvatarUrl(comment.user_name || comment.username || ''),
+                    comment: comment.comment,
+                    timestamp: comment.created_at || comment.timestamp,
+                    isCurrentUser: user && user.telegram_id === comment.user_id,
+                }));
 
-        fetchComments();
-    }, [id, matchData]); 
+                setComments(formattedComments);
+            } catch (error) {
+                console.error("Error fetching comments history:", error);
+            }
+        };
+        
+        // Chỉ fetch khi `matchData` đã có
+        if (matchData) {
+            fetchComments();
+        }
+    }, [id, matchData, user]);
 
     useEffect(() => {
         if (activeTab === 'matching' && tradesEndRef.current) {
@@ -420,27 +445,40 @@ const MatchDetail = ({ user }) => {
     }, [comments, activeTab]);
 
     useEffect(() => {
-        const fetchTradeHistory = async () => {
-            if (!id || !matchData) return;
-            try {
-                const response = await fetch(`https://f2farena.com/api/matches/${id}/trades`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch trade history');
-                }
-                const data = await response.json();
-                
-                const tradesWithPlayerNames = data.map(trade => ({
-                    ...trade,
-                    player: trade.player_id === matchData.player1.id ? matchData.player1.name : matchData.player2.name
-                }));
+        const fetchTradeHistory = async () => {
+            if (!id || !matchData) return;
+            
+            const matchType = matchData.type || 'personal';
+            const apiUrl = matchType === 'tournament'
+                ? `https://f2farena.com/api/tournaments/matches/${id}/trades`
+                : `https://f2farena.com/api/matches/${id}/trades`;
+            
+            console.log(`Fetching trade history from: ${apiUrl}`);
 
-                setTrades(tradesWithPlayerNames);
-            } catch (error) {
-                console.error("Error fetching trade history:", error);
-            }
-        };
-        fetchTradeHistory();
-    }, [id, matchData]);
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch trade history');
+                }
+                const data = await response.json();
+                
+                // GHI CHÚ: API backend mới đã trả về `player_name`
+                // nên ta không cần map lại tên nữa, chỉ cần chuẩn bị dữ liệu.
+                const tradesWithPlayerNames = data.map(trade => ({
+                    ...trade,
+                    player: trade.player_name || 'Unknown Player' // Đảm bảo có fallback name
+                }));
+
+                setTrades(tradesWithPlayerNames);
+            } catch (error) {
+                console.error("Error fetching trade history:", error);
+            }
+        };
+        
+        if (id && matchData) {
+            fetchTradeHistory();
+        }
+    }, [id, matchData]);
 
     useEffect(() => {
         // Chỉ chạy khi tab 'matching' active và có dữ liệu symbol để vẽ
@@ -491,17 +529,20 @@ const MatchDetail = ({ user }) => {
         const trimmedInput = commentInput.trim();
         if (!trimmedInput || !user || !user.telegram_id || !matchData) return;
 
-        const matchType = location.state?.matchType || 'personal';
+        // GHI CHÚ: Sửa lỗi post comment. Lấy type từ `matchData`
+        const matchType = matchData.type;
         const apiUrl = matchType === 'tournament'
-            ? `https://f2farena.com/api/tournaments/matches/comment`
-            : `https://f2farena.com/api/matches/comment`;
+            ? `https://f2farena.com/api/tournaments/matches/${id}/comments`
+            : `https://f2farena.com/api/matches/${id}/comments`;
+
+        console.log(`Posting comment to: ${apiUrl}`);
 
         try {
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    match_id: parseInt(id),
+                    // match_id: parseInt(id), // match_id đã được lấy từ URL
                     user_id: user.telegram_id,
                     comment: trimmedInput
                 })
@@ -653,7 +694,7 @@ const MatchDetail = ({ user }) => {
                             <div className="timeline-container">
                                 <div className="timeline">
                                     {trades.map((trade, index) => (
-                                        <div key={trade.id || index} className={`trade-box ${Number(trade.player_id) === Number(matchData.player1.id) ? 'left' : 'right'}`}>
+                                        <div key={trade.id || `trade-${index}`} className={`trade-box ${Number(trade.player_id) === Number(matchData.player1.id) ? 'left' : 'right'}`}>
                                             <div className="trade-info">
                                                 <span className="trade-type">{trade.type}</span>
                                                 <span className="trade-amount">{trade.amount} {matchData.symbol?.split('/')[0] || matchData.symbol}</span>
