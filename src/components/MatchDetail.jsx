@@ -296,8 +296,6 @@ const MatchDetail = ({ user }) => {
                 return;
             }
 
-            console.log('[MatchDetail] Received relevant WebSocket message:', message);
-
             switch (message.type) {
                 case "PLAYER_READY_UPDATE":
                     setMatchData(prevData => {

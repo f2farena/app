@@ -2226,17 +2226,17 @@ const ArenaPage = ({ user, onUserUpdate }) => {
         // Nếu không có cache (ví dụ: người dùng vào thẳng trang Arena), thì tự fetch
         try {
             console.log("[ArenaPage] Không có cache chung, tự fetch dữ liệu.");
-            const response = await fetch(`https://f2farena.com/api/tournaments/`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const response = await fetch(`https://f2farena.com/api/tournaments/`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-            const data = await response.json();
-            const apiTournaments = data.map((t) => ({
-                ...t,
-                thumbnail: t.thumbnail, 
-                prizePool: `${t.prize_pool} USDT`,
-                participants: t.participants,
-                status: t.status ? t.status.toLowerCase() : 'upcoming' 
-            }));
+            const data = await response.json();
+            const apiTournaments = data.map((t) => ({
+                ...t,
+                thumbnail: t.thumbnail, 
+                prizePool: t.prize_pool ? `${t.prize_pool} USDT` : 'N/A', 
+                participants: t.participants,
+                status: t.status ? t.status.toLowerCase() : 'upcoming' 
+            })).filter(Boolean); 
    
             setTournamentItems(apiTournaments);
             sessionStorage.setItem(sharedCacheKey, JSON.stringify(apiTournaments));
@@ -2387,7 +2387,7 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                                 <div className="tournament-content">
                                     <h3 className="tournament-title">{item.title}</h3>
                                     <div className="tournament-details-grid">
-                                        <div className="detail-item"><span>Prize Pool</span><p className="detail-value accent">{item.prizePool}</p></div>
+                                        <div className="detail-item"><span>Prize Pool</span><p className="detail-value accent">{item.prize_pool} USDT</p></div>
                                         <div className="detail-item"><span>Participants</span><p className="detail-value">{item.participants}</p></div>
                                         <div className="detail-item"><span>Symbol</span><p className="detail-value primary">{item.symbol}</p></div>
                                     </div>
