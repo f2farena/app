@@ -207,6 +207,38 @@ const WaitingForResultModal = () => (
     </div>
 );
 
+const VolumeProgressBar = ({ playerVolume, volumeRule, playerName }) => {
+    // Thêm kiểm tra an toàn cho các giá trị props
+    const safePlayerVolume = playerVolume ?? 0;
+    const safeVolumeRule = volumeRule ?? 0;
+
+    // Đảm bảo không chia cho 0
+    const progress = safeVolumeRule > 0 ? (safePlayerVolume / safeVolumeRule) * 100 : 0;
+    const clampedProgress = Math.min(progress, 100);
+    const exceededAmount = Math.max(0, safePlayerVolume - safeVolumeRule);
+    const progressColor = progress >= 100 ? 'var(--color-win)' : 'var(--color-warning)';
+
+    // Thêm animation và hiệu ứng sinh động cho thanh progress
+    return (
+        <div className="volume-progress-container">
+            <span className="volume-progress-label">
+                {playerName} Volume: {safePlayerVolume.toFixed(2)} / {safeVolumeRule.toFixed(2)} USDT
+            </span>
+            <div className="volume-progress-bar">
+                <div className="volume-progress-bar-fill" style={{ width: `${clampedProgress}%`, backgroundColor: progressColor }}></div>
+                {progress >= 100 && (
+                    <div className="volume-progress-bar-exceed" style={{ width: `${(exceededAmount / safeVolumeRule) * 100}%` }}></div>
+                )}
+            </div>
+            {progress >= 100 && (
+                <div className="volume-exceeded-badge">
+                    +{(exceededAmount).toFixed(2)} USDT Exceeded!
+                </div>
+            )}
+        </div>
+    );
+};
+
 // Component chính
 const MatchDetail = ({ user }) => {
     const { id } = useParams();
@@ -340,6 +372,17 @@ const MatchDetail = ({ user }) => {
                     };
                     
                     setComments(prev => [...prev, newComment].slice(-50));
+                    break;
+                case "VOLUME_UPDATE":
+                    setMatchData(prevData => {
+                        if (!prevData) return null;
+                        console.log(`[MatchDetail] Received VOLUME_UPDATE for match ${id}: P1=${message.data.player1_volume}, P2=${message.data.player2_volume}`);
+                        return {
+                            ...prevData,
+                            player1: { ...prevData.player1, volume: message.data.player1_volume },
+                            player2: { ...prevData.player2, volume: message.data.player2_volume },
+                        };
+                    });
                     break;
                 case "SCORE_UPDATE":
                     setMatchData(prevData => {
@@ -647,6 +690,22 @@ const MatchDetail = ({ user }) => {
                     <span>Score: {matchData.player2.score}</span>
                 </div>
             </div>
+
+            {/* Thanh tiến trình Volume */}
+            {matchData.type === 'tournament' && matchData.player1 && matchData.player2 && matchData.volume_rule !== undefined && (
+                <div className="page-padding" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '1rem' }}>
+                    <VolumeProgressBar 
+                        playerVolume={matchData.player1.volume}
+                        volumeRule={matchData.volume_rule}
+                        playerName={matchData.player1.name}
+                    />
+                    <VolumeProgressBar 
+                        playerVolume={matchData.player2.volume}
+                        volumeRule={matchData.volume_rule}
+                        playerName={matchData.player2.name}
+                    />
+                </div>
+            )}
             
             {/* Match Info */}
             <div className="header-bottom-section">

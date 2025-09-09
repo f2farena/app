@@ -1,3 +1,4 @@
+/* src/components/MatchDetail.css */
 /* Thiết lập CSS Variables */
 :root {
   --color-background: #000000;
@@ -632,4 +633,143 @@
   .bet-info {
     font-size: 0.7rem;
   }
+}
+
+/* Bao bọc 2 thanh progress */
+.volume-bars-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1rem;
+    margin-top: 1rem;
+    position: relative;
+}
+
+.volume-bar {
+    width: 45%; /* Chiếm 45% container */
+    height: 16px;
+    background-color: #3d4554;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.volume-bar.left {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.volume-bar.right {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.volume-bar-fill {
+    height: 100%;
+    transition: width 0.5s ease-in-out;
+}
+
+.volume-bar-fill.red {
+    background-color: var(--color-warning); /* Màu đỏ/vàng */
+}
+
+.volume-bar-fill.green {
+    background-color: var(--color-success); /* Màu xanh */
+}
+
+.volume-rule-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: var(--color-white);
+    background-color: var(--color-danger); /* Đổi màu để dễ nhận biết */
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.volume-label {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: var(--color-text);
+    z-index: 5;
+    transition: left 0.5s ease-in-out, right 0.5s ease-in-out;
+}
+
+.volume-label.left {
+    left: 4px;
+}
+
+.volume-label.right {
+    right: 4px;
+}
+
+.volume-progress-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-secondary-text);
+}
+
+/* Thanh progress chính */
+.volume-progress-bar {
+    width: 100%;
+    height: 12px;
+    background-color: var(--color-dark-2);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Thanh điền (fill) */
+.volume-progress-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Thanh vượt ngưỡng */
+.volume-progress-bar-exceed {
+    position: absolute;
+    top: 0;
+    left: 100%;
+    height: 100%;
+    background-color: var(--color-win); /* Màu xanh */
+    animation: pulseExceed 1s infinite alternate;
+}
+
+/* Badge hiển thị khi vượt ngưỡng */
+.volume-exceeded-badge {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background-color: var(--color-win);
+    color: var(--color-white);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    transform: translateY(100%);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    animation: fadeIn 0.5s forwards;
+}
+
+/* Hiệu ứng kích thích */
+@keyframes pulseExceed {
+    from { opacity: 0.5; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(50%); }
+    to { opacity: 1; transform: translateY(0); }
 }
