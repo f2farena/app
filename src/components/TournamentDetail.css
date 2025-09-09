@@ -1,0 +1,123 @@
+/* src/components/TournamentDetail.css */
+
+/* --- Main Layout & Section --- */
+.detail-page-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem; /* Tăng khoảng cách giữa các section để thoáng hơn */
+}
+
+/* Class chung cho các section content */
+.content-section {
+    background: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* --- Section Titles with Icons --- */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--color-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-hover-bg);
+}
+
+.section-header .icon {
+    font-size: 1.25rem; /* Dùng font-size cho emoji */
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+/* --- Description Section --- */
+.description-content {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--color-secondary-text);
+}
+
+.description-content p {
+    margin: 0 0 1em 0;
+}
+.description-content > :last-child {
+    margin-bottom: 0;
+}
+
+/* --- Prize Structure Section --- */
+.prize-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.prize-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: var(--color-card-bg); /* Giữ lại nền cho từng item */
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    border: 1px solid var(--color-hover-bg);
+}
+
+.prize-list-item span:first-child {
+    font-weight: 500;
+}
+
+.prize-list-item .prize-amount {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-accent);
+}
+
+/* --- Rounds & Rules Section --- */
+.rounds-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.round-item {
+    padding-bottom: 1.5rem;
+    border-bottom: 1px dashed var(--color-hover-bg);
+}
+.round-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.round-item h4 {
+    margin: 0 0 0.75rem 0;
+    color: var(--color-text);
+    font-size: 1.1rem;
+}
+
+.round-rules-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.rule-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.rule-item-label {
+    font-size: 0.8rem;
+    color: var(--color-secondary-text);
+    text-transform: capitalize;
+}
+
+.rule-item-value {
+    font-weight: 600;
+    font-size: 0.95rem;
+}

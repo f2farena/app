@@ -2,12 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import './TournamentDetail.css'; 
 
-/**
- * ===================================================================================
- * MODAL ĐĂNG KÝ (RegistrationModal) - Đã sửa lỗi logic đăng ký
- * ===================================================================================
- */
 const RegistrationModal = ({ tournament, user, onClose, onUserUpdate }) => {
     // State nội bộ, tự quản lý
     const [newEmail, setNewEmail] = useState('');
@@ -196,36 +192,87 @@ const RegistrationModal = ({ tournament, user, onClose, onUserUpdate }) => {
     );
 };
 
-/**
- * ===================================================================================
- * COMPONENT CHÍNH: TRANG CHI TIẾT GIẢI ĐẤU
- * ===================================================================================
- */
+const TournamentRounds = ({ rounds }) => (
+    <div className="content-section">
+        <div className="section-header">
+            <span className="icon">📜</span>
+            <h3>Rounds & Rules</h3>
+        </div>
+        <div className="rounds-list">
+            {rounds && rounds.length > 0 ? (
+                rounds.map(round => (
+                    <div key={round.round_number} className="round-item">
+                        <h4>{round.name}</h4>
+                        <div className="round-rules-grid">
+                            <div className="rule-item">
+                                <span className="rule-item-label">Format</span>
+                                <strong className="rule-item-value">{round.competition_format}</strong>
+                            </div>
+                             <div className="rule-item">
+                                <span className="rule-item-label">Match Duration</span>
+                                <strong className="rule-item-value">{round.duration_minutes} min</strong>
+                            </div>
+                             <div className="rule-item">
+                                <span className="rule-item-label">Players Advance</span>
+                                <strong className="rule-item-value">{round.advancement_count}</strong>
+                            </div>
+                            {round.competition_format === 'points' && (
+                                <div className="rule-item">
+                                    <span className="rule-item-label">Matches / Player</span>
+                                    <strong className="rule-item-value">{round.matches_per_player}</strong>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ))
+            ) : (
+                <p>Round information will be updated soon.</p>
+            )}
+        </div>
+    </div>
+);
+
+const PrizeStructure = ({ prizeStructure }) => (
+    <div className="content-section">
+         <div className="section-header">
+            <span className="icon">🏆</span>
+            <h3>Prize Structure</h3>
+        </div>
+        {prizeStructure && prizeStructure.length > 0 ? (
+            <div className="prize-list">
+                {prizeStructure.map((prize, index) => (
+                    <div key={index} className="prize-list-item">
+                        <span>{prize.name} {prize.rank && `(Rank ${prize.rank})`}</span>
+                        <span className="prize-amount">{prize.prize}</span>
+                    </div>
+                ))}
+            </div>
+        ) : (
+            <p>Prize structure will be announced soon.</p>
+        )}
+    </div>
+);
+
 const TournamentDetail = ({ user, onUserUpdate }) => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [tournament, setTournament] = useState(null);
+    const [isRegistered, setIsRegistered] = useState(false);
     const [showRegisterModal, setShowRegisterModal] = useState(false);
 
     useEffect(() => {
         const fetchTournamentDetail = async () => {
+            if (!id) return;
             try {
                 const response = await fetch(`https://f2farena.com/api/tournaments/${id}`);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
+                
                 const tournamentData = {
-                    id: data.id,
-                    title: data.title,
-                    thumbnail: data.thumbnail,
+                    ...data,
                     date: new Date(data.event_time).toLocaleDateString(),
+                    prizePool: `${data.prize_pool} USDT`,
                     author: 'F2FArena Team',
-                    description: data.description,
-                    prizePool: data.prize_pool + ' USDT',
-                    participants: data.participants,
-                    max_participants: data.max_participants,
-                    symbol: data.symbol,
-                    startTime: data.event_time,
-                    broker_id: data.broker_id,
                     broker: 'Go Markets',
                     brokerRegistrationUrl: 'https://www.gomarkets.com/register',
                 };
@@ -237,15 +284,22 @@ const TournamentDetail = ({ user, onUserUpdate }) => {
         fetchTournamentDetail();
     }, [id]);
 
+    // Logic kiểm tra đăng ký được sửa lại
+    useEffect(() => {
+        if (user && tournament) {
+            const alreadyRegistered = user.registeredTournaments?.includes(tournament.id);
+            setIsRegistered(alreadyRegistered);
+        }
+    }, [user, tournament]); 
+
     const isLoading = !user || !tournament;
 
     if (isLoading) {
         return <div className="page-padding"><h2>Loading...</h2></div>;
     }
-
-    const tournamentId = Number(id);
-    const isRegistered = user?.registeredTournaments?.includes(tournamentId);
-    const isTournamentEnded = new Date(tournament.startTime) < new Date();
+    
+    const isTournamentEnded = tournament.status === 'completed';
+    // Sửa lỗi logic isFull
     const isFull = tournament.max_participants > 0 && tournament.participants >= tournament.max_participants;
 
     return (
@@ -268,7 +322,7 @@ const TournamentDetail = ({ user, onUserUpdate }) => {
                     </div>
                     <div className="info-grid-item">
                         <span className="info-label">Participants</span>
-                        <span className="info-value">{tournament.participants}</span>
+                        <span className="info-value">{tournament.participants} / {tournament.max_participants || 'Unlimited'}</span>
                     </div>
                     <div className="info-grid-item">
                         <span className="info-label">Symbol</span>
@@ -276,7 +330,7 @@ const TournamentDetail = ({ user, onUserUpdate }) => {
                     </div>
                     <div className="info-grid-item">
                         <span className="info-label">Event Time</span>
-                        <span className="info-value">{new Date(tournament.startTime).toLocaleString()}</span>
+                        <span className="info-value">{new Date(tournament.event_time).toLocaleString()}</span>
                     </div>
                     <div className="info-grid-item">
                         <span className="info-label">Broker</span>
@@ -284,20 +338,31 @@ const TournamentDetail = ({ user, onUserUpdate }) => {
                     </div>
                 </div>
 
-                <div className="detail-page-content" dangerouslySetInnerHTML={{ __html: tournament.description }} />
+                <div className="detail-page-content">
+                    <div className="content-section">
+                         <div className="section-header">
+                            <span className="icon">ℹ️</span>
+                            <h3>Description</h3>
+                        </div>
+                        <div className="description-content" dangerouslySetInnerHTML={{ __html: tournament.description }} />
+                    </div>
+                    
+                    <PrizeStructure prizeStructure={tournament.prize_structure} />
+                    <TournamentRounds rounds={tournament.rounds} />
+                </div>
             </div>
 
             {!isTournamentEnded && (
                 <footer className="detail-page-footer">
                     {isRegistered ? (
-                        <button className="btn btn-secondary" style={{ width: '90%', maxWidth: '400px' }} disabled>Registered</button>
+                        <button className="btn btn-secondary" style={{ width: '90%', maxWidth: '400px' }} disabled>Registered</button>
                     ) : isFull ? (
                         <button className="btn btn-secondary" style={{ width: '90%', maxWidth: '400px' }} disabled>Tournament Full</button>
-                    ) : (
-                        <button className="btn btn-accent" style={{ width: '90%', maxWidth: '400px' }} onClick={() => setShowRegisterModal(true)}>
-                            Register Now
-                        </button>
-                    )}
+                    ) : (
+                        <button className="btn btn-accent" style={{ width: '90%', maxWidth: '400px' }} onClick={() => setShowRegisterModal(true)}>
+                            Register Now
+                        </button>
+                    )}
                 </footer>
             )}
 
