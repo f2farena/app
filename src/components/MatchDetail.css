@@ -1,4 +1,3 @@
-/* src/components/MatchDetail.css */
 /* Thiết lập CSS Variables */
 :root {
   --color-background: #000000;
@@ -400,130 +399,6 @@
   font-weight: 700;
 }
 
-/* Trục thời gian (Bet Outside) */
-.bet-outside-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 0;
-  background-color: var(--color-card-bg);
-  flex: 1;
-  overflow-y: auto;
-}
-
-.bet-outside-buttons {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
-  background-color: var(--color-card-bg);
-}
-
-.bet-outside-button-green,
-.bet-outside-button-red {
-  flex: 1;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: var(--color-background);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.bet-outside-button-green {
-  background-color: var(--color-success);
-}
-
-.bet-outside-button-red {
-  background-color: var(--color-danger);
-}
-
-.bet-outside-trend {
-  font-size: 1rem;
-  margin-left: 0.5rem;
-}
-
-.bet-outside-trend.up {
-  color: var(--color-success);
-}
-
-.bet-outside-trend.down {
-  color: var(--color-danger);
-}
-
-.bet-outside-table {
-  flex: 1;
-  padding: 0 0.5rem;
-  overflow-y: auto;
-  width: 100%;
-}
-
-.bet-outside-total {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--color-accent);
-  text-align: center;
-  margin-bottom: 1rem;
-}
-
-.bet-outside-row {
-  display: grid;
-  grid-template-columns: 50px 1fr 80px 100px 80px;
-  align-items: center;
-  font-size: 0.875rem;
-  color: var(--color-text);
-  width: 100%;
-  margin-bottom: 0;
-}
-
-.bet-outside-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  margin-right: 0.5rem;
-}
-
-.bet-outside-nickname {
-  font-weight: 600;
-}
-
-.bet-outside-odds {
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  text-align: center;
-  color: var(--color-background);
-}
-
-.bet-outside-odds-green {
-  background-color: var(--color-success);
-}
-
-.bet-outside-odds-red {
-  background-color: var(--color-danger);
-}
-
-.bet-outside-amount {
-  text-align: right;
-}
-
-.bet-outside-time {
-  font-size: 0.75rem;
-  color: var(--color-secondary-text);
-  text-align: right;
-}
-
-.bet-outside-divider {
-  border: none;
-  border-top: 1px solid var(--color-text);
-  opacity: 0.2;
-  width: 100%;
-  margin: 1.2rem 0;
-  grid-column: 1 / -1;
-}
-
 /* Thanh cuộn */
 .timeline-container::-webkit-scrollbar,
 .discussion-container::-webkit-scrollbar,
@@ -636,94 +511,143 @@
 }
 
 /* =================================== */
-/* CSS CHO TRỤC VOLUME MỚI             */
+/* Cập nhật CSS cho trục Volume */
 /* =================================== */
 
-/* Container chính cho toàn bộ trục */
 .volume-axis-container {
     display: flex;
     align-items: center;
     width: 100%;
-    height: 40px; /* Tăng chiều cao để chứa số và thanh */
+    height: 50px;
     position: relative;
+    justify-content: center;
 }
 
-/* Điểm chia ở giữa (hình tròn) */
+/* Container cho các giá trị volume */
+.volume-values-wrapper {
+    position: absolute;
+    top: 30px; /* Đặt dưới thanh bar */
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 10px;
+}
+
 .volume-axis-center {
-    width: 30px;
-    height: 30px;
+    width: 44px;
+    height: 44px;
     background-color: var(--color-card-bg);
     border: 2px solid var(--color-primary);
     border-radius: 50%;
-    position: relative;
     z-index: 10;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(0, 206, 201, 0.5);
+    position: relative;
 }
 
-/* Con số volume rule ở giữa */
-.volume-axis-rule {
-    font-size: 0.7rem;
+.volume-axis-title {
+    font-size: 0.75rem;
     font-weight: bold;
     color: var(--color-accent);
+    text-transform: uppercase;
 }
 
-/* Background cho mỗi nửa trục (trái và phải) */
 .volume-axis-bar {
-    flex-grow: 1; /* Chia đều không gian còn lại */
-    height: 12px;
+    flex-grow: 1;
+    height: 8px;
     background-color: #3d4554;
     position: relative;
-    overflow: hidden;
 }
 
 .volume-axis-bar.left {
-    border-top-left-radius: 6px;
-    border-bottom-left-radius: 6px;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
 }
 
 .volume-axis-bar.right {
-    border-top-right-radius: 6px;
-    border-bottom-right-radius: 6px;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
 }
 
-/* Thanh màu chạy thể hiện volume */
 .volume-axis-fill {
     position: absolute;
     top: 0;
     height: 100%;
+    transition: width 0.5s ease-out;
+}
+
+.volume-axis-fill.red {
+    background-color: #e53e3e;
+}
+
+.volume-axis-fill.green {
     background-color: var(--color-success);
-    transition: width 0.5s ease-out; /* Hiệu ứng chạy mượt */
 }
 
 .volume-axis-bar.left .volume-axis-fill {
-    right: 0; /* Chạy từ phải qua trái */
-    border-top-left-radius: 6px;
-    border-bottom-left-radius: 6px;
+    right: 0;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
 }
 
 .volume-axis-bar.right .volume-axis-fill {
-    left: 0; /* Chạy từ trái qua phải */
-    border-top-right-radius: 6px;
-    border-bottom-right-radius: 6px;
+    left: 0;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
 }
 
-/* Con số volume hiện tại của player */
-.volume-axis-value {
+.volume-axis-rule-marker {
     position: absolute;
-    top: -16px; /* Nằm phía trên thanh */
-    font-size: 0.8rem;
+    top: 12px;
+    font-size: 0.7rem;
+    color: var(--color-secondary-text);
+}
+
+.volume-axis-bar.left .volume-axis-rule-marker {
+    right: 50%;
+    transform: translateX(50%);
+}
+
+.volume-axis-bar.right .volume-axis-rule-marker {
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.volume-axis-value {
+    font-size: 0.9rem;
+    font-weight: bold;
     color: var(--color-text);
-    font-weight: 500;
     white-space: nowrap;
+    min-width: 30px;
+    text-align: center;
+    transition: all 0.5s ease-out;
 }
 
-.volume-axis-bar.left .volume-axis-value {
-    left: 5px; /* Căn lề trái */
+.volume-axis-value.left {
+    text-align: left;
 }
 
-.volume-axis-bar.right .volume-axis-value {
-    right: 5px; /* Căn lề phải */
+.volume-axis-value.right {
+    text-align: right;
+}
+
+.volume-axis-value.achieved {
+    color: var(--color-success);
+    animation: pulseGreen 1.5s infinite;
+}
+
+@keyframes pulseGreen {
+    0% {
+        text-shadow: 0 0 2px var(--color-success);
+    }
+    50% {
+        text-shadow: 0 0 8px var(--color-success);
+    }
+    100% {
+        text-shadow: 0 0 2px var(--color-success);
+    }
 }

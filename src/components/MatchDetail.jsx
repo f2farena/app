@@ -1,4 +1,3 @@
-// src/components/MatchDetail.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import './MatchDetail.css';
@@ -57,7 +56,7 @@ const LoginConfirmationModal = ({ matchData, cancellationReason, navigate }) => 
                         {cancellationReason}
                     </p>
                     <button className="btn btn-secondary" onClick={() => navigate('/arena')}>
-                       Back to Arena
+                        Back to Arena
                     </button>
                 </div>
             </div>
@@ -65,51 +64,51 @@ const LoginConfirmationModal = ({ matchData, cancellationReason, navigate }) => 
     }
     
     // Logic cũ giữ nguyên nếu không có lý do hủy
-    const player1Ready = matchData.player1.ready;
-    const player2Ready = matchData.player2.ready;
+    const player1Ready = matchData.player1.ready;
+    const player2Ready = matchData.player2.ready;
 
-    const StatusIndicator = ({ isReady }) => (
-        <div className={`status-indicator ${isReady ? 'ready' : 'waiting'}`}>
-            {isReady ? '✅ Ready' : 'Waiting...'}
-        </div>
-    );
+    const StatusIndicator = ({ isReady }) => (
+        <div className={`status-indicator ${isReady ? 'ready' : 'waiting'}`}>
+            {isReady ? '✅ Ready' : 'Waiting...'}
+        </div>
+    );
 
-    return (
-        <div className="login-modal-overlay">
-            <div className="login-modal-content card">
-                <h3 className="login-modal-title">Awaiting Players</h3>
-                <p className="login-modal-instructions">
-                    The system is verifying and connecting to your trading account. Please wait a few minutes.
-                </p>
-                <div className="player-status-list">
-                    <div className="player-status-row">
-                        <div className="player-info-modal">
-                            <img 
+    return (
+        <div className="login-modal-overlay">
+            <div className="login-modal-content card">
+                <h3 className="login-modal-title">Awaiting Players</h3>
+                <p className="login-modal-instructions">
+                    The system is verifying and connecting to your trading account. Please wait a few minutes.
+                </p>
+                <div className="player-status-list">
+                    <div className="player-status-row">
+                        <div className="player-info-modal">
+                            <img 
                                 src={getAvatarSource(matchData.player1)} 
                                 alt={matchData.player1.name} 
                                 className="player-avatar-modal" 
                                 onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
                             />
-                            <span>{matchData.player1.name}</span>
-                        </div>
-                        <StatusIndicator isReady={player1Ready} />
-                    </div>
-                    <div className="player-status-row">
-                        <div className="player-info-modal">
-                            <img 
+                            <span>{matchData.player1.name}</span>
+                        </div>
+                        <StatusIndicator isReady={player1Ready} />
+                    </div>
+                    <div className="player-status-row">
+                        <div className="player-info-modal">
+                            <img 
                                 src={getAvatarSource(matchData.player2)} 
                                 alt={matchData.player2.name} 
                                 className="player-avatar-modal" 
                                 onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
                             />
-                            <span>{matchData.player2.name}</span>
-                        </div>
-                        <StatusIndicator isReady={player2Ready} />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+                            <span>{matchData.player2.name}</span>
+                        </div>
+                        <StatusIndicator isReady={player2Ready} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 // Component hiển thị kết quả trận đấu
@@ -208,32 +207,46 @@ const WaitingForResultModal = () => (
 );
 
 const VolumeProgressBar = ({ player1Volume, player2Volume, volumeRule }) => {
-    const p1Progress = volumeRule > 0 ? Math.min((player1Volume / volumeRule) * 100, 200) : 0;
-    const p2Progress = volumeRule > 0 ? Math.min((player2Volume / volumeRule) * 100, 200) : 0;
+    // Tính toán chiều rộng thanh progress cho mỗi player
+    const p1Progress = volumeRule > 0 ? Math.min((player1Volume / (volumeRule * 2)) * 100, 100) : 0;
+    const p2Progress = volumeRule > 0 ? Math.min((player2Volume / (volumeRule * 2)) * 100, 100) : 0;
 
+    const p1Achieved = player1Volume >= volumeRule;
+    const p2Achieved = player2Volume >= volumeRule;
+    
     return (
         <div className="volume-axis-container">
             {/* Thanh của Player 1 (bên trái) */}
             <div className="volume-axis-bar left">
                 <div 
-                    className="volume-axis-fill" 
-                    style={{ width: `${p1Progress / 2}%` }}
+                    className={`volume-axis-fill ${!p1Achieved ? 'red' : 'green'}`} 
+                    style={{ width: `${p1Progress}%` }}
                 ></div>
-                <span className="volume-axis-value">{player1Volume?.toFixed(2)}</span>
+                <span className="volume-axis-rule-marker">{volumeRule?.toFixed(2)}</span>
+            </div>
+            
+            {/* Dùng một container riêng để căn lề hai con số ra hai bên */}
+            <div className="volume-values-wrapper">
+                <span className={`volume-axis-value left ${p1Achieved ? 'achieved' : ''}`}>
+                    {player1Volume?.toFixed(2)}
+                </span>
+                <span className={`volume-axis-value right ${p2Achieved ? 'achieved' : ''}`}>
+                    {player2Volume?.toFixed(2)}
+                </span>
             </div>
 
             {/* Điểm chia ở giữa */}
             <div className="volume-axis-center">
-                <div className="volume-axis-rule">{volumeRule?.toFixed(2)}</div>
+                <div className="volume-axis-title">Volume</div>
             </div>
 
             {/* Thanh của Player 2 (bên phải) */}
             <div className="volume-axis-bar right">
                 <div 
-                    className="volume-axis-fill" 
-                    style={{ width: `${p2Progress / 2}%` }}
+                    className={`volume-axis-fill ${!p2Achieved ? 'red' : 'green'}`} 
+                    style={{ width: `${p2Progress}%` }}
                 ></div>
-                <span className="volume-axis-value">{player2Volume?.toFixed(2)}</span>
+                <span className="volume-axis-rule-marker">{volumeRule?.toFixed(2)}</span>
             </div>
         </div>
     );
@@ -426,16 +439,16 @@ const MatchDetail = ({ user }) => {
         fetchMatchDetail();
     }, [id, fetchMatchDetail]); 
 
-    useEffect(() => {
-        if (matchData) {
+    useEffect(() => {
+        if (matchData) {
             // Chỉ set giá trị ban đầu MỘT LẦN khi matchData được fetch lần đầu
-            setViews(prevViews => prevViews > 0 ? prevViews : (matchData.views || 0));
-            setOutsideBetsTotal(matchData.outsideBetsTotal || 0);
-        }
+            setViews(prevViews => prevViews > 0 ? prevViews : (matchData.views || 0));
+            setOutsideBetsTotal(matchData.outsideBetsTotal || 0);
+        }
         // Phụ thuộc vào ID để chỉ chạy khi đổi trận đấu, không chạy khi score thay đổi
-    }, [id, matchData?.player1, matchData?.player2]);
+    }, [id, matchData?.player1, matchData?.player2]);
 
-    useEffect(() => {
+    useEffect(() => {
         const fetchComments = async () => {
             if (!matchData) return;
             const matchType = matchData.type;
@@ -473,19 +486,19 @@ const MatchDetail = ({ user }) => {
         }
     }, [id, matchData, user]);
 
-    useEffect(() => {
-        if (activeTab === 'matching' && tradesEndRef.current) {
-            tradesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [trades, activeTab]);
+    useEffect(() => {
+        if (activeTab === 'matching' && tradesEndRef.current) {
+            tradesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [trades, activeTab]);
 
-    useEffect(() => {
-        if (activeTab === 'discussion' && commentsEndRef.current) {
-            commentsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [comments, activeTab]);
+    useEffect(() => {
+        if (activeTab === 'discussion' && commentsEndRef.current) {
+            commentsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [comments, activeTab]);
 
-    useEffect(() => {
+    useEffect(() => {
         const fetchTradeHistory = async () => {
             if (!id || !matchData) return;
             
@@ -521,9 +534,9 @@ const MatchDetail = ({ user }) => {
         }
     }, [id, matchData]);
 
-    useEffect(() => {
+    useEffect(() => {
         // Chỉ chạy khi tab 'matching' active và có dữ liệu symbol để vẽ
-        if (activeTab === 'matching' && matchData && matchData.tradingview_symbol && matchData.status === 'live') {
+        if (activeTab === 'matching' && matchData && matchData.tradingview_symbol && matchData.status === 'live') {
             // Chỉ tạo widget nếu nó chưa được khởi tạo
             if (!widgetRef.current) {
                 console.log("Creating TradingView Widget for the first time.");
@@ -550,20 +563,20 @@ const MatchDetail = ({ user }) => {
                 };
                 document.body.appendChild(script);
             }
-        }
+        }
 
-        // Hàm dọn dẹp: Sẽ chạy khi component unmount hoặc khi activeTab thay đổi
-        return () => {
+        // Hàm dọn dẹp: Sẽ chạy khi component unmount hoặc khi activeTab thay đổi
+        return () => {
             // Nếu người dùng chuyển tab hoặc rời trang, xóa widget
             if (widgetRef.current) {
                 console.log("Cleaning up TradingView Widget.");
-                const widgetDiv = document.getElementById('tradingview_widget');
-                if (widgetDiv) widgetDiv.innerHTML = '';
-                widgetRef.current = null;
+                const widgetDiv = document.getElementById('tradingview_widget');
+                if (widgetDiv) widgetDiv.innerHTML = '';
+                widgetRef.current = null;
             }
-        };
+        };
 
-    }, [activeTab, matchData?.tradingview_symbol, matchData?.status]);
+    }, [activeTab, matchData?.tradingview_symbol, matchData?.status]);
 
     const handleSendComment = async (e) => {
         e.preventDefault();
@@ -643,27 +656,27 @@ const MatchDetail = ({ user }) => {
                 <div className="center-details">
                     <div className="time-remaining">
                         {matchData.status === 'live' && typeof matchData.timeRemaining === 'number'
-                            ?   <MatchCountdownTimer 
-                                    initialSeconds={matchData.timeRemaining} // <-- SỬA PROP TẠI ĐÂY
-                                    onFinish={() => {
-                                        // Khi timer về 0, kiểm tra ngay lập tức
-                                        // Dùng `setMatchResultFromSocket` với một callback để lấy giá trị state mới nhất
-                                        setMatchResultFromSocket(currentResult => {
-                                            if (currentResult) {
-                                                // Nếu đã có kết quả -> gọi fetch để cập nhật UI
-                                                console.log("Timer finished. Result was already received. Fetching details.");
-                                                fetchMatchDetail(); 
-                                            } else {
-                                                // Nếu chưa có kết quả -> hiện modal chờ
-                                                console.log("Timer finished. No result yet. Showing waiting modal.");
-                                                setShowWaitingModal(true);
-                                            }
-                                            return currentResult; // return lại state không đổi
-                                        });
-                                    }} 
-                                />
-                            : (matchData.status === 'completed' || matchData.status === 'done' ? 'Finished' : 'Pending') 
-                        }
+                            ?   <MatchCountdownTimer 
+                                initialSeconds={matchData.timeRemaining} // <-- SỬA PROP TẠI ĐÂY
+                                onFinish={() => {
+                                    // Khi timer về 0, kiểm tra ngay lập tức
+                                    // Dùng `setMatchResultFromSocket` với một callback để lấy giá trị state mới nhất
+                                    setMatchResultFromSocket(currentResult => {
+                                        if (currentResult) {
+                                            // Nếu đã có kết quả -> gọi fetch để cập nhật UI
+                                            console.log("Timer finished. Result was already received. Fetching details.");
+                                            fetchMatchDetail(); 
+                                        } else {
+                                            // Nếu chưa có kết quả -> hiện modal chờ
+                                            console.log("Timer finished. No result yet. Showing waiting modal.");
+                                            setShowWaitingModal(true);
+                                        }
+                                        return currentResult; // return lại state không đổi
+                                    });
+                                }} 
+                            />
+                            : (matchData.status === 'completed' || matchData.status === 'done' ? 'Finished' : 'Pending') 
+                        }
                     </div>
                     <div className="vs-text">VS</div>
                 </div>
@@ -726,8 +739,8 @@ const MatchDetail = ({ user }) => {
             ) : (
                 <>
                     {(matchData.status === 'pending_confirmation' || (matchData.type === 'tournament' && matchData.status === 'upcoming')) && (
-                        <LoginConfirmationModal matchData={matchData} cancellationReason={cancellationReason} navigate={navigate} />
-                    )}
+                        <LoginConfirmationModal matchData={matchData} cancellationReason={cancellationReason} navigate={navigate} />
+                    )}
                     
                     <div className="tab-buttons">
                         <button className={`tab-button ${activeTab === 'matching' ? 'active' : ''}`} onClick={() => setActiveTab('matching')}>
