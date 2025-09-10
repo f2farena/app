@@ -5,205 +5,205 @@ import { useWebSocket } from '../contexts/WebSocketContext';
 import defaultAvatar from '../assets/avatar.jpg';
 
 const MatchCountdownTimer = ({ initialSeconds, onFinish }) => {
-    const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
-    const onFinishCalled = useRef(false);
+    const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
+    const onFinishCalled = useRef(false);
 
-    useEffect(() => {
-        // Nếu không có số giây ban đầu hoặc đã hết giờ, thì dừng lại
-        if (typeof secondsLeft !== 'number' || secondsLeft < 0) {
-            return;
-        }
+    useEffect(() => {
+        // Nếu không có số giây ban đầu hoặc đã hết giờ, thì dừng lại
+        if (typeof secondsLeft !== 'number' || secondsLeft < 0) {
+            return;
+        }
 
-        // Nếu đếm về 0, gọi onFinish và dừng
-        if (secondsLeft === 0) {
-            if (onFinish && !onFinishCalled.current) {
-                onFinish();
-                onFinishCalled.current = true;
-            }
-            return;
-        }
+        // Nếu đếm về 0, gọi onFinish và dừng
+        if (secondsLeft === 0) {
+            if (onFinish && !onFinishCalled.current) {
+                onFinish();
+                onFinishCalled.current = true;
+            }
+            return;
+        }
 
-        // Thiết lập bộ đếm ngược mỗi giây
-        const interval = setInterval(() => {
-            setSecondsLeft(prev => prev - 1);
-        }, 1000);
+        // Thiết lập bộ đếm ngược mỗi giây
+        const interval = setInterval(() => {
+            setSecondsLeft(prev => prev - 1);
+        }, 1000);
 
-        return () => clearInterval(interval);
-    }, [secondsLeft, onFinish]); // Phụ thuộc vào secondsLeft để chạy lại mỗi khi nó thay đổi
+        return () => clearInterval(interval);
+    }, [secondsLeft, onFinish]); // Phụ thuộc vào secondsLeft để chạy lại mỗi khi nó thay đổi
 
-    // Định dạng lại thời gian từ số giây
-    const hours = Math.floor(secondsLeft / 3600).toString().padStart(2, '0');
-    const minutes = Math.floor((secondsLeft % 3600) / 60).toString().padStart(2, '0');
-    const seconds = (secondsLeft % 60).toString().padStart(2, '0');
-    
-    return <>{`${hours}:${minutes}:${seconds}`}</>;
+    // Định dạng lại thời gian từ số giây
+    const hours = Math.floor(secondsLeft / 3600).toString().padStart(2, '0');
+    const minutes = Math.floor((secondsLeft % 3600) / 60).toString().padStart(2, '0');
+    const seconds = (secondsLeft % 60).toString().padStart(2, '0');
+    
+    return <>{`${hours}:${minutes}:${seconds}`}</>;
 };
 
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n => n[0]).join('') || 'NN').toUpperCase()}`;
 const getAvatarSource = (player) => {
-    return player?.avatar || generateAvatarUrl(player ? player.name : 'Unknown');
+    return player?.avatar || generateAvatarUrl(player ? player.name : 'Unknown');
 };
 
 // Modal chờ đăng nhập
 const LoginConfirmationModal = ({ matchData, cancellationReason, navigate }) => {
-    // Nếu có lý do hủy trận, hiển thị thông báo hủy
-    if (cancellationReason) {
-        return (
-            <div className="login-modal-overlay">
-                <div className="login-modal-content card">
-                    <h3 className="login-modal-title" style={{color: 'var(--color-loss)'}}>⚔️ Match Canceled</h3>
-                    <p className="login-modal-instructions" style={{marginTop: '1rem'}}>
-                        {cancellationReason}
-                    </p>
-                    <button className="btn btn-secondary" onClick={() => navigate('/arena')}>
-                        Back to Arena
-                    </button>
-                </div>
-            </div>
-        );
-    }
-    
-    // Logic cũ giữ nguyên nếu không có lý do hủy
-    const player1Ready = matchData.player1.ready;
-    const player2Ready = matchData.player2.ready;
+    // Nếu có lý do hủy trận, hiển thị thông báo hủy
+    if (cancellationReason) {
+        return (
+            <div className="login-modal-overlay">
+                <div className="login-modal-content card">
+                    <h3 className="login-modal-title" style={{color: 'var(--color-loss)'}}>⚔️ Match Canceled</h3>
+                    <p className="login-modal-instructions" style={{marginTop: '1rem'}}>
+                        {cancellationReason}
+                    </p>
+                    <button className="btn btn-secondary" onClick={() => navigate('/arena')}>
+                       Back to Arena
+                    </button>
+                </div>
+            </div>
+        );
+    }
+    
+    // Logic cũ giữ nguyên nếu không có lý do hủy
+    const player1Ready = matchData.player1.ready;
+    const player2Ready = matchData.player2.ready;
 
-    const StatusIndicator = ({ isReady }) => (
-        <div className={`status-indicator ${isReady ? 'ready' : 'waiting'}`}>
-            {isReady ? '✅ Ready' : 'Waiting...'}
-        </div>
-    );
+    const StatusIndicator = ({ isReady }) => (
+        <div className={`status-indicator ${isReady ? 'ready' : 'waiting'}`}>
+            {isReady ? '✅ Ready' : 'Waiting...'}
+        </div>
+    );
 
-    return (
-        <div className="login-modal-overlay">
-            <div className="login-modal-content card">
-                <h3 className="login-modal-title">Awaiting Players</h3>
-                <p className="login-modal-instructions">
-                    The system is verifying and connecting to your trading account. Please wait a few minutes.
-                </p>
-                <div className="player-status-list">
-                    <div className="player-status-row">
-                        <div className="player-info-modal">
-                            <img 
-                                src={getAvatarSource(matchData.player1)} 
-                                alt={matchData.player1.name} 
-                                className="player-avatar-modal" 
-                                onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
-                            />
-                            <span>{matchData.player1.name}</span>
-                        </div>
-                        <StatusIndicator isReady={player1Ready} />
-                    </div>
-                    <div className="player-status-row">
-                        <div className="player-info-modal">
-                            <img 
-                                src={getAvatarSource(matchData.player2)} 
-                                alt={matchData.player2.name} 
-                                className="player-avatar-modal" 
-                                onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
-                            />
-                            <span>{matchData.player2.name}</span>
-                        </div>
-                        <StatusIndicator isReady={player2Ready} />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+    return (
+        <div className="login-modal-overlay">
+            <div className="login-modal-content card">
+                <h3 className="login-modal-title">Awaiting Players</h3>
+                <p className="login-modal-instructions">
+                    The system is verifying and connecting to your trading account. Please wait a few minutes.
+                </p>
+                <div className="player-status-list">
+                    <div className="player-status-row">
+                        <div className="player-info-modal">
+                            <img 
+                                src={getAvatarSource(matchData.player1)} 
+                                alt={matchData.player1.name} 
+                                className="player-avatar-modal" 
+                                onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
+                            />
+                            <span>{matchData.player1.name}</span>
+                        </div>
+                        <StatusIndicator isReady={player1Ready} />
+                    </div>
+                    <div className="player-status-row">
+                        <div className="player-info-modal">
+                            <img 
+                                src={getAvatarSource(matchData.player2)} 
+                                alt={matchData.player2.name} 
+                                className="player-avatar-modal" 
+                                onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }}
+                            />
+                            <span>{matchData.player2.name}</span>
+                        </div>
+                        <StatusIndicator isReady={player2Ready} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 // Component hiển thị kết quả trận đấu
 const MatchResultDisplay = ({ matchData, user }) => {
-    const { result } = matchData;
-    // Nếu không có object 'result' thì không hiển thị gì cả
-    if (!result) {
-        console.error("MatchResultDisplay missing 'result' object in matchData", matchData);
-        return <div className="page-padding"><h2>Result data is not available.</h2></div>;
-    }
+    const { result } = matchData;
+    // Nếu không có object 'result' thì không hiển thị gì cả
+    if (!result) {
+        console.error("MatchResultDisplay missing 'result' object in matchData", matchData);
+        return <div className="page-padding"><h2>Result data is not available.</h2></div>;
+    }
 
-    const isDraw = result.winner_id === null || result.winner_id === 'draw';
+    const isDraw = result.winner_id === null || result.winner_id === 'draw';
 
-    if (isDraw) {
-        return (
-            <div className="card match-result-card" style={{ textAlign: 'center', margin: '1rem' }}>
-                <h3 className="result-title">Match Result</h3>
-                <div className="result-draw">
-                    <p className="result-status-text">DRAW</p>
-                    <p>Both players had the same score.</p>
-                </div>
-            </div>
-        );
-    }
+    if (isDraw) {
+        return (
+            <div className="card match-result-card" style={{ textAlign: 'center', margin: '1rem' }}>
+                <h3 className="result-title">Match Result</h3>
+                <div className="result-draw">
+                    <p className="result-status-text">DRAW</p>
+                    <p>Both players had the same score.</p>
+                </div>
+            </div>
+        );
+    }
 
-    // Xác định người thắng và người thua
-    const winnerInfo = result.winner_id === matchData.player1.id ? matchData.player1 : matchData.player2;
-    // Lấy điểm số cuối cùng của người thắng từ dữ liệu player tương ứng
-    const winnerFinalScore = result.winner_id === matchData.player1.id ? matchData.player1.score : matchData.player2.score;
+    // Xác định người thắng và người thua
+    const winnerInfo = result.winner_id === matchData.player1.id ? matchData.player1 : matchData.player2;
+    // Lấy điểm số cuối cùng của người thắng từ dữ liệu player tương ứng
+    const winnerFinalScore = result.winner_id === matchData.player1.id ? matchData.player1.score : matchData.player2.score;
 
-    const isCurrentUserWinner = user?.telegram_id === result.winner_id;
+    const isCurrentUserWinner = user?.telegram_id === result.winner_id;
 
-    const StarIcon = (props) => (
-        <svg className="winner-star-icon" viewBox="0 0 24 24" fill="currentColor" {...props}>
-            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-        </svg>
-    );
+    const StarIcon = (props) => (
+        <svg className="winner-star-icon" viewBox="0 0 24 24" fill="currentColor" {...props}>
+            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+        </svg>
+    );
 
-    const winnerAvatarUrl = getAvatarSource(winnerInfo);
+    const winnerAvatarUrl = getAvatarSource(winnerInfo);
 
-    return (
-        <div className="page-padding">
-            <div className="winner-showcase">
-                <div className="winner-stars">
-                    <StarIcon style={{ animationDelay: '0.2s' }} />
-                    <StarIcon style={{ transform: 'scale(1.3)', animationDelay: '0s' }} />
-                    <StarIcon style={{ animationDelay: '0.4s' }}/>
-                </div>
-                <div 
-                    className="winner-showcase-avatar" 
-                    style={{
-                        backgroundImage: `url(${winnerAvatarUrl})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center center',
-                        backgroundRepeat: 'no-repeat',
-                    }}
-                    role="img"
-                    aria-label={winnerInfo.name}
-                ></div>
-                <h2 className="winner-showcase-label">VICTORIOUS</h2>
-                <h3 className="winner-showcase-name">{winnerInfo.name}</h3>
-                <div className="winner-final-stats">
-                    <div className="winner-stat-item">
-                        <span>Final Score</span>
-                        {/* Sử dụng điểm số đã xác định ở trên */}
-                        <p>{winnerFinalScore.toFixed(2)}</p>
-                    </div>
-                    <div className="winner-stat-item">
-                        <span>{matchData.type === 'tournament' ? 'Score Change' : 'Winnings'}</span>
-                        <p>
-                            {matchData.type === 'tournament' 
-                                ? `${result.winning_amount > 0 ? '+' : ''}${result.winning_amount.toFixed(2)} pts`
-                                : `${result.winning_amount.toFixed(2)} USDT`
-                            }
-                        </p>
-                    </div>
-                </div>
-                {isCurrentUserWinner && (
-                    <p className="congrats-message">Congratulations! The winnings have been added to your wallet.</p>
-                )}
-            </div>
-        </div>
-    );
+    return (
+        <div className="page-padding">
+            <div className="winner-showcase">
+                <div className="winner-stars">
+                    <StarIcon style={{ animationDelay: '0.2s' }} />
+                    <StarIcon style={{ transform: 'scale(1.3)', animationDelay: '0s' }} />
+                    <StarIcon style={{ animationDelay: '0.4s' }}/>
+                </div>
+                <div 
+                    className="winner-showcase-avatar" 
+                    style={{
+                        backgroundImage: `url(${winnerAvatarUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center center',
+                        backgroundRepeat: 'no-repeat',
+                    }}
+                    role="img"
+                    aria-label={winnerInfo.name}
+                ></div>
+                <h2 className="winner-showcase-label">VICTORIOUS</h2>
+                <h3 className="winner-showcase-name">{winnerInfo.name}</h3>
+                <div className="winner-final-stats">
+                    <div className="winner-stat-item">
+                        <span>Final Score</span>
+                        {/* Sử dụng điểm số đã xác định ở trên */}
+                        <p>{winnerFinalScore.toFixed(2)}</p>
+                    </div>
+                    <div className="winner-stat-item">
+                        <span>{matchData.type === 'tournament' ? 'Score Change' : 'Winnings'}</span>
+                        <p>
+                            {matchData.type === 'tournament' 
+                                ? `${result.winning_amount > 0 ? '+' : ''}${result.winning_amount.toFixed(2)} pts`
+                                : `${result.winning_amount.toFixed(2)} USDT`
+                            }
+                        </p>
+                    </div>
+                </div>
+                {isCurrentUserWinner && (
+                    <p className="congrats-message">Congratulations! The winnings have been added to your wallet.</p>
+                )}
+            </div>
+        </div>
+    );
 };
 
 const WaitingForResultModal = () => (
-    <div className="login-modal-overlay">
-        <div className="login-modal-content card" style={{ textAlign: 'center' }}>
-            <h3 className="login-modal-title">Match Finished</h3>
-            <div className="loading-pulse" style={{ margin: '1.5rem auto' }}></div>
-            <p className="login-modal-instructions">
-                The match has concluded. Waiting for the final results from the server...
-            </p>
-        </div>
-    </div>
+    <div className="login-modal-overlay">
+        <div className="login-modal-content card" style={{ textAlign: 'center' }}>
+            <h3 className="login-modal-title">Match Finished</h3>
+            <div className="loading-pulse" style={{ margin: '1.5rem auto' }}></div>
+            <p className="login-modal-instructions">
+                The match has concluded. Waiting for the final results from the server...
+            </p>
+        </div>
+        </div>
 );
 
 const VolumeProgressBar = ({ player1Volume, player2Volume, volumeRule }) => {
@@ -414,16 +414,10 @@ const MatchDetail = ({ user }) => {
                     console.log("Received match results from WebSocket:", message.data);
                     setMatchResultFromSocket(message.data);
                     
-                    // Kiểm tra xem modal chờ có đang bật không
-                    setShowWaitingModal(isModalVisible => {
-                        // Nếu modal đang bật, nghĩa là timer đã xong trước, giờ có kết quả thì gọi fetch luôn
-                        if (isModalVisible) {
-                            console.log("Result received while waiting modal is visible. Fetching details.");
-                            fetchMatchDetail();
-                        }
-                        // Luôn trả về false để đảm bảo modal bị tắt khi có kết quả
-                        return false; 
-                    });
+                    // Cập nhật trạng thái hiển thị kết quả và tắt modal
+                    setShowWaitingModal(false);
+                    // Force fetch lại dữ liệu để cập nhật trạng thái 'completed' và kết quả
+                    fetchMatchDetail();
                     break;
             }
         };
