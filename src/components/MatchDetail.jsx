@@ -207,34 +207,34 @@ const WaitingForResultModal = () => (
     </div>
 );
 
-const VolumeProgressBar = ({ playerVolume, volumeRule, playerName }) => {
-    // Thêm kiểm tra an toàn cho các giá trị props
-    const safePlayerVolume = playerVolume ?? 0;
-    const safeVolumeRule = volumeRule ?? 0;
+const VolumeProgressBar = ({ player1Volume, player2Volume, volumeRule }) => {
+    const p1Progress = volumeRule > 0 ? Math.min((player1Volume / volumeRule) * 100, 200) : 0;
+    const p2Progress = volumeRule > 0 ? Math.min((player2Volume / volumeRule) * 100, 200) : 0;
 
-    // Đảm bảo không chia cho 0
-    const progress = safeVolumeRule > 0 ? (safePlayerVolume / safeVolumeRule) * 100 : 0;
-    const clampedProgress = Math.min(progress, 100);
-    const exceededAmount = Math.max(0, safePlayerVolume - safeVolumeRule);
-    const progressColor = progress >= 100 ? 'var(--color-win)' : 'var(--color-warning)';
-
-    // Thêm animation và hiệu ứng sinh động cho thanh progress
     return (
-        <div className="volume-progress-container">
-            <span className="volume-progress-label">
-                {playerName} Volume: {safePlayerVolume.toFixed(2)} / {safeVolumeRule.toFixed(2)} USDT
-            </span>
-            <div className="volume-progress-bar">
-                <div className="volume-progress-bar-fill" style={{ width: `${clampedProgress}%`, backgroundColor: progressColor }}></div>
-                {progress >= 100 && (
-                    <div className="volume-progress-bar-exceed" style={{ width: `${(exceededAmount / safeVolumeRule) * 100}%` }}></div>
-                )}
+        <div className="volume-axis-container">
+            {/* Thanh của Player 1 (bên trái) */}
+            <div className="volume-axis-bar left">
+                <div 
+                    className="volume-axis-fill" 
+                    style={{ width: `${p1Progress / 2}%` }}
+                ></div>
+                <span className="volume-axis-value">{player1Volume?.toFixed(2)}</span>
             </div>
-            {progress >= 100 && (
-                <div className="volume-exceeded-badge">
-                    +{(exceededAmount).toFixed(2)} USDT Exceeded!
-                </div>
-            )}
+
+            {/* Điểm chia ở giữa */}
+            <div className="volume-axis-center">
+                <div className="volume-axis-rule">{volumeRule?.toFixed(2)}</div>
+            </div>
+
+            {/* Thanh của Player 2 (bên phải) */}
+            <div className="volume-axis-bar right">
+                <div 
+                    className="volume-axis-fill" 
+                    style={{ width: `${p2Progress / 2}%` }}
+                ></div>
+                <span className="volume-axis-value">{player2Volume?.toFixed(2)}</span>
+            </div>
         </div>
     );
 };
@@ -693,16 +693,11 @@ const MatchDetail = ({ user }) => {
 
             {/* Thanh tiến trình Volume */}
             {matchData.type === 'tournament' && matchData.player1 && matchData.player2 && matchData.volume_rule !== undefined && (
-                <div className="page-padding" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '1rem' }}>
+                <div className="page-padding" style={{ paddingTop: '1rem' }}>
                     <VolumeProgressBar 
-                        playerVolume={matchData.player1.volume}
+                        player1Volume={matchData.player1.volume}
+                        player2Volume={matchData.player2.volume}
                         volumeRule={matchData.volume_rule}
-                        playerName={matchData.player1.name}
-                    />
-                    <VolumeProgressBar 
-                        playerVolume={matchData.player2.volume}
-                        volumeRule={matchData.volume_rule}
-                        playerName={matchData.player2.name}
                     />
                 </div>
             )}
