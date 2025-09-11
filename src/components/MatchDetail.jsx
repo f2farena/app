@@ -427,7 +427,7 @@ const MatchDetail = ({ user }) => {
         return () => {
             window.removeEventListener('websocket-message', handleWebSocketMessage);
         };
-    }, [id, fetchMatchDetail]);
+    }, [id, fetchMatchDetail, user]);
 
     useEffect(() => {
         fetchMatchDetail();
