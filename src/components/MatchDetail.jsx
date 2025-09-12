@@ -1,3 +1,4 @@
+// scr/component/MatcchDetail.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import './MatchDetail.css';
@@ -361,6 +362,10 @@ const MatchDetail = ({ user }) => {
                 case "OPPONENT_LOGIN_FAILED":
                     setCancellationReason(message.data.message);
                     break;
+                
+                case "BOTH_PLAYERS_LOGIN_FAILED":
+                    setCancellationReason(message.data.message);
+                    break;
 
                 case "NEW_TRADE":
                     setTrades(prevTrades => {
@@ -550,7 +555,7 @@ const MatchDetail = ({ user }) => {
                             locale: 'en',
                             toolbar_bg: '#f1f3f6',
                             enable_publishing: false,
-                            allow_symbol_change: false,
+                            allow_symbol_change: true,
                             container_id: 'tradingview_widget',
                         });
                     }
@@ -756,7 +761,7 @@ const MatchDetail = ({ user }) => {
                                         <div key={trade.id || `trade-${index}`} className={`trade-box ${Number(trade.player_id) === Number(matchData.player1.id) ? 'left' : 'right'}`}>
                                             <div className="trade-info">
                                                 <span className="trade-type">{trade.type}</span>
-                                                <span className="trade-amount">{trade.amount} {matchData.symbol?.split('/')[0] || matchData.symbol}</span>
+                                                <span className="trade-amount">{trade.amount} {trade.symbol || (matchData.symbol?.split('/')[0] || matchData.symbol)}</span>
                                                 <span className="trade-price">${trade.price}</span>
                                                 <span className="trade-time">{new Date(trade.timestamp).toLocaleTimeString()}</span>
                                             </div>
