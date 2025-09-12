@@ -64,15 +64,19 @@ const LoginConfirmationModal = ({ matchData, cancellationReason, navigate }) => 
         );
     }
     
-    // Logic cũ giữ nguyên nếu không có lý do hủy
     const player1Ready = matchData.player1.ready;
     const player2Ready = matchData.player2.ready;
 
-    const StatusIndicator = ({ isReady }) => (
-        <div className={`status-indicator ${isReady ? 'ready' : 'waiting'}`}>
-            {isReady ? '✅ Ready' : 'Waiting...'}
-        </div>
-    );
+    const StatusIndicator = ({ readyStatus }) => {
+        if (readyStatus === 1) {
+            return <div className="status-indicator ready">✅ Ready</div>;
+        }
+        if (readyStatus === -1) {
+            return <div className="status-indicator failed">❌ Failed</div>;
+        }
+        // Mặc định là trạng thái chờ (readyStatus === 0 hoặc undefined)
+        return <div className="status-indicator waiting">Waiting...</div>;
+    };
 
     return (
         <div className="login-modal-overlay">
@@ -92,7 +96,7 @@ const LoginConfirmationModal = ({ matchData, cancellationReason, navigate }) => 
                             />
                             <span>{matchData.player1.name}</span>
                         </div>
-                        <StatusIndicator isReady={player1Ready} />
+                        <StatusIndicator readyStatus={player1Ready} />
                     </div>
                     <div className="player-status-row">
                         <div className="player-info-modal">
@@ -104,7 +108,7 @@ const LoginConfirmationModal = ({ matchData, cancellationReason, navigate }) => 
                             />
                             <span>{matchData.player2.name}</span>
                         </div>
-                        <StatusIndicator isReady={player2Ready} />
+                        <StatusIndicator readyStatus={player2Ready} />
                     </div>
                 </div>
             </div>
