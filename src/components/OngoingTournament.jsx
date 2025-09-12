@@ -194,22 +194,22 @@ const RoundsTab = ({ rounds, currentDay }) => {
               </svg>
             </button>
             {expandedRound === round.name && (
-              <div className="round-participants">
-                {round.participants.map(user => (
-                  <div key={user.id} className="participant-item">
-                    <img 
-                        src={user.avatar || 'https://i.imgur.com/6VBx3io.png'} 
-                        alt={user.name} 
-                        className="trader-avatar" 
-                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://i.imgur.com/6VBx3io.png'; }}
-                    />
-                    <div className="participant-details">
-                      <span className="participant-name">{user.name}</span>
-                      <span className="participant-score">{user.score.toLocaleString()}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                <div className="round-participants">
+                    {round.participants.map(user => (
+                        <div key={user.id} className="participant-item">
+                            <img
+                                src={user.avatar || 'https://i.imgur.com/6VBx3io.png'}
+                                alt={user.name}
+                                className="trader-avatar"
+                                onError={(e) => { e.target.onerror = null; e.target.src = 'https://i.imgur.com/6VBx3io.png'; }}
+                            />
+                            <div className="participant-details">
+                                <span className="participant-name">{user.name}</span>
+                                <span className="participant-score">{user.score.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             )}
           </div>
         ))}

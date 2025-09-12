@@ -222,6 +222,24 @@ const TournamentRounds = ({ rounds }) => (
                                     <strong className="rule-item-value">{round.matches_per_player}</strong>
                                 </div>
                             )}
+                            <div className="rule-item">
+                                <span className="rule-item-label">Round Duration</span>
+                                <strong className="rule-item-value">{(round.total_round_duration_minutes / 60).toFixed(0)} hours</strong>
+                            </div>
+                            <div className="rule-item">
+                                <span className="rule-item-label">Match Interval</span>
+                                <strong className="rule-item-value">{round.match_interval_minutes} min</strong>
+                            </div>
+                            {round.scheduling_timeframes && round.scheduling_timeframes.length > 0 && (
+                                <div className="rule-item-full-width">
+                                    <span className="rule-item-label">Scheduling Timeframes (UTC)</span>
+                                    <div className="timeframes-container">
+                                        {round.scheduling_timeframes.map((frame, index) => (
+                                            <strong key={index} className="timeframe-tag">{frame.start} - {frame.end}</strong>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))
