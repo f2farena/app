@@ -1,6 +1,7 @@
 // src/components/OngoingTournament.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useWebSocket } from '../contexts/WebSocketContext';
 import goldCup from '../assets/gold-cup.png';
 import silverCup from '../assets/silver-cup.png';
 import bronzeCup from '../assets/bronze-cup.png';
@@ -351,9 +352,13 @@ const MatchScheduleTab = ({ myMatches, liveMatches, currentUser, navigate })  =>
 const OngoingTournament = ({ user }) => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { sendMessage, isConnected } = useWebSocket();
     const [tournament, setTournament] = useState(null);
-    const [activeTab, setActiveTab] = useState('schedule'); // Đổi tab mặc định thành 'schedule'
-    const [error, setError] = useState(null); // Thêm state để quản lý lỗi
+    const [activeTab, setActiveTab] = useState('schedule');
+    const [error, setError] = useState(null);
+    const [comments, setComments] = useState([]);
+    const [commentInput, setCommentInput] = useState('');
+    const commentsEndRef = useRef(null);
 
     useEffect(() => {
         // Chỉ fetch dữ liệu khi có ID giải đấu và thông tin người dùng
@@ -379,7 +384,99 @@ const OngoingTournament = ({ user }) => {
             fetchTournamentData();
         }
     // Dependency array bao gồm id và user.telegram_id
-    }, [id, user]); 
+    }, [id, user]);
+
+    // useEffect để join phòng WebSocket và lắng nghe tin nhắn
+    useEffect(() => {
+        // 1. Join phòng khi kết nối WebSocket sẵn sàng
+        if (isConnected) {
+            console.log(`Joining tournament discussion room for ID: ${id}`);
+            sendMessage({
+                action: 'join_tournament',
+                tournament_id: parseInt(id, 10)
+            });
+        }
+
+        // 2. Lắng nghe tin nhắn mới
+        const handleWebSocketMessage = (event) => {
+            const message = event.detail;
+            if (message.type === 'NEW_TOURNAMENT_DISCUSSION_COMMENT' && message.tournament_id === parseInt(id, 10)) {
+                // Thêm user_id và isCurrentUser để hiển thị đúng
+                const newComment = {
+                    ...message.data,
+                    isCurrentUser: user && user.telegram_id === message.data.user_id,
+                };
+                setComments(prev => [...prev, newComment]);
+            }
+        };
+
+        window.addEventListener('websocket-message', handleWebSocketMessage);
+
+        return () => {
+            window.removeEventListener('websocket-message', handleWebSocketMessage);
+            // Có thể thêm logic "leave_tournament" nếu cần
+        };
+    }, [id, isConnected, sendMessage, user]);
+
+    // useEffect để fetch lịch sử comments khi activeTab là 'discussion'
+    useEffect(() => {
+        const fetchComments = async () => {
+            if (activeTab === 'discussion' && user?.telegram_id) {
+                try {
+                    const response = await fetch(`https://f2farena.com/api/tournaments/${id}/discussion?user_id=${user.telegram_id}`);
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.detail || 'Failed to fetch comments');
+                    }
+                    const data = await response.json();
+                    const formattedComments = data.map(c => ({
+                        ...c,
+                        isCurrentUser: user.telegram_id === c.user_id
+                    }));
+                    setComments(formattedComments);
+                } catch (err) {
+                    console.error("Error fetching discussion comments:", err);
+                    // Hiển thị lỗi cho người dùng nếu cần
+                }
+            }
+        };
+
+        fetchComments();
+    }, [activeTab, id, user]);
+
+    // useEffect để cuộn xuống tin nhắn mới nhất
+    useEffect(() => {
+        if (activeTab === 'discussion') {
+            commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [comments, activeTab]);
+
+    const handleSendComment = async (e) => {
+        e.preventDefault();
+        const trimmedInput = commentInput.trim();
+        if (!trimmedInput || !user || !user.telegram_id) return;
+
+        try {
+            const response = await fetch(`https://f2farena.com/api/tournaments/${id}/discussion`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: user.telegram_id,
+                    comment: trimmedInput
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to post comment.');
+            }
+            setCommentInput('');
+            // Tin nhắn sẽ được thêm vào state thông qua WebSocket broadcast
+        } catch (error) {
+            console.error('Error sending comment:', error);
+            alert(error.message);
+        }
+    };
 
     if (error) {
         return <div className="page-padding"><h2>Error: {error}</h2></div>;
@@ -418,11 +515,27 @@ const OngoingTournament = ({ user }) => {
                     </div>
                 </div>
             </div>
-            <div className="wallet-tabs" style={{ margin: '1rem' }}>
-                <button className={`wallet-tab-button ${activeTab === 'schedule' ? 'active' : ''}`} onClick={() => setActiveTab('schedule')}>Matches</button>
-                <button className={`wallet-tab-button ${activeTab === 'rounds' ? 'active' : ''}`} onClick={() => setActiveTab('rounds')}>Rounds</button>
-                <button className={`wallet-tab-button ${activeTab === 'scores' ? 'active' : ''}`} onClick={() => setActiveTab('scores')}>Leaderboard</button>
-                <button className={`wallet-tab-button ${activeTab === 'result' ? 'active' : ''}`} onClick={() => setActiveTab('result')}>Result</button>
+            <div className="wallet-tabs tournament-tabs" style={{ margin: '1rem' }}>
+                <button className={`wallet-tab-button ${activeTab === 'schedule' ? 'active' : ''}`} onClick={() => setActiveTab('schedule')}>
+                    <span className="tab-icon">⚔️</span>
+                    <span>Matches</span>
+                </button>
+                <button className={`wallet-tab-button ${activeTab === 'rounds' ? 'active' : ''}`} onClick={() => setActiveTab('rounds')}>
+                    <span className="tab-icon">🔄</span>
+                    <span>Rounds</span>
+                </button>
+                <button className={`wallet-tab-button ${activeTab === 'discussion' ? 'active' : ''}`} onClick={() => setActiveTab('discussion')}>
+                    <span className="tab-icon">💬</span>
+                    <span>Discussion</span>
+                </button>
+                <button className={`wallet-tab-button ${activeTab === 'scores' ? 'active' : ''}`} onClick={() => setActiveTab('scores')}>
+                    <span className="tab-icon">🏆</span>
+                    <span>Leaderboard</span>
+                </button>
+                <button className={`wallet-tab-button ${activeTab === 'result' ? 'active' : ''}`} onClick={() => setActiveTab('result')}>
+                    <span className="tab-icon">🏅</span>
+                    <span>Result</span>
+                </button>
             </div>
 
             <div className="tab-content page-padding">
@@ -437,6 +550,46 @@ const OngoingTournament = ({ user }) => {
 
                 {activeTab === 'rounds' && (
                     <RoundsTab rounds={rounds} currentDay={currentDay} />
+                )}
+
+                {activeTab === 'discussion' && (
+                    <div className="discussion-container" style={{height: '60vh', display: 'flex', flexDirection: 'column'}}>
+                        <div className="discussion-messages" style={{flexGrow: 1, overflowY: 'auto', padding: '0.5rem'}}>
+                            {comments.map((comment) => (
+                                <div key={comment.id} className={`discussion-bubble-row ${comment.isCurrentUser ? 'user' : 'other'}`}>
+                                    <div className="discussion-bubble-container">
+                                        {!comment.isCurrentUser && (
+                                            <img 
+                                                src={comment.user_avatar || generateAvatarUrl(comment.user_name)} 
+                                                alt={comment.user_name} 
+                                                className="discussion-avatar"
+                                            />
+                                        )}
+                                        <div className={`discussion-bubble ${comment.isCurrentUser ? 'user' : 'other'}`}>
+                                            {!comment.isCurrentUser && (
+                                                <span className="discussion-user">{comment.user_name}</span>
+                                            )}
+                                            <span className="discussion-text">{comment.comment}</span>
+                                            <span className="discussion-time">{new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            <div ref={commentsEndRef} />
+                        </div>
+                        <form className="discussion-input-area" onSubmit={handleSendComment}>
+                            <input 
+                                type="text" 
+                                className="discussion-input form-input" 
+                                placeholder="Type your message..." 
+                                value={commentInput} 
+                                onChange={(e) => setCommentInput(e.target.value)} 
+                            />
+                            <button type="submit" className="discussion-send-btn btn btn-primary">
+                                Send
+                            </button>
+                        </form>
+                    </div>
                 )}
                 
                 {activeTab === 'scores' && (

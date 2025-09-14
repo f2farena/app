@@ -547,8 +547,8 @@ const HomePage = () => {
                                   <span className="player-odds">{match.player1.odds}</span>
                               </div>
                               <div className="center-details">
-                                  <MatchCountdownTimer startTime={match.start_time} durationHours={match.duration_time} />
-                              <div className="vs-text">VS</div>
+                                  <MatchCountdownTimer startTime={match.start_time} durationHours={match.duration_minutes / 60} />
+                                  <div className="vs-text">VS</div>
                               </div>
                               <div className="player-info">
                                   <LazyLoad height={48} offset={100}>
@@ -2459,8 +2459,8 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                             </div>
                             <div className="details-section">
                                 <div className="detail-item">
-                                    <span>Time</span>
-                                    <p className="detail-value">{match.duration_time} hours</p>
+                                    <span>Duration</span> {/* Sửa label cho rõ ràng hơn */}
+                                    <p className="detail-value">{match.duration_minutes} min</p>
                                 </div>
                                 <div className="detail-item">
                                     <span>Symbol</span>

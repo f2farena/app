@@ -1,4 +1,4 @@
-// scr/component/MatcchDetail.jsx
+// scr/component/MatchDetail.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import './MatchDetail.css';

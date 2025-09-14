@@ -1939,3 +1939,23 @@ current-round-text {
 .my-match-item.clickable:hover {
     background-color: rgba(255, 255, 255, 0.05);
 }
+
+/* ======================================================= */
+/* === CSS CHO CÁC NÚT TAB CỦA ONGOING TOURNAMENT       === */
+/* ======================================================= */
+
+.tournament-tabs .wallet-tab-button {
+    display: flex;            /* QUAN TRỌNG: Biến button thành flex container */
+    flex-direction: column;   /* Xếp các phần tử con theo chiều dọc */
+    align-items: center;      /* Căn giữa icon và text theo chiều ngang */
+    justify-content: center;  /* Căn giữa toàn bộ nội dung theo chiều dọc */
+    gap: 0.25rem;             /* Khoảng cách giữa icon và text */
+    height: 60px;             /* Cố định chiều cao cho đồng đều */
+    padding: 0.5rem;
+    font-size: 0.75rem;       /* Áp dụng cho text */
+}
+
+.tournament-tabs .tab-icon {
+    font-size: 1.25rem;        /* Tăng kích thước cho emoji */
+    line-height: 1;           /* Đảm bảo emoji không chiếm quá nhiều chiều cao */
+}

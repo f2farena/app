@@ -284,7 +284,9 @@ const NewsDetail = ({ user }) => {
               <div key={comment.id} className="comment-card card">
                 <div className="comment-header">
                   <span className="comment-username">{comment.username || 'Anonymous User'}</span>
-                  <span className="comment-timestamp">{comment.timestamp ? new Date(comment.timestamp).toLocaleString() : 'N/A'}</span>
+                  <span className="comment-timestamp">{comment.timestamp ? new Date(comment.timestamp).toLocaleString('vi-VN', {
+                      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+                  }) : 'N/A'}</span>
                 </div>
                 <p className="comment-content">{comment.content}</p>
               </div>
