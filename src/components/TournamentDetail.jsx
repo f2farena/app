@@ -289,7 +289,7 @@ const TournamentDetail = ({ user, onUserUpdate }) => {
                     ...data,
                     date: new Date(data.event_time).toLocaleDateString(),
                     prizePool: `${data.prize_pool} USDT`,
-                    author: 'F2FArena Team',
+                    author: data.creator_name || 'F2FArena Team',
                     broker: data.broker_name || 'N/A',
                     brokerRegistrationUrl: data.registration_url,
                 };
