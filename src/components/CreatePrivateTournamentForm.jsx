@@ -8,6 +8,21 @@ const CreatePrivateTournamentForm = ({ user, onClose, onCreationSuccess }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
+    const isStep1Valid = () => {
+        return details.title.trim() !== '' &&
+               details.broker_id !== '' &&
+               details.max_participants.toString().trim() !== '' &&
+               details.event_time.trim() !== '' &&
+               details.end_time.trim() !== '';
+    };
+
+    const isStep2Valid = () => {
+        return rounds.every(round => 
+            round.name.trim() !== '' &&
+            round.advancement_count.toString().trim() !== ''
+        );
+    };
+
     // State cho Step 1: Thông tin chung
     const [details, setDetails] = useState({
         title: '',
@@ -111,33 +126,44 @@ const CreatePrivateTournamentForm = ({ user, onClose, onCreationSuccess }) => {
                 return;
             }
 
-            const commissionRate = parseFloat(fetchedBrokers[broker_id].commission || 0);
-            let totalVolume = 0;
-            let currentParticipants = parseInt(max_participants, 10);
+            const selectedBrokerData = fetchedBrokers[broker_id];
+            if (!selectedBrokerData || typeof selectedBrokerData.commission === 'undefined') {
+                console.log("⚠️ Broker data or commission rate is not yet available. Skipping calculation.");
+                console.groupEnd();
+                setEstimatedRevenue(0);
+                return;
+            }
 
-            // --- ĐẶT LOG CHI TIẾT VÒNG LẶP ---
-            console.log("Broker Commission Rate:", commissionRate);
-            console.log("Initial Participants:", currentParticipants);
+            const commissionRate = parseFloat(selectedBrokerData.commission || 0);
+            let totalVolume = 0;
+            let currentParticipants = parseInt(max_participants, 10);
+
+            // --- ĐẶT LOG CHI TIẾT VÒNG LẶP (ĐÃ SỬA LỖI) ---
+            console.log("Broker Commission Rate:", commissionRate);
+            console.log("Initial Participants:", currentParticipants);
             
-            for (const round of rounds) {
-                const volumePerPlayer = parseFloat(round.volume_rule) || 0;
-                totalVolume += currentParticipants * volumePerPlayer;
+            rounds.forEach((round, index) => { // Sửa thành forEach để có 'index'
+                const volumePerPlayer = parseFloat(round.volume_rule) || 0;
+              const roundVolume = currentParticipants * volumePerPlayer; // Thêm biến bị thiếu
+                totalVolume += roundVolume;
 
-                console.log(`- Round ${index + 1}:`);
-                console.log(`  - Participants: ${currentParticipants}`);
-                console.log(`  - Volume Rule: ${volumePerPlayer}`);
-                console.log(`  - Round Volume: ${roundVolume.toFixed(2)}`);
-                console.log(`  - Total Volume So Far: ${totalVolume.toFixed(2)}`);
-                
-                if (round.competition_format === 'knockout') {
-                    currentParticipants = Math.floor(currentParticipants / 2);
-                } else {
-                    currentParticipants = parseInt(round.advancement_count, 10) || 0;
-                }
-                console.log(`  - Next Round Participants: ${nextRoundParticipants}`);
-            }
+                console.log(`- Round ${index + 1}:`);
+                console.log(`  - Participants: ${currentParticipants}`);
+                console.log(`  - Volume Rule: ${volumePerPlayer}`);
+                console.log(`  - Round Volume: ${roundVolume.toFixed(2)}`);
+                console.log(`  - Total Volume So Far: ${totalVolume.toFixed(2)}`);
+                
+                let nextRoundParticipants; // Thêm biến bị thiếu
+                if (round.competition_format === 'knockout') {
+                    nextRoundParticipants = Math.floor(currentParticipants / 2);
+                } else {
+                    nextRoundParticipants = parseInt(round.advancement_count, 10) || 0;
+                }
+              currentParticipants = nextRoundParticipants; // Cập nhật số người chơi cho vòng sau
+                console.log(`  - Next Round Participants: ${nextRoundParticipants}`);
+            });
 
-            const calculatedRevenue = totalVolume * commissionRate;
+            const calculatedRevenue = totalVolume * commissionRate;
             // --- ĐẶT LOG KẾT QUẢ CUỐI CÙNG ---
             console.log("Final Calculated Volume:", totalVolume.toFixed(2));
             console.log("Final Estimated Revenue:", calculatedRevenue.toFixed(2));
@@ -226,7 +252,6 @@ const CreatePrivateTournamentForm = ({ user, onClose, onCreationSuccess }) => {
             if (!response.ok) {
                 throw new Error(data.detail || 'Failed to create tournament.');
             }
-            alert('Tournament created successfully!');
             onCreationSuccess();
         } catch (error) {
             setErrorMessage(error.message);
@@ -271,13 +296,9 @@ const CreatePrivateTournamentForm = ({ user, onClose, onCreationSuccess }) => {
                             <div className="form-group"><label className="form-label">Start Time</label><input type="datetime-local" name="event_time" value={details.event_time} onChange={handleDetailChange} className="form-input" required /></div>
                             <div className="form-group"><label className="form-label">End Time</label><input type="datetime-local" name="end_time" value={details.end_time} onChange={handleDetailChange} className="form-input" required /></div>
                             <div className="form-group">
-                                    <label className="form-label">Registration URL (Optional)</label>
-                                    <input type="text" name="registration_url" value={details.registration_url} onChange={handleDetailChange} className="form-input" placeholder="e.g., https://my-broker.com/signup?ref=123" />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Minimum Balance (USDT)</label>
-                                    <input type="number" name="min_balance" value={details.min_balance} onChange={handleDetailChange} className="form-input" required />
-                                </div>
+                                <label className="form-label">Minimum Balance (USDT)</label>
+                                <input type="number" name="min_balance" value={details.min_balance} onChange={handleDetailChange} className="form-input" required />
+                            </div>
                         </div>
                     )}
                     
@@ -295,6 +316,14 @@ const CreatePrivateTournamentForm = ({ user, onClose, onCreationSuccess }) => {
                                     <div className="form-group"><label className="form-label">Players Advance</label><input type="number" name="advancement_count" value={round.advancement_count} onChange={(e) => handleRoundChange(index, e)} className="form-input" /></div>
                                     {round.competition_format === 'points' && <div className="form-group"><label className="form-label">Matches / Player</label><input type="number" name="matches_per_player" value={round.matches_per_player} onChange={(e) => handleRoundChange(index, e)} className="form-input" /></div>}
                                     <div className="form-group"><label className="form-label">Volume Rule</label><input type="number" name="volume_rule" value={round.volume_rule} onChange={(e) => handleRoundChange(index, e)} className="form-input" /></div>
+                                    <div className="form-group">
+                                        <label className="form-label">Total Round Duration (min)</label>
+                                        <input type="number" name="total_round_duration_minutes" value={round.total_round_duration_minutes} onChange={(e) => handleRoundChange(index, e)} className="form-input" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Match Interval (min)</label>
+                                        <input type="number" name="match_interval_minutes" value={round.match_interval_minutes} onChange={(e) => handleRoundChange(index, e)} className="form-input" />
+                                    </div>
                                 </div>
                             ))}
                             <button onClick={addRound} className="btn-add-more">+ Add Round</button>
@@ -348,7 +377,8 @@ const CreatePrivateTournamentForm = ({ user, onClose, onCreationSuccess }) => {
 
                     {/* YÊU CẦU 2: Dời nút Next/Create qua phải */}
                     <div className="nav-right">
-                        {step < 3 && <button className="btn btn-primary" onClick={nextStep}>Next</button>}
+                        {step === 1 && <button className="btn btn-primary" onClick={nextStep} disabled={!isStep1Valid()}>Next</button>}
+                        {step === 2 && <button className="btn btn-primary" onClick={nextStep} disabled={!isStep2Valid()}>Next</button>}
                         {step === 3 && <button className="btn btn-accent" onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? 'Creating...' : 'Create Tournament'}</button>}
                     </div>
                 </div>
