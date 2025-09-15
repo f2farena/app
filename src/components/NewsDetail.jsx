@@ -52,15 +52,15 @@ const NewsDetail = ({ user }) => {
         const data = await response.json();
         console.log('Fetched broker detail:', data);
         const articleData = {
-          id: data.id,
-          style: 'broker-review',
-          title: `Broker ${data.broker_name} Review: Is It Reliable?`,
-          date: '10/06/2025', // Giữ hardcode hoặc thêm field ở backend
-          author: 'TradeChallenge Team',
-          summary: data.description,
-          thumbnail: data.thumbnail,
-          content: data.pk_review,
-          ratings: { license: data.star_1, insurance: data.star_2, localization: data.star_3, commission: data.star_4, stability: data.star_5, onboarding: data.star_6 }
+            id: data.id,
+            style: 'broker-review',
+            title: `Broker ${data.broker_name} Review: Is It Reliable?`,
+            date: '10/06/2025',
+            author: 'TradeChallenge Team',
+            summary: data.description,
+            thumbnail: data.thumbnail, 
+            content: data.pk_review,
+            ratings: { license: data.star_1, insurance: data.star_2, localization: data.star_3, commission: data.star_4, stability: data.star_5, onboarding: data.star_6 }
         };
         setArticle(articleData);
         sessionStorage.setItem(cacheKey, JSON.stringify(articleData));

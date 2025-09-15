@@ -5,7 +5,8 @@ import MatchDetail from './components/MatchDetail';
 import NewsDetail from './components/NewsDetail';
 import ArenaDetail from './components/ArenaDetail';
 import TournamentDetail from './components/TournamentDetail';
-import OngoingTournament from './components/OngoingTournament'; 
+import OngoingTournament from './components/OngoingTournament';
+import CreatePrivateTournamentForm from './components/CreatePrivateTournamentForm'; 
 import LazyLoad from 'react-lazyload';
 import { FixedSizeList } from 'react-window';
 import { notifyAdminOfDeposit, requestWithdrawal } from './services/telegramService';
@@ -2066,6 +2067,9 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     const [showJoinFormModal, setShowJoinFormModal] = useState(false);
     const [showDepositForJoin, setShowDepositForJoin] = useState(false);
     const [requiredBetForJoin, setRequiredBetForJoin] = useState(0);
+    const [privateTournaments, setPrivateTournaments] = useState([]);
+    const [showCreateTournamentForm, setShowCreateTournamentForm] = useState(false);
+
 
     const [allMatches, setAllMatches] = useState([]);
     const [statusFilters, setStatusFilters] = useState(() => {
@@ -2214,37 +2218,36 @@ const ArenaPage = ({ user, onUserUpdate }) => {
     };
 
     const fetchTournaments = async () => {
-        const sharedCacheKey = 'tournaments_shared_cache'; // Dùng key chung với HomePage
-        const cachedData = sessionStorage.getItem(sharedCacheKey);
+      const sharedCacheKey = 'tournaments_shared_cache';
+      const cachedData = sessionStorage.getItem(sharedCacheKey);
 
-        if (cachedData) {
-            console.log("[ArenaPage] Lấy dữ liệu Tournament từ cache chung.");
-            setTournamentItems(JSON.parse(cachedData));
-            return;
-        }
+      if (cachedData) {
+          console.log("[ArenaPage] Lấy dữ liệu Tournament từ cache chung.");
+          setTournamentItems(JSON.parse(cachedData));
+          return;
+      }
 
-        // Nếu không có cache (ví dụ: người dùng vào thẳng trang Arena), thì tự fetch
-        try {
-            console.log("[ArenaPage] Không có cache chung, tự fetch dữ liệu.");
-            const response = await fetch(`https://f2farena.com/api/tournaments/`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      try {
+          console.log("[ArenaPage] Không có cache chung, tự fetch dữ liệu.");
+          const response = await fetch(`https://f2farena.com/api/tournaments/?type=official`);
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-            const data = await response.json();
-            const apiTournaments = data.map((t) => ({
-                ...t,
-                thumbnail: t.thumbnail, 
-                prizePool: t.prize_pool ? `${t.prize_pool} USDT` : 'N/A', 
-                participants: t.participants,
-                status: t.status ? t.status.toLowerCase() : 'upcoming' 
-            })).filter(Boolean); 
-   
-            setTournamentItems(apiTournaments);
-            sessionStorage.setItem(sharedCacheKey, JSON.stringify(apiTournaments));
-        } catch (error) {
-            console.error('Error fetching tournaments for Arena:', error.message);
-            setTournamentItems([]);
-        }
-    };
+          const data = await response.json();
+          const apiTournaments = data.map((t) => ({
+              ...t,
+              thumbnail: t.thumbnail, 
+              prizePool: t.prize_pool ? `${t.prize_pool} USDT` : 'N/A', 
+              participants: t.participants,
+              status: t.status ? t.status.toLowerCase() : 'upcoming' 
+          })).filter(Boolean); 
+
+          setTournamentItems(apiTournaments);
+          sessionStorage.setItem(sharedCacheKey, JSON.stringify(apiTournaments));
+      } catch (error) {
+          console.error('Error fetching tournaments for Arena:', error.message);
+          setTournamentItems([]);
+      }
+  };
 
     const fetchBrokersForArena = async () => {
       const cached = sessionStorage.getItem('brokers_data');
@@ -2277,8 +2280,32 @@ const ArenaPage = ({ user, onUserUpdate }) => {
       }
     };
 
+    const fetchPrivateTournaments = async (clearCache = false) => {
+        const cacheKey = 'private_tournaments_cache';
+        if (clearCache) {
+            sessionStorage.removeItem(cacheKey);
+        }
+        const cachedData = sessionStorage.getItem(cacheKey);
+        if (cachedData) {
+            setPrivateTournaments(JSON.parse(cachedData));
+            return;
+        }
+
+        try {
+            const response = await fetch(`https://f2farena.com/api/tournaments/?type=private`);
+            if (!response.ok) throw new Error('Failed to fetch private tournaments');
+            const data = await response.json();
+            setPrivateTournaments(data);
+            sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        } catch (error) {
+            console.error('Error fetching private tournaments:', error);
+            setPrivateTournaments([]);
+        }
+    };
+
     useEffect(() => {
         fetchTournaments();
+        fetchPrivateTournaments();
         fetchAllMatches();
         fetchBrokersForArena();
 
@@ -2346,11 +2373,58 @@ const ArenaPage = ({ user, onUserUpdate }) => {
         />;
     }
 
+    const PrivateTournamentCard = ({ item, navigate }) => (
+        <div key={item.id} className="card tournament-card private-cup-card">
+            {/* Phần header hiển thị người tạo thay cho thumbnail */}
+            <div className="private-cup-creator-header">
+                <img
+                    src={item.creator_avatar || defaultAvatar}
+                    alt={item.creator_name}
+                    className="creator-avatar"
+                />
+                <div className="creator-info">
+                    <span className="creator-name">{item.creator_name}</span>
+                    <span className="creator-label">Creator</span>
+                </div>
+                <TournamentStatus
+                    startTime={item.event_time}
+                    endTime={item.end_time}
+                    status={item.status}
+                />
+            </div>
+            <div className="tournament-content">
+                <h3 className="tournament-title">{item.title}</h3>
+                <div className="tournament-details-grid">
+                    <div className="detail-item"><span>Prize Pool</span><p className="detail-value accent">{item.prize_pool} USDT</p></div>
+                    <div className="detail-item"><span>Participants</span><p className="detail-value">{item.participants}</p></div>
+                    <div className="detail-item"><span>Symbol</span><p className="detail-value primary">{item.symbol}</p></div>
+                </div>
+                <button
+                    className="btn btn-primary"
+                    style={{ width: '100%', marginTop: '1rem' }}
+                    onClick={() => {
+                        if (item.status === 'ongoing') {
+                            navigate(`/tournament/ongoing/${item.id}`);
+                        } else {
+                            navigate(`/tournament/${item.id}`);
+                        }
+                    }}
+                >
+                    Detail
+                </button>
+            </div>
+        </div>
+    );
+
     return (
         <div className="page-padding">
             <div className="wallet-tabs">
                 <button className={`wallet-tab-button ${activeTab === 'tournament' ? 'active' : ''}`} onClick={() => setActiveTab('tournament')}>
                     Tournament
+                </button>
+                {/* TAB MỚI */}
+                <button className={`wallet-tab-button ${activeTab === 'private_cup' ? 'active' : ''}`} onClick={() => setActiveTab('private_cup')}>
+                    Private Cup
                 </button>
                 <button className={`wallet-tab-button ${activeTab === 'personal' ? 'active' : ''}`} onClick={() => setActiveTab('personal')}>
                     1 vs 1 Match
@@ -2407,6 +2481,23 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                                   </button>
                                 </div>
                             </div>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {activeTab === 'private_cup' && (
+                <>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                        {user?.vip_level === 'diamond' && (
+                            <button className="btn btn-accent" onClick={() => setShowCreateTournamentForm(true)}>
+                                + Create Cup
+                            </button>
+                        )}
+                    </div>
+                    <div className="tournament-list">
+                        {privateTournaments.map(item => (
+                            <PrivateTournamentCard key={item.id} item={item} navigate={navigate} />
                         ))}
                     </div>
                 </>
@@ -2487,6 +2578,18 @@ const ArenaPage = ({ user, onUserUpdate }) => {
                         </div>
                     ))}
                 </>
+            )}
+
+            {showCreateTournamentForm && (
+                <CreatePrivateTournamentForm
+                    user={user}
+                    brokersList={brokersList}
+                    onClose={() => setShowCreateTournamentForm(false)}
+                    onCreationSuccess={() => {
+                        setShowCreateTournamentForm(false);
+                        fetchPrivateTournaments(true);
+                    }}
+                />
             )}
             {showJoinFormModal && (
                 <JoinMatchFormModal

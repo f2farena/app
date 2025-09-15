@@ -290,10 +290,10 @@ const TournamentDetail = ({ user, onUserUpdate }) => {
                     date: new Date(data.event_time).toLocaleDateString(),
                     prizePool: `${data.prize_pool} USDT`,
                     author: 'F2FArena Team',
-                    broker: 'Go Markets',
-                    brokerRegistrationUrl: 'https://www.gomarkets.com/register',
-                };
-                setTournament(tournamentData);
+                    broker: data.broker_name || 'N/A',
+                    brokerRegistrationUrl: data.registration_url,
+                };
+                setTournament(tournamentData);
             } catch (error) {
                 console.error('Error fetching tournament detail:', error);
             }

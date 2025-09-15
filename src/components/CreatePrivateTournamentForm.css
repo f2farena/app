@@ -1,0 +1,273 @@
+/* ======================================================= */
+/* === CSS DÀNH RIÊNG CHO FORM TẠO GIẢI ĐẤU (PRIVATE CUP) === */
+/* ======================================================= */
+
+/* --- Wrapper và Modal Content --- */
+.deposit-modal-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.deposit-modal-content {
+    background: var(--color-card-bg);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 500px;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.deposit-modal-content::-webkit-scrollbar {
+    display: none;
+}
+
+/* --- Header của Form --- */
+.form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-shrink: 0;
+}
+
+.form-header h2 {
+    margin: 0;
+}
+
+.icon-button.close-button {
+    font-size: 2rem;
+    line-height: 1;
+    padding: 0 0.5rem;
+    color: var(--color-secondary-text);
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.error-message {
+    color: var(--color-danger);
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--color-danger);
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+/* --- Chỉ báo tiến trình (Progress Indicator) --- */
+.form-steps-indicator {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: relative;
+    margin-bottom: 2rem;
+    flex-shrink: 0;
+}
+
+/* SỬA LỖI: Thanh nối màu xám nền */
+.form-steps-indicator::before {
+    content: '';
+    position: absolute;
+    height: 4px;
+    background-color: var(--color-hover-bg);
+    top: 20px; /* Căn giữa theo trục ngang của icon (40px / 2) */
+    /* Trải dài từ tâm icon đầu tiên đến tâm icon cuối cùng */
+    left: calc(100% / 3 / 2); 
+    right: calc(100% / 3 / 2);
+    transform: translateY(-50%);
+    z-index: 1;
+}
+
+/* SỬA LỖI: Thanh nối màu xanh tiến trình */
+.form-steps-indicator::after {
+    content: '';
+    position: absolute;
+    height: 4px;
+    background-color: var(--color-primary);
+    top: 20px; /* Căn giữa theo trục ngang của icon (40px / 2) */
+    left: calc(100% / 3 / 2);
+    transform: translateY(-50%);
+    z-index: 1;
+    transition: width 0.4s ease-in-out;
+    width: 0; /* Mặc định là 0 */
+}
+
+/* SỬA LỖI: Điều khiển độ dài thanh tiến trình */
+.form-steps-indicator.step-2-active::after {
+    width: calc(100% / 3); /* Độ rộng bằng 1/3 tổng chiều rộng */
+}
+
+.form-steps-indicator.step-3-active::after {
+    width: calc(100% / 3 * 2); /* Độ rộng bằng 2/3 tổng chiều rộng */
+}
+
+.progress-step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 2;
+    text-align: center;
+    position: relative;
+    width: calc(100% / 3); /* Chia đều chiều rộng cho 3 item */
+}
+
+.progress-step-item .step-icon {
+    width: 40px;
+    height: 40px;
+    background-color: var(--color-hover-bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+    color: var(--color-secondary-text);
+    transition: background-color 0.3s, color 0.3s;
+    flex-shrink: 0;
+}
+
+.progress-step-item.active .step-icon {
+    background-color: var(--color-primary);
+    color: var(--color-background);
+}
+
+.progress-step-item .step-label {
+    font-size: 0.8rem;
+    color: var(--color-secondary-text);
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color 0.3s;
+}
+
+.progress-step-item.active .step-label {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+/* --- Nội dung Form --- */
+.form-content {
+    overflow-y: auto;
+    padding: 0.5rem;
+    margin: 0 -0.5rem;
+    flex-grow: 1;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.form-content::-webkit-scrollbar {
+    display: none;
+}
+
+/* Các thành phần input chung */
+.form-group { margin-bottom: 1rem; }
+.form-label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem; color: var(--color-secondary-text); }
+.form-input, select.form-input, textarea.form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-secondary-text);
+    background-color: var(--color-input-bg);
+    color: var(--color-text);
+    outline: none;
+    transition: border-color 0.2s;
+    font-size: 1rem;
+}
+.form-input:focus, select.form-input:focus, textarea.form-input:focus { border-color: var(--color-primary); }
+input[type="datetime-local"] { color-scheme: dark; }
+
+/* Các item động (Rounds, Prizes) */
+.dynamic-form-item {
+    background-color: var(--color-background);
+    border: 1px solid var(--color-hover-bg);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.dynamic-form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+.dynamic-form-header h4 {
+    margin: 0;
+    color: var(--color-accent);
+}
+
+.btn-remove {
+    background: none;
+    border: none;
+    color: var(--color-danger);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0 0.5rem;
+    line-height: 1;
+}
+
+.btn-add-more {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px dashed var(--color-primary);
+    background-color: transparent;
+    color: var(--color-primary);
+    font-weight: 600;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-add-more:hover {
+    background-color: rgba(0, 206, 201, 0.1);
+}
+
+/* --- Điều hướng Form --- */
+.form-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-hover-bg);
+    flex-shrink: 0;
+}
+
+.form-navigation .nav-right {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Nút bấm chung */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    font-size: 1rem;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn.btn-secondary { background-color: var(--color-hover-bg); color: var(--color-text); }
+.btn.btn-primary { background-color: var(--color-primary); color: var(--color-background); }
+.btn.btn-accent { background-color: var(--color-accent); color: var(--color-background); }
