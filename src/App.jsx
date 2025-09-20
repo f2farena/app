@@ -3113,25 +3113,6 @@ const AppContent = () => {
       fetchUpcomingMatches();
   }, [user]);
 
-  // Kiểm tra thời gian các trận đấu mỗi giây
-  useEffect(() => {
-      if (upcomingTournamentMatches.length === 0 || matchToConfirm) return;
-
-      const interval = setInterval(() => {
-          const now = new Date();
-          for (const match of upcomingTournamentMatches) {
-              const matchTime = new Date(match.time);
-              // Kích hoạt khi đến giờ hoặc đã qua 10 giây (đề phòng trễ)
-              if (now >= matchTime && now <= new Date(matchTime.getTime() + 10000)) {
-                  setMatchToConfirm(match);
-                  break; 
-              }
-          }
-      }, 1000);
-
-      return () => clearInterval(interval);
-  }, [upcomingTournamentMatches, matchToConfirm]);
-
   // Hàm onUserUpdate mới sẽ luôn gọi fetchAndSetUser để lấy dữ liệu mới nhất
   const handleUserUpdate = async () => {
       console.log("Updating user data by re-fetching from server...");
@@ -3352,7 +3333,7 @@ const AppContent = () => {
           <Route path="/news/:id" element={<NewsDetail user={user} />} />
           <Route path="/arena" element={<ArenaPage user={user} onUserUpdate={handleUserUpdate} />} />
           <Route path="/tournament/:id" element={<TournamentDetail user={user} walletData={walletData} onUserUpdate={handleUserUpdate} />} />
-          <Route path="/tournament/ongoing/:id" element={<OngoingTournament user={user} />} />
+          <Route path="/tournament/ongoing/:id" element={<OngoingTournament user={user} setMatchToConfirm={setMatchToConfirm} />} />
           <Route path="/arena/:id" element={<ArenaDetail />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/wallet" element={<WalletPage user={user} onUserUpdate={handleUserUpdate} />} />

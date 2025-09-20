@@ -227,7 +227,7 @@ const LiveMatchCard = ({ match }) => {
 };
 
 // --- Component cho tab Match Schedule mới ---
-const MatchScheduleTab = ({ myMatches, liveMatches, currentUser, navigate })  => {
+const MatchScheduleTab = ({ myMatches, liveMatches, currentUser, navigate, onMatchStarts })  => {
     const matchesByDay = myMatches.reduce((acc, match) => {
         // Lấy ngày từ 'time' của trận đấu và chuyển thành một chuỗi định dạng dễ đọc
         // Ví dụ: 'September 7, 2025'
@@ -287,7 +287,7 @@ const MatchScheduleTab = ({ myMatches, liveMatches, currentUser, navigate })  =>
                                             myMatches.filter(m => m.status === 'upcoming')[0]?.id === match.id ? (
                                                 <UpcomingMatchCountdown 
                                                     matchTime={match.time} 
-                                                    onTimeUp={() => { /* Logic được quản lý ở App.jsx */ }} 
+                                                    onTimeUp={() => onMatchStarts(match)}
                                                 />
                                             ) : (
                                                 <div className="match-time">
@@ -323,7 +323,7 @@ const MatchScheduleTab = ({ myMatches, liveMatches, currentUser, navigate })  =>
 };
 
 // --- Component Chính ---
-const OngoingTournament = ({ user }) => {
+const OngoingTournament = ({ user, setMatchToConfirm }) => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { sendMessage, isConnected } = useWebSocket();
@@ -530,6 +530,7 @@ const OngoingTournament = ({ user }) => {
                         liveMatches={liveMatches} 
                         currentUser={currentUser} 
                         navigate={navigate}
+                        onMatchStarts={setMatchToConfirm} 
                     />
                 )}
 
