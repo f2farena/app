@@ -1872,7 +1872,7 @@ const TournamentStatus = ({ startTime, endTime, status }) => {
 
     // Trường hợp 2: Giải đấu đang diễn ra ('ongoing')
     if (normalizedStatus === 'ongoing') {
-        const difference = end - currentTime;
+        const difference = end.getTime() - currentTime.getTime();
         if (difference > 0) {
             const totalSeconds = Math.floor(difference / 1000);
             const days = Math.floor(totalSeconds / (3600 * 24));
@@ -1904,7 +1904,7 @@ const TournamentStatus = ({ startTime, endTime, status }) => {
 
     // Trường hợp 3: Sắp diễn ra ('upcoming')
     if (normalizedStatus === 'upcoming') {
-        const difference = start - currentTime;
+        const difference = start.getTime() - currentTime.getTime();
         if (difference > 0) {
             const totalSeconds = Math.floor(difference / 1000);
             const days = Math.floor(totalSeconds / (3600 * 24));

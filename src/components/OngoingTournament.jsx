@@ -14,23 +14,31 @@ const UpcomingMatchCountdown = ({ matchTime, onTimeUp }) => {
     const [timeLeft, setTimeLeft] = useState('');
 
     useEffect(() => {
+        if (!matchTime) return;
+
+        const targetTimeUTC = new Date(matchTime).getTime();
+
         const interval = setInterval(() => {
             const now = new Date().getTime();
-            const targetTime = new Date(matchTime).getTime();
-            const difference = targetTime - now;
+            const difference = targetTimeUTC - now;
 
             if (difference <= 0) {
                 setTimeLeft("Starting...");
                 clearInterval(interval);
-                onTimeUp(); // Gọi callback khi hết giờ
+                onTimeUp();
                 return;
             }
 
-            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
-            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
-            const seconds = Math.floor((difference % (1000 * 60)) / 1000).toString().padStart(2, '0');
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
 
-            setTimeLeft(`${hours}:${minutes}:${seconds}`);
+            let timeString = '';
+            if (days > 0) timeString += `${days}d `;
+            timeString += `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            setTimeLeft(timeString);
         }, 1000);
 
         return () => clearInterval(interval);
@@ -43,10 +51,11 @@ const UpcomingMatchCountdown = ({ matchTime, onTimeUp }) => {
 const TournamentCountdown = ({ endTime }) => {
   const [timeLeft, setTimeLeft] = useState('');
   useEffect(() => {
+    const endTimeUTC = new Date(endTime);
+
     const interval = setInterval(() => {
       const now = new Date();
-      const end = new Date(endTime);
-      const difference = end - now;
+      const difference = endTimeUTC.getTime() - now.getTime();
       if (difference <= 0) {
         setTimeLeft('Finished');
         clearInterval(interval);
@@ -339,6 +348,17 @@ const OngoingTournament = ({ user }) => {
                     }
                     
                     const data = await response.json();
+                    // --- LOGGING RAW DATA TỪ BACKEND ---
+                    if (data.myMatches && data.myMatches.length > 0) {
+                        console.log("--- [OngoingTournament] Raw 'time' value from Backend ---");
+                        data.myMatches.forEach(match => {
+                            if(match.status === 'upcoming') {
+                                console.log(`Match ID ${match.id}:`, match.time);
+                            }
+                        });
+                        console.log("----------------------------------------------------");
+                    }
+                    // ------------------------------------
                     setTournament(data);
                 } catch (err) {
                     console.error("Failed to fetch tournament data:", err);
