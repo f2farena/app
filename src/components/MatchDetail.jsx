@@ -246,7 +246,6 @@ const MatchDetail = ({ user }) => {
     const [matchResult, setMatchResult] = useState(null);
     const [cancellationReason, setCancellationReason] = useState(null);
     const [matchResultFromSocket, setMatchResultFromSocket] = useState(null);
-    const [showWaitingModal, setShowWaitingModal] = useState(false);
     const [isChartMinimized, setIsChartMinimized] = useState(false);
     const floatingButtonRef = useRef(null);
 
@@ -389,11 +388,6 @@ const MatchDetail = ({ user }) => {
                     break;
                 case "MATCH_DONE":
                     console.log("Received match results from WebSocket:", message.data);
-                    setMatchResultFromSocket(message.data);
-                    
-                    // Cập nhật trạng thái hiển thị kết quả và tắt modal
-                    setShowWaitingModal(false);
-                    // Force fetch lại dữ liệu để cập nhật trạng thái 'completed' và kết quả
                     fetchMatchDetail();
                     break;
             }
@@ -691,13 +685,12 @@ const MatchDetail = ({ user }) => {
                 <div className="center-details">
                     <div className="time-remaining">
                         {matchData.status === 'live' ? (
-                            // Ghi chú: Sử dụng component dùng chung và truyền đúng props
                             <MatchCountdownTimer
-                                startTime={matchData.start_time}
-                                durationMinutes={matchData.duration_minutes}
-                            />
+                                startTime={matchData.start_time}
+                                durationMinutes={matchData.duration_minutes}
+                                onTimerEnd={fetchMatchDetail} 
+                            />
                         ) : (
-                            // Giữ nguyên logic hiển thị text cho các trạng thái khác
                             matchData.status === 'completed' || matchData.status === 'done' ? 'Finished' : 'Pending'
                         )}
                     </div>
@@ -851,7 +844,7 @@ const MatchDetail = ({ user }) => {
                 </>
             )}
             
-            {showWaitingModal && <WaitingForResultModal />}
+            {matchData.status === 'live' && !matchData.result && matchData.timeRemaining === 0 && <WaitingForResultModal />}
         </div>
     );
 };

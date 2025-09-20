@@ -2,10 +2,10 @@
 import React, { useState, useEffect } from 'react';
 
 // Ghi chú: Đây là component dùng chung, đã được cải tiến để ổn định hơn
-const MatchCountdownTimer = ({ startTime, durationMinutes }) => {
-    const calculateInitialSeconds = () => {
+const MatchCountdownTimer = ({ startTime, durationMinutes, onTimerEnd }) => {
+    const calculateSecondsLeft = () => { // Đổi tên cho rõ ràng
         if (!startTime || typeof durationMinutes !== 'number') {
-            return null; // Trả về null để hiển thị 'Waiting...'
+            return null;
         }
         const endTime = new Date(startTime).getTime() + durationMinutes * 60 * 1000;
         const now = new Date().getTime();
@@ -13,20 +13,25 @@ const MatchCountdownTimer = ({ startTime, durationMinutes }) => {
         return remainingMilliseconds > 0 ? Math.floor(remainingMilliseconds / 1000) : 0;
     };
 
-    const [secondsLeft, setSecondsLeft] = useState(calculateInitialSeconds);
+    const [secondsLeft, setSecondsLeft] = useState(calculateSecondsLeft);
+
+    // ✅ THÊM LẠI useEffect NÀY ĐỂ ĐẢM BẢO TIMER LUÔN CẬP NHẬT
+    useEffect(() => {
+        setSecondsLeft(calculateSecondsLeft());
+    }, [startTime, durationMinutes]);
 
     useEffect(() => {
-        // Chỉ chạy interval khi secondsLeft là một số và lớn hơn 0
+        if (secondsLeft === 0 && onTimerEnd) {
+            onTimerEnd();
+        }
         if (typeof secondsLeft !== 'number' || secondsLeft <= 0) {
             return;
         }
-
         const interval = setInterval(() => {
-            setSecondsLeft(prev => prev - 1);
+            setSecondsLeft(prev => (prev > 0 ? prev - 1 : 0));
         }, 1000);
-
         return () => clearInterval(interval);
-    }, [secondsLeft]);
+    }, [secondsLeft, onTimerEnd]);
 
     if (typeof secondsLeft !== 'number') {
         return <div className="time-remaining">Waiting...</div>;
