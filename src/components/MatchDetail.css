@@ -688,11 +688,6 @@
     overflow: hidden;
 }
 
-.timeline-container.expanded {
-    /* Timeline chiếm toàn bộ không gian khi biểu đồ thu gọn */
-    flex-grow: 100; /* Tăng mạnh flex-grow để nó lấp đầy */
-}
-
 /* Nút bấm nổi */
 .floating-chart-toggle {
     position: fixed;
@@ -700,27 +695,97 @@
     right: 15px;
     width: 50px;
     height: 50px;
-    background-color: var(--color-primary);
-    color: var(--color-background);
+    background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary)); /* Gradient cho hiệu ứng 3D */
+    color: var(--color-text-light); /* Màu chữ/icon sáng hơn */
     border-radius: 50%;
     border: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    /* Đổ bóng 3D */
+    box-shadow: 
+        0 5px 15px rgba(0, 0, 0, 0.3), /* Bóng chính */
+        0 2px 5px rgba(0, 0, 0, 0.2), /* Bóng nhỏ hơn cho chiều sâu */
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1); /* Đường viền sáng */
     cursor: grab;
     z-index: 101; /* Nổi trên tất cả */
-    transition: transform 0.2s ease;
+    transition: 
+        all 0.3s ease-in-out,
+        box-shadow 0.3s ease-in-out; /* Transition mượt mà */
+    overflow: hidden; /* Quan trọng để hiệu ứng chớp sáng không tràn ra ngoài */
+    position: fixed; /* Giữ fixed để kéo thả */
 }
 
+/* Hiệu ứng khi hover */
+.floating-chart-toggle:hover {
+    transform: translateY(-3px) scale(1.02); /* Nhấc nhẹ lên và to ra một chút */
+    box-shadow: 
+        0 8px 20px rgba(0, 0, 0, 0.4), /* Bóng mạnh hơn */
+        0 4px 8px rgba(0, 0, 0, 0.3),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+    cursor: pointer; /* Đổi cursor thành pointer khi hover */
+}
+
+/* Hiệu ứng khi click/active */
 .floating-chart-toggle:active {
+    transform: translateY(0) scale(0.95); /* Ấn xuống */
+    box-shadow: 
+        0 2px 5px rgba(0, 0, 0, 0.2), /* Bóng ít hơn khi ấn */
+        0 1px 2px rgba(0, 0, 0, 0.1),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.05);
     cursor: grabbing;
-    transform: scale(0.95);
 }
 
+/* Icon SVG */
 .floating-chart-toggle svg {
     width: 24px;
     height: 24px;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5)); /* Đổ bóng nhẹ cho icon */
+    transition: transform 0.2s ease-in-out;
+}
+.floating-chart-toggle:hover svg {
+    transform: scale(1.1); /* Icon to ra một chút khi hover */
+}
+
+/* Hiệu ứng chớp sáng (Sparkle/Shine effect) */
+.floating-chart-toggle::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+    transform: rotate(45deg);
+    opacity: 0;
+    pointer-events: none; /* Đảm bảo không chặn sự kiện click */
+    transition: all 0.5s ease-out;
+    z-index: 10;
+}
+
+.floating-chart-toggle:hover::before {
+    width: 200%;
+    height: 200%;
+    opacity: 1;
+    top: -75%;
+    left: -75%;
+    transition: all 0.5s ease-out;
+}
+
+/* Dùng biến CSS để điều khiển màu sắc */
+:root {
+    --color-primary: #007bff; /* Ví dụ: xanh dương */
+    --color-primary-dark: #0056b3; /* Xanh đậm hơn */
+    --color-background: #1a1a2e; /* Nền tối */
+    --color-card-bg: #21213e; /* Nền card tối */
+    --color-text-light: #f0f0f0; /* Chữ sáng */
+}
+
+/* Cập nhật một số màu sắc nếu cần thiết để phù hợp với gradient */
+.trading-view-wrapper {
+    background-color: var(--color-card-bg); /* Ví dụ */
+    border: 1px solid rgba(255, 255, 255, 0.05); /* Viền nhẹ */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
 /* Wrapper của biểu đồ khi bị thu gọn */
@@ -729,11 +794,6 @@
     visibility: hidden;
     opacity: 0;
     transition: height 0.3s ease-in-out, opacity 0.2s ease, visibility 0.3s;
-}
-
-/* Container của timeline khi nó được mở rộng */
-.timeline-container.expanded {
-    /* Không cần thêm gì đặc biệt vì flexbox sẽ tự xử lý */
 }
 
 /* Giữ lại style cũ cho container biểu đồ */
