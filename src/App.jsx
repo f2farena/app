@@ -11,6 +11,7 @@ import LazyLoad from 'react-lazyload';
 import { FixedSizeList } from 'react-window';
 import { notifyAdminOfDeposit, requestWithdrawal } from './services/telegramService';
 import { WebSocketProvider } from './contexts/WebSocketContext';
+import MatchCountdownTimer from './components/MatchCountdownTimer';
 
 import settingIcon from './assets/setting.png';
 import chatboxIcon from './assets/chatbox.png';
@@ -261,55 +262,6 @@ const EventBanner = ({ items }) => {
   );
 };
 
-const MatchCountdownTimer = ({ startTime, durationHours }) => {
-    const [timeRemaining, setTimeRemaining] = useState("Calculating...");
-
-    useEffect(() => {
-        // Nếu không có thời gian bắt đầu hoặc thời lượng, coi như đã kết thúc
-        if (!startTime || !durationHours) {
-            setTimeRemaining("Waiting...")
-            return;
-        }
-
-        // Tính toán thời điểm kết thúc trận đấu (chỉ 1 lần)
-        const endTime = new Date(startTime).getTime() + durationHours * 3600 * 1000;
-
-        const calculateAndSetRemaining = () => {
-            const now = new Date().getTime();
-            const remainingMilliseconds = endTime - now;
-            
-            if (remainingMilliseconds <= 0) {
-                setTimeRemaining("00:00:00");
-                return 0; // Báo hiệu đã kết thúc
-            }
-
-            const totalSeconds = Math.floor(remainingMilliseconds / 1000);
-            const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
-            const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-            const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-            
-            setTimeRemaining(`${hours}:${minutes}:${seconds}`);
-            return remainingMilliseconds;
-        };
-
-        // Chạy lần đầu ngay lập tức
-        if (calculateAndSetRemaining() <= 0) return;
-
-        // Cập nhật mỗi giây
-        const interval = setInterval(() => {
-            if (calculateAndSetRemaining() <= 0) {
-                clearInterval(interval);
-            }
-        }, 1000);
-
-        // Cleanup function
-        return () => clearInterval(interval);
-
-    }, [startTime, durationHours]);
-
-    return <div className="time-remaining">{timeRemaining}</div>;
-};
-
 // HomePage sử dụng hook riêng để fetch dữ liệu thay vì lặp lại logic
 const HomePage = () => {
   const navigate = useNavigate();
@@ -548,7 +500,7 @@ const HomePage = () => {
                                   <span className="player-odds">{match.player1.odds}</span>
                               </div>
                               <div className="center-details">
-                                  <MatchCountdownTimer startTime={match.start_time} durationHours={match.duration_minutes / 60} />
+                                  <MatchCountdownTimer startTime={match.start_time} durationMinutes={match.duration_minutes} />
                                   <div className="vs-text">VS</div>
                               </div>
                               <div className="player-info">

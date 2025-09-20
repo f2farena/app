@@ -1,44 +1,10 @@
 // scr/component/MatchDetail.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import MatchCountdownTimer from './MatchCountdownTimer';
 import './MatchDetail.css';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import defaultAvatar from '../assets/avatar.jpg';
-
-const MatchCountdownTimer = ({ initialSeconds, onFinish }) => {
-    const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
-    const onFinishCalled = useRef(false);
-
-    useEffect(() => {
-        // Nếu không có số giây ban đầu hoặc đã hết giờ, thì dừng lại
-        if (typeof secondsLeft !== 'number' || secondsLeft < 0) {
-            return;
-        }
-
-        // Nếu đếm về 0, gọi onFinish và dừng
-        if (secondsLeft === 0) {
-            if (onFinish && !onFinishCalled.current) {
-                onFinish();
-                onFinishCalled.current = true;
-            }
-            return;
-        }
-
-        // Thiết lập bộ đếm ngược mỗi giây
-        const interval = setInterval(() => {
-            setSecondsLeft(prev => prev - 1);
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [secondsLeft, onFinish]); // Phụ thuộc vào secondsLeft để chạy lại mỗi khi nó thay đổi
-
-    // Định dạng lại thời gian từ số giây
-    const hours = Math.floor(secondsLeft / 3600).toString().padStart(2, '0');
-    const minutes = Math.floor((secondsLeft % 3600) / 60).toString().padStart(2, '0');
-    const seconds = (secondsLeft % 60).toString().padStart(2, '0');
-    
-    return <>{`${hours}:${minutes}:${seconds}`}</>;
-};
 
 const generateAvatarUrl = (seed) => `https://placehold.co/50x50/3498db/ffffff?text=${(seed.split(' ').map(n => n[0]).join('') || 'NN').toUpperCase()}`;
 const getAvatarSource = (player) => {
@@ -658,29 +624,17 @@ const MatchDetail = ({ user }) => {
                 </div>
                 <div className="center-details">
                     <div className="time-remaining">
-                        {matchData.status === 'live' && typeof matchData.timeRemaining === 'number'
-                            ?   <MatchCountdownTimer 
-                                initialSeconds={matchData.timeRemaining} // <-- SỬA PROP TẠI ĐÂY
-                                onFinish={() => {
-                                    // Khi timer về 0, kiểm tra ngay lập tức
-                                    // Dùng `setMatchResultFromSocket` với một callback để lấy giá trị state mới nhất
-                                    setMatchResultFromSocket(currentResult => {
-                                        if (currentResult) {
-                                            // Nếu đã có kết quả -> gọi fetch để cập nhật UI
-                                            console.log("Timer finished. Result was already received. Fetching details.");
-                                            fetchMatchDetail(); 
-                                        } else {
-                                            // Nếu chưa có kết quả -> hiện modal chờ
-                                            console.log("Timer finished. No result yet. Showing waiting modal.");
-                                            setShowWaitingModal(true);
-                                        }
-                                        return currentResult; // return lại state không đổi
-                                    });
-                                }} 
-                            />
-                            : (matchData.status === 'completed' || matchData.status === 'done' ? 'Finished' : 'Pending') 
-                        }
-                    </div>
+                        {matchData.status === 'live' ? (
+                            // Ghi chú: Sử dụng component dùng chung và truyền đúng props
+                            <MatchCountdownTimer
+                                startTime={matchData.start_time}
+                                durationMinutes={matchData.duration_minutes}
+                            />
+                        ) : (
+                            // Giữ nguyên logic hiển thị text cho các trạng thái khác
+                            matchData.status === 'completed' || matchData.status === 'done' ? 'Finished' : 'Pending'
+                        )}
+                    </div>
                     <div className="vs-text">VS</div>
                 </div>
                 <div className="player-info">

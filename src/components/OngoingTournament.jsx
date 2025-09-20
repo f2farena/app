@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import MatchCountdownTimer from './MatchCountdownTimer';
 import goldCup from '../assets/gold-cup.png';
 import silverCup from '../assets/silver-cup.png';
 import bronzeCup from '../assets/bronze-cup.png';
@@ -60,39 +61,6 @@ const TournamentCountdown = ({ endTime }) => {
     return () => clearInterval(interval);
   }, [endTime]);
   return <div className="tournament-countdown">{timeLeft || 'Calculating...'}</div>;
-};
-
-const MatchCountdownTimer = ({ startTime, durationHours }) => {
-    const [timeRemaining, setTimeRemaining] = useState("Calculating...");
-    useEffect(() => {
-        if (!startTime || !durationHours) {
-            setTimeRemaining("Waiting...")
-            return;
-        }
-        const endTime = new Date(startTime).getTime() + durationHours * 3600 * 1000;
-        const calculateAndSetRemaining = () => {
-            const now = new Date().getTime();
-            const remainingMilliseconds = endTime - now;
-            if (remainingMilliseconds <= 0) {
-                setTimeRemaining("00:00:00");
-                return 0;
-            }
-            const totalSeconds = Math.floor(remainingMilliseconds / 1000);
-            const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
-            const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-            const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-            setTimeRemaining(`${hours}:${minutes}:${seconds}`);
-            return remainingMilliseconds;
-        };
-        if (calculateAndSetRemaining() <= 0) return;
-        const interval = setInterval(() => {
-            if (calculateAndSetRemaining() <= 0) {
-                clearInterval(interval);
-            }
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [startTime, durationHours]);
-    return <div className="time-remaining">{timeRemaining}</div>;
 };
 
 // --- Component Tab Kết quả ---
@@ -222,7 +190,7 @@ const RoundsTab = ({ rounds, currentDay }) => {
 // --- Component cho các trận đấu Live ---
 const LiveMatchCard = ({ match }) => {
     const navigate = useNavigate(); // Thêm hook useNavigate
-    const { player1, player2, startTime, durationMinutes } = match; // Đổi durationHours thành durationMinutes cho nhất quán
+    const { player1, player2, startTime, durationMinutes } = match;
     
     // Hàm phụ trợ để lấy avatar an toàn
     const getAvatar = (player) => player?.avatar || generateAvatarUrl(player?.name || '?');
@@ -231,7 +199,6 @@ const LiveMatchCard = ({ match }) => {
         // Bọc component trong một thẻ div có thể click
         <div className="live-tournament-match card" onClick={() => navigate(`/match/${match.id}`, { state: { matchType: 'tournament' } })} style={{cursor: 'pointer'}}>
             <div className="live-match-player">
-                {/* Sử dụng hàm getAvatar */}
                 <img src={getAvatar(player1)} alt={player1.name} className="trader-avatar" />
                 <span className="live-match-player-name">{player1.name}</span>
                 <p className="live-match-score">{player1.score.toLocaleString()} pts</p>
@@ -239,11 +206,9 @@ const LiveMatchCard = ({ match }) => {
             <div className="live-match-center">
                 <div className="live-indicator">Live</div>
                 <div className="vs-text">VS</div>
-                {/* Sửa lại prop cho đúng */}
-                <MatchCountdownTimer startTime={startTime} durationHours={durationMinutes / 60} />
+                <MatchCountdownTimer startTime={startTime} durationMinutes={durationMinutes} />
             </div>
             <div className="live-match-player">
-                {/* Sử dụng hàm getAvatar */}
                 <img src={getAvatar(player2)} alt={player2.name} className="trader-avatar" />
                 <span className="live-match-player-name">{player2.name}</span>
                 <p className="live-match-score">{player2.score.toLocaleString()} pts</p>
