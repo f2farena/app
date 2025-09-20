@@ -247,6 +247,8 @@ const MatchDetail = ({ user }) => {
     const [cancellationReason, setCancellationReason] = useState(null);
     const [matchResultFromSocket, setMatchResultFromSocket] = useState(null);
     const [showWaitingModal, setShowWaitingModal] = useState(false);
+    const [isChartMinimized, setIsChartMinimized] = useState(false);
+    const floatingChartRef = useRef(null);
 
     // =================================================================
     // BƯỚC 1: ĐỊNH NGHĨA fetchMatchDetail BẰNG useCallback
@@ -588,6 +590,71 @@ const MatchDetail = ({ user }) => {
             sessionStorage.removeItem('active_matches');
         };
     }, []);
+
+    // useEffect để xử lý kéo-thả
+    useEffect(() => {
+        if (!isChartMinimized || !floatingChartRef.current) return;
+
+        const PADDING = 10; // Khoảng cách tối thiểu từ các cạnh màn hình
+        const chartElement = floatingChartRef.current;
+        const headerElement = chartElement.querySelector('.trading-view-header');
+        if (!headerElement) return;
+
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        const onDown = (e) => {
+            isDragging = true;
+            headerElement.style.cursor = 'grabbing';
+            const event = e.touches ? e.touches[0] : e;
+            const rect = chartElement.getBoundingClientRect();
+            offsetX = event.clientX - rect.left;
+            offsetY = event.clientY - rect.top;
+        };
+
+        const onMove = (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const event = e.touches ? e.touches[0] : e;
+
+            let newX = event.clientX - offsetX;
+            let newY = event.clientY - offsetY;
+
+            // Giới hạn không cho kéo ra ngoài màn hình
+            const maxWidth = window.innerWidth - chartElement.offsetWidth - PADDING;
+            const maxHeight = window.innerHeight - chartElement.offsetHeight - PADDING;
+
+            newX = Math.max(PADDING, Math.min(newX, maxWidth));
+            newY = Math.max(PADDING, Math.min(newY, maxHeight));
+
+            chartElement.style.left = `${newX}px`;
+            chartElement.style.top = `${newY}px`;
+            chartElement.style.bottom = 'auto'; // Ghi đè bottom để top/left có tác dụng
+            chartElement.style.right = 'auto'; // Ghi đè right để top/left có tác dụng
+        };
+
+        const onUp = () => {
+            isDragging = false;
+            headerElement.style.cursor = 'grab';
+        };
+
+        headerElement.addEventListener('mousedown', onDown);
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+
+        headerElement.addEventListener('touchstart', onDown, { passive: false });
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onUp);
+
+        return () => {
+            headerElement.removeEventListener('mousedown', onDown);
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            headerElement.removeEventListener('touchstart', onDown);
+            document.removeEventListener('touchmove', onMove);
+            document.removeEventListener('touchend', onUp);
+        };
+    }, [isChartMinimized]);
     
     // JSX trả về
     if (!matchData) {
@@ -710,10 +777,21 @@ const MatchDetail = ({ user }) => {
 
                     {activeTab === 'matching' && (
                         <>
-                            <div className="trading-view-container">
-                                <div id="tradingview_widget"></div>
+                            <div ref={floatingChartRef} className={`trading-view-wrapper ${isChartMinimized ? 'minimized' : ''}`}>
+                                <div className="trading-view-header">
+                                    <span>Trading Chart</span>
+                                    <button 
+                                        className="chart-toggle-button"
+                                        onClick={() => setIsChartMinimized(!isChartMinimized)}
+                                    >
+                                        {isChartMinimized ? 'Show' : 'Hide'}
+                                    </button>
+                                </div>
+                                <div className="trading-view-container">
+                                    <div id="tradingview_widget"></div>
+                                </div>
                             </div>
-                            <div className="timeline-container">
+                            <div className={`timeline-container ${isChartMinimized ? 'expanded' : ''}`}>
                                 <div className="timeline">
                                     {trades.map((trade, index) => (
                                         <div key={trade.id || `trade-${index}`} className={`trade-box ${Number(trade.player_id) === Number(matchData.player1.id) ? 'left' : 'right'}`}>
