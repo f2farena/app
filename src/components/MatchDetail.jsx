@@ -248,7 +248,7 @@ const MatchDetail = ({ user }) => {
     const [matchResultFromSocket, setMatchResultFromSocket] = useState(null);
     const [showWaitingModal, setShowWaitingModal] = useState(false);
     const [isChartMinimized, setIsChartMinimized] = useState(false);
-    const floatingChartRef = useRef(null);
+    const floatingButtonRef = useRef(null);
 
     // =================================================================
     // BƯỚC 1: ĐỊNH NGHĨA fetchMatchDetail BẰNG useCallback
@@ -593,21 +593,20 @@ const MatchDetail = ({ user }) => {
 
     // useEffect để xử lý kéo-thả
     useEffect(() => {
-        if (!isChartMinimized || !floatingChartRef.current) return;
+        // Chỉ chạy logic kéo-thả khi biểu đồ đang thu gọn
+        if (!isChartMinimized) return;
 
-        const PADDING = 10; // Khoảng cách tối thiểu từ các cạnh màn hình
-        const chartElement = floatingChartRef.current;
-        const headerElement = chartElement.querySelector('.trading-view-header');
-        if (!headerElement) return;
+        const buttonElement = floatingButtonRef.current;
+        if (!buttonElement) return;
 
         let isDragging = false;
         let offsetX, offsetY;
 
         const onDown = (e) => {
             isDragging = true;
-            headerElement.style.cursor = 'grabbing';
+            buttonElement.style.cursor = 'grabbing';
             const event = e.touches ? e.touches[0] : e;
-            const rect = chartElement.getBoundingClientRect();
+            const rect = buttonElement.getBoundingClientRect();
             offsetX = event.clientX - rect.left;
             offsetY = event.clientY - rect.top;
         };
@@ -620,41 +619,41 @@ const MatchDetail = ({ user }) => {
             let newX = event.clientX - offsetX;
             let newY = event.clientY - offsetY;
 
-            // Giới hạn không cho kéo ra ngoài màn hình
-            const maxWidth = window.innerWidth - chartElement.offsetWidth - PADDING;
-            const maxHeight = window.innerHeight - chartElement.offsetHeight - PADDING;
+            // Giới hạn trong màn hình
+            const maxWidth = window.innerWidth - buttonElement.offsetWidth;
+            const maxHeight = window.innerHeight - buttonElement.offsetHeight;
 
-            newX = Math.max(PADDING, Math.min(newX, maxWidth));
-            newY = Math.max(PADDING, Math.min(newY, maxHeight));
+            newX = Math.max(0, Math.min(newX, maxWidth));
+            newY = Math.max(0, Math.min(newY, maxHeight));
 
-            chartElement.style.left = `${newX}px`;
-            chartElement.style.top = `${newY}px`;
-            chartElement.style.bottom = 'auto'; // Ghi đè bottom để top/left có tác dụng
-            chartElement.style.right = 'auto'; // Ghi đè right để top/left có tác dụng
+            buttonElement.style.left = `${newX}px`;
+            buttonElement.style.top = `${newY}px`;
+            buttonElement.style.bottom = 'auto';
+            buttonElement.style.right = 'auto';
         };
 
         const onUp = () => {
             isDragging = false;
-            headerElement.style.cursor = 'grab';
+            buttonElement.style.cursor = 'grab';
         };
 
-        headerElement.addEventListener('mousedown', onDown);
+        buttonElement.addEventListener('mousedown', onDown);
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
 
-        headerElement.addEventListener('touchstart', onDown, { passive: false });
+        buttonElement.addEventListener('touchstart', onDown, { passive: false });
         document.addEventListener('touchmove', onMove, { passive: false });
         document.addEventListener('touchend', onUp);
 
         return () => {
-            headerElement.removeEventListener('mousedown', onDown);
+            buttonElement.removeEventListener('mousedown', onDown);
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
-            headerElement.removeEventListener('touchstart', onDown);
+            buttonElement.removeEventListener('touchstart', onDown);
             document.removeEventListener('touchmove', onMove);
             document.removeEventListener('touchend', onUp);
         };
-    }, [isChartMinimized]);
+    }, [isChartMinimized]); 
     
     // JSX trả về
     if (!matchData) {
@@ -777,20 +776,26 @@ const MatchDetail = ({ user }) => {
 
                     {activeTab === 'matching' && (
                         <>
-                            <div ref={floatingChartRef} className={`trading-view-wrapper ${isChartMinimized ? 'minimized' : ''}`}>
-                                <div className="trading-view-header">
-                                    <span>Trading Chart</span>
-                                    <button 
-                                        className="chart-toggle-button"
-                                        onClick={() => setIsChartMinimized(!isChartMinimized)}
-                                    >
-                                        {isChartMinimized ? 'Show' : 'Hide'}
-                                    </button>
-                                </div>
+                            {/* Biểu đồ giờ chỉ là một khối bình thường, không có header và ref */}
+                            <div className={`trading-view-wrapper ${isChartMinimized ? 'minimized' : ''}`}>
                                 <div className="trading-view-container">
                                     <div id="tradingview_widget"></div>
                                 </div>
                             </div>
+
+                            {/* Nút bấm nổi được đưa ra ngoài */}
+                            <button
+                                ref={floatingButtonRef}
+                                className="floating-chart-toggle"
+                                onClick={() => setIsChartMinimized(!isChartMinimized)}
+                                aria-label={isChartMinimized ? 'Show Chart' : 'Hide Chart'}
+                            >
+                                {/* Icon SVG cho nút bấm */}
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 15.51z"/>
+                                </svg>
+                            </button>
+
                             <div className={`timeline-container ${isChartMinimized ? 'expanded' : ''}`}>
                                 <div className="timeline">
                                     {trades.map((trade, index) => (

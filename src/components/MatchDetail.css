@@ -660,28 +660,9 @@
     z-index: 100; /* Đảm bảo biểu đồ nổi lên trên */
 }
 
-.trading-view-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 8px;
-    background-color: var(--color-hover-bg);
-    cursor: grab; /* Con trỏ di chuyển khi kéo */
-}
-
 .trading-view-header span {
     font-weight: bold;
     font-size: 0.8rem;
-}
-
-.chart-toggle-button {
-    background-color: var(--color-primary);
-    color: var(--color-background);
-    border: none;
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 0.75rem;
-    cursor: pointer;
 }
 
 /* Trạng thái mặc định (chưa thu gọn) */
@@ -700,17 +681,6 @@
     transition: flex-grow 0.3s ease-in-out;
 }
 
-/* Trạng thái thu gọn */
-.trading-view-wrapper.minimized {
-    position: fixed; /* Nổi lên và cố định trên màn hình */
-    bottom: 70px; /* Vị trí mặc định */
-    right: 10px;
-    width: 250px; /* Kích thước nhỏ */
-    height: auto;
-    border: 1px solid var(--color-primary);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-}
 
 .trading-view-wrapper.minimized .trading-view-container {
     /* Ẩn nội dung biểu đồ khi thu gọn */
@@ -721,4 +691,68 @@
 .timeline-container.expanded {
     /* Timeline chiếm toàn bộ không gian khi biểu đồ thu gọn */
     flex-grow: 100; /* Tăng mạnh flex-grow để nó lấp đầy */
+}
+
+/* Nút bấm nổi */
+.floating-chart-toggle {
+    position: fixed;
+    bottom: 80px; /* Vị trí mặc định ban đầu */
+    right: 15px;
+    width: 50px;
+    height: 50px;
+    background-color: var(--color-primary);
+    color: var(--color-background);
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    cursor: grab;
+    z-index: 101; /* Nổi trên tất cả */
+    transition: transform 0.2s ease;
+}
+
+.floating-chart-toggle:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+
+.floating-chart-toggle svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* Wrapper của biểu đồ khi bị thu gọn */
+.trading-view-wrapper.minimized .trading-view-container {
+    height: 0;
+    visibility: hidden;
+    opacity: 0;
+    transition: height 0.3s ease-in-out, opacity 0.2s ease, visibility 0.3s;
+}
+
+/* Container của timeline khi nó được mở rộng */
+.timeline-container.expanded {
+    /* Không cần thêm gì đặc biệt vì flexbox sẽ tự xử lý */
+}
+
+/* Giữ lại style cũ cho container biểu đồ */
+.trading-view-wrapper {
+    transition: all 0.3s ease-in-out;
+    background-color: var(--color-card-bg);
+    z-index: 100;
+    position: relative;
+    width: 100%;
+    height: auto;
+}
+
+.trading-view-container {
+    height: 400px; /* Chiều cao mặc định */
+    visibility: visible;
+    opacity: 1;
+    transition: height 0.3s ease-in-out, opacity 0.3s ease 0.1s, visibility 0.3s;
+}
+
+.timeline-container {
+    flex: 1;
 }
